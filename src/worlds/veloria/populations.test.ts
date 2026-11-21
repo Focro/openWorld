@@ -136,3 +136,13 @@ describe("birth into an ordinary family", () => {
     expect(checked).toBe(4);
   }, 60_000);
 });
+
+describe("нет двойников в стартовом окружении", () => {
+  it("у странника один Сержант Бран и один Элрик Данн", () => {
+    const r = startVeloriaCampaign({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Путник", age: 22, originId: "wanderer", statusId: "marginal", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS } } });
+    if (!r.ok) throw new Error(r.errors.join(" "));
+    const names = Object.values(r.world.npcs).map(n => n.name);
+    expect(names.filter(n => n === "Сержант Бран")).toHaveLength(1);
+    expect(names.filter(n => n === "Элрик Данн")).toHaveLength(1);
+  });
+});

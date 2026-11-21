@@ -227,5 +227,8 @@ export function attachStartEntourage(world: WorldData, originId: VeloriaOriginId
   }));
   const collision = additions.find(person => world.npcs[person.id]);
   if (collision) throw new Error(`Start entourage NPC ID collision: ${collision.id}`);
-  return { ...world, npcs: { ...world.npcs, ...Object.fromEntries(additions.map(person => [person.id, person])) } };
+  // Сержант Бран и Элрик Данн уже живут в базовом Ровене: второй человек с тем же именем не нужен.
+  const existingNames = new Set(Object.values(world.npcs).map(npc => npc.name));
+  const fresh = additions.filter(person => !existingNames.has(person.name));
+  return { ...world, npcs: { ...world.npcs, ...Object.fromEntries(fresh.map(person => [person.id, person])) } };
 }
