@@ -7,6 +7,7 @@ import type { WorldData } from "../../engine/types";
 import { createAppearanceState, lockAppearanceIdentity, type AppearanceIdentity, type AppearanceScar } from "../../engine/appearance";
 import { VELORIA_CANON } from "./lore";
 import { attachSettlementMaps } from "./settlementMaps";
+import { attachResidents } from "./residents";
 
 /** Утверждённые в этой версии исходные профили NPC Ровена. Неизвестные признаки оставлены пустыми. */
 function npcAppearance(identity: AppearanceIdentity, hairstyle: string, clothing: string, facialHair?: string, scars: AppearanceScar[] = []) {
@@ -170,7 +171,7 @@ export const VELORIA_WORLD: WorldData = {
 };
 
 export function createVeloriaWorld(): WorldData {
-  const world = attachSettlementMaps(structuredClone(VELORIA_WORLD));
+  const world = attachResidents(attachSettlementMaps(structuredClone(VELORIA_WORLD)));
   for (const npc of Object.values(world.npcs)) {
     if (npc.appearance) npc.appearance = lockAppearanceIdentity(npc.appearance);
   }

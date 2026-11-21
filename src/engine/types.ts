@@ -12,6 +12,8 @@ export interface LocationDef {
   description: string;
   exits: Exit[];
   shop?: Shop;
+  /** Закрытое место (дворец, шахта, казарма): жители там бывают, героя не пускают. Текст: почему. */
+  restricted?: string;
 }
 export interface ItemDef { id: string; name: string }
 export interface ScheduleEntry { from: number; to: number; locationId: string; activity?: string }
@@ -68,6 +70,10 @@ export interface NpcDef {
   /** Биографические поля для сгенерированных родственников и других возрастных NPC. */
   age?: number;
   birthYear?: number;
+  /** День рождения в календаре мира (месяц с 1, день с 1). Возраст по-прежнему считается от birthYear. */
+  birthday?: { month: number; day: number };
+  /** Авторский паспорт речи: как звучит человек. Дописывается к автоматическому speechProfile. */
+  speechNote?: string;
   lifeStatus?: "alive" | "dead" | "missing";
   familyRole?: "biological-parent" | "guardian" | "other";
   /** Собственные цели NPC (он знает их о себе; игрок: нет). */

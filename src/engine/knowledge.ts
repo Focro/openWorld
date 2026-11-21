@@ -59,7 +59,8 @@ export function buildKnowledgeIndex(world: WorldData): KnowledgeDocument[] {
     text: `${location.name}. ${location.description} Соседние места: ${location.exits.map(e => world.locations[e.to]?.name ?? e.to).join(", ") || "нет"}.`,
     source: `world.locations.${location.id}`, audience: "public", tags: ["локация", "место", location.id]
   });
-  for (const npc of Object.values(world.npcs)) docs.push({
+  // Жители мест (resident) в общий справочник не попадают: ИИ узнаёт о них, только когда герой их встретил.
+  for (const npc of Object.values(world.npcs).filter(n => !("resident" in n))) docs.push({
     id: `npc:${npc.id}`, title: npc.name,
     text: `${npc.name}. Дом: ${world.locations[npc.homeId]?.name ?? npc.homeId}. Социальные роли: ${(npc.roleTags ?? []).join(", ") || "не указаны"}.`,
     source: `world.npcs.${npc.id}`, audience: "public", tags: ["персонаж", "npc", npc.id]
