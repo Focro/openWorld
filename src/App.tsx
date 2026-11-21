@@ -39,7 +39,7 @@ import { generateVeloriaFamily } from "./worlds/veloria/familyGeneration";
 import { getChildAppearanceOptions, validateChildAppearance } from "./worlds/veloria/heritage";
 import { FAITHS } from "./worlds/veloria/faiths";
 import { WORLD_DIFFICULTIES, type WorldDifficultyId } from "./worlds/veloria/difficulty";
-import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES, MAP_WATERS, MAP_ISLANDS } from "./worlds/veloria/atlas";
+import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES, MAP_WATERS, MAP_ISLANDS, MAP_ROADS } from "./worlds/veloria/atlas";
 import { MAP_IMAGE, knownSettlementIds, mapHitAt, type MapHit } from "./worlds/veloria/mapLayer";
 import { knownPeople, ageText } from "./engine/acquaintances";
 import { DEATH_IS_FINAL_MESSAGE, buryIfDead, loadBlockedByDeath, loadGraveyard, mergeGraveyards, newLifeId, saveGraveyard, type GraveRecord } from "./engine/permadeath";
@@ -85,12 +85,13 @@ function ArdanMap({ current, destination, route, known }: { current: string; des
   }
   return <div className="map-shell">
     <svg viewBox="0 0 100 100" role="img" aria-label="Карта Ардана" onClick={tap}>
-      {MAP_IMAGE ? <image href={MAP_IMAGE.src} x="0" y="0" width="100" height="100" preserveAspectRatio="none" /> : COUNTRY_SHAPES.map(shape=>{
+      {MAP_IMAGE ? <image href={MAP_IMAGE.src} x="0" y="0" width="100" height="100" preserveAspectRatio="none" /> : COUNTRY_SHAPES.map((shape,shapeIndex)=>{
         const country=COUNTRIES.find(item=>item.id===shape.countryId);
-        return <polygon key={shape.countryId} points={shape.points.map(point=>point.join(",")).join(" ")} className={`country-shape country-${shape.countryId}`}><title>{country?.name ?? shape.countryId}</title></polygon>;
+        return <polygon key={`${shape.countryId}-${shapeIndex}`} points={shape.points.map(point=>point.join(",")).join(" ")} className={`country-shape country-${shape.countryId}`}><title>{country?.name ?? shape.countryId}</title></polygon>;
       })}
       {!MAP_IMAGE && MAP_WATERS.map(w => w.kind === "sea" ? <polygon key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-sea"/> : <polyline key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-river"/>)}
       {!MAP_IMAGE && MAP_ISLANDS.map((isle, i) => <polygon key={`isle-${i}`} points={isle.points.map(p=>p.join(",")).join(" ")} className={`country-shape country-${isle.countryId}`}/>)}
+      {!MAP_IMAGE && MAP_ROADS.map(road => <polyline key={road.id} points={road.points.map(p=>p.join(",")).join(" ")} className="map-road"/>)}
       {!MAP_IMAGE && <text x="57" y="56" className="map-water-label">море Лиар</text>}
       <g className="map-compass" transform="translate(94 8)"><path d="M0 -5 L1.6 0 L0 -1 L-1.6 0 Z"/><text x="0" y="3.8">С</text></g>
       {ROUTES.map((edge,i)=>{

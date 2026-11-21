@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, REGIONS, ROUTES, KM_PER_DAY, routeKm } from "./atlas";
+import { COUNTRY_SHAPES, MAP_NODES, MAP_ROADS, MAP_WATERS, REGIONS, ROUTES, KM_PER_DAY, routeKm } from "./atlas";
 import { findVeloriaRoute, travelOptions } from "./travel";
 
 const inside = (x: number, y: number, pts: Array<[number, number]>) => {
@@ -12,7 +12,7 @@ const node = (id: string) => MAP_NODES.find(n => n.id === id)!;
 describe("география по Библии мира", () => {
   it("каждое поселение лежит в своей державе и не в море", () => {
     for (const n of MAP_NODES) {
-      expect(inside(n.x, n.y, COUNTRY_SHAPES.find(s => s.countryId === n.countryId)!.points), n.id).toBe(true);
+      expect(COUNTRY_SHAPES.some(s => s.countryId === n.countryId && inside(n.x, n.y, s.points)), n.id).toBe(true);
       for (const w of MAP_WATERS.filter(w => w.kind === "sea")) expect(inside(n.x, n.y, w.points), `${n.id} в море`).toBe(false);
     }
   });
@@ -36,7 +36,12 @@ describe("география по Библии мира", () => {
   it("все места и края карты в каноне (утверждены автором 21.11.2026)", () => {
     expect(MAP_NODES.filter(n => !n.canon).map(n => n.id)).toEqual([]);
     expect(REGIONS.filter(r => !r.canon).map(r => r.name)).toEqual([]);
-    expect(ROUTES.find(r => r.name === "Западный тракт")).toBeDefined();
+    // Западный тракт по Библии: от Коронхольма к западному побережью, по земле Эстрана.
+    const tract = MAP_ROADS.find(r => r.name === "Западный тракт")!;
+    expect(tract.points[0]).toEqual([node("koronholm").x, node("koronholm").y]);
+    expect(tract.points.at(-1)![0]).toBeLessThanOrEqual(5);
+    const estran = COUNTRY_SHAPES.filter(s => s.countryId === "estran");
+    for (const [x, y] of tract.points.slice(0, -1)) expect(estran.some(s => inside(x, y, s.points)), `${x},${y}`).toBe(true);
   });
   it("где можно обойти по суше, есть и сухопутный путь", () => {
     for (const to of ["varentport", "miraj"]) {

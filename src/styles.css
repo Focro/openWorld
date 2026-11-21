@@ -90,6 +90,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .person-card span{color:#9eacbf;font-size:13px}.person-card p{margin:0}
 .map-shell svg{max-height:none;aspect-ratio:1/1}
 .map-sea{fill:#2b5570;opacity:.85;stroke:#4f7d99;stroke-width:.3}
+.map-road{fill:none;stroke:#c9a77a;stroke-width:.6;stroke-dasharray:1.4 .9;stroke-linecap:round}
 .map-river{fill:none;stroke:#4f8fb3;stroke-width:.8;stroke-linecap:round;stroke-linejoin:round}
 .map-water-label{fill:#a9cbe0;font-size:2.4px;font-style:italic;text-anchor:middle}
 .map-compass path{fill:#f1e7d6}.map-compass text{fill:#f1e7d6;font-size:2.6px;text-anchor:middle;font-weight:700}
