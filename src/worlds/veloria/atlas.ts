@@ -26,73 +26,95 @@ export const REGIONS:Region[]=[
 {id:"kharum-delta",countryId:"kharum",name:"Великая дельта",terrain:"жаркие влажные равнины",resources:["рис","хлопок","сахар"],notes:"Каналы и плотная сеть городов."}
 ];
 export const MAP_NODES:MapNode[]=[
-{id:"koronholm",name:"Коронхольм",countryId:"estran",regionId:"estran-heart",kind:"capital",x:48,y:35,populationBand:"large",climate:"temperate",tags:["двор","суд","монетный двор"]},
-{id:"roven",name:"Ровен",countryId:"estran",regionId:"estran-heart",kind:"city",x:54,y:43,populationBand:"medium",climate:"temperate",tags:["торговля","река Лир"]},
-{id:"northwatch",name:"Нортвотч",countryId:"estran",regionId:"estran-north",kind:"fort",x:43,y:22,populationBand:"small",climate:"cold",tags:["гарнизон","рудники"]},
-{id:"millford",name:"Миллфорд",countryId:"estran",regionId:"estran-heart",kind:"town",x:59,y:53,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
-{id:"qadira",name:"Кадира",countryId:"sahrad",regionId:"sahrad-oasis",kind:"capital",x:79,y:62,populationBand:"large",climate:"hot-arid",tags:["султанский двор","оазис"]},
-{id:"safra",name:"Сафра",countryId:"sahrad",regionId:"sahrad-oasis",kind:"desert-stop",x:86,y:55,populationBand:"small",climate:"hot-arid",tags:["караван-сарай","колодец"]},
-{id:"miraj",name:"Мираж",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:91,y:68,populationBand:"medium",climate:"hot-arid",tags:["порт","медь"]},
-{id:"varentport",name:"Варенпорт",countryId:"varent",regionId:"varent-coast",kind:"capital",x:15,y:47,populationBand:"large",climate:"temperate",tags:["совет Лиги","морское право","главная гавань"]},
-{id:"merovar",name:"Меровар",countryId:"varent",regionId:"varent-coast",kind:"city",x:22,y:49,populationBand:"large",climate:"temperate",tags:["банки","торговые палаты","финансовые дома"]},
-{id:"bluehaven",name:"Синяя Гавань",countryId:"varent",regionId:"varent-coast",kind:"port",x:13,y:58,populationBand:"medium",climate:"temperate",tags:["моряки","контрабанда"]},
-{id:"dravorn",name:"Драворн",countryId:"tharvek",regionId:"tharvek-range",kind:"capital",x:40,y:8,populationBand:"medium",climate:"mountain",tags:["княжеский конклав"]},
-{id:"ironpass",name:"Железный Перевал",countryId:"tharvek",regionId:"tharvek-range",kind:"fort",x:48,y:13,populationBand:"small",climate:"mountain",tags:["застава","рудники"]},
-{id:"lethariel",name:"Летариэль",countryId:"elyndor",regionId:"elyndor-forest",kind:"capital",x:27,y:17,populationBand:"medium",climate:"cold",tags:["родовые советы","озёра"]},
-{id:"willowmere",name:"Ивовый Предел",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:19,y:24,populationBand:"small",climate:"cold",tags:["священная роща"]},
-{id:"har-kadar",name:"Хар-Кадар",countryId:"kharum",regionId:"kharum-delta",kind:"capital",x:83,y:87,populationBand:"metropolis",climate:"hot-humid",tags:["императорский двор","главные каналы","имперский совет"]},
-{id:"azrakar",name:"Азракар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:70,y:82,populationBand:"large",climate:"hot-humid",tags:["верхний архив","писцовые школы","реестры"]},
-{id:"namar",name:"Намар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:76,y:77,populationBand:"large",climate:"hot-humid",tags:["рисовые рынки","текстиль"]},
-{id:"sunspire",name:"Солнечный Шпиль",countryId:"kharum",regionId:"kharum-delta",kind:"monastery",x:91,y:80,populationBand:"small",climate:"hot-humid",tags:["храмовая школа","архивы"]}
+{id:"koronholm",name:"Коронхольм",countryId:"estran",regionId:"estran-heart",kind:"capital",x:30,y:37,populationBand:"large",climate:"temperate",tags:["двор","суд","монетный двор"]},
+{id:"roven",name:"Ровен",countryId:"estran",regionId:"estran-heart",kind:"city",x:38,y:47,populationBand:"medium",climate:"temperate",tags:["торговля","река Лир"]},
+{id:"northwatch",name:"Нортвотч",countryId:"estran",regionId:"estran-north",kind:"fort",x:27,y:24,populationBand:"small",climate:"cold",tags:["гарнизон","рудники"]},
+{id:"millford",name:"Миллфорд",countryId:"estran",regionId:"estran-heart",kind:"town",x:33,y:56,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
+{id:"qadira",name:"Кадира",countryId:"sahrad",regionId:"sahrad-oasis",kind:"capital",x:44,y:83,populationBand:"large",climate:"hot-arid",tags:["султанский двор","оазис"]},
+{id:"safra",name:"Сафра",countryId:"sahrad",regionId:"sahrad-oasis",kind:"desert-stop",x:35,y:89,populationBand:"small",climate:"hot-arid",tags:["караван-сарай","колодец"]},
+{id:"miraj",name:"Мираж",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:55,y:72,populationBand:"medium",climate:"hot-arid",tags:["порт","медь"]},
+{id:"varentport",name:"Варенпорт",countryId:"varent",regionId:"varent-coast",kind:"capital",x:64,y:37,populationBand:"large",climate:"temperate",tags:["совет Лиги","морское право","главная гавань"]},
+{id:"merovar",name:"Меровар",countryId:"varent",regionId:"varent-coast",kind:"city",x:73,y:29,populationBand:"large",climate:"temperate",tags:["банки","торговые палаты","финансовые дома"]},
+{id:"bluehaven",name:"Синяя Гавань",countryId:"varent",regionId:"varent-coast",kind:"port",x:83,y:19,populationBand:"medium",climate:"temperate",tags:["моряки","контрабанда"]},
+{id:"dravorn",name:"Драворн",countryId:"tharvek",regionId:"tharvek-range",kind:"capital",x:87,y:47,populationBand:"medium",climate:"mountain",tags:["княжеский конклав"]},
+{id:"ironpass",name:"Железный Перевал",countryId:"tharvek",regionId:"tharvek-range",kind:"fort",x:78,y:43,populationBand:"small",climate:"mountain",tags:["застава","рудники"]},
+{id:"lethariel",name:"Летариэль",countryId:"elyndor",regionId:"elyndor-forest",kind:"capital",x:10,y:32,populationBand:"medium",climate:"cold",tags:["родовые советы","озёра"]},
+{id:"willowmere",name:"Ивовый Предел",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:13,y:44,populationBand:"small",climate:"cold",tags:["священная роща"]},
+{id:"har-kadar",name:"Хар-Кадар",countryId:"kharum",regionId:"kharum-delta",kind:"capital",x:87,y:87,populationBand:"metropolis",climate:"hot-humid",tags:["императорский двор","главные каналы","имперский совет"]},
+{id:"azrakar",name:"Азракар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:74,y:82,populationBand:"large",climate:"hot-humid",tags:["верхний архив","писцовые школы","реестры"]},
+{id:"namar",name:"Намар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:81,y:75,populationBand:"large",climate:"hot-humid",tags:["рисовые рынки","текстиль"]},
+{id:"sunspire",name:"Солнечный Шпиль",countryId:"kharum",regionId:"kharum-delta",kind:"monastery",x:95,y:78,populationBand:"small",climate:"hot-humid",tags:["храмовая школа","архивы"]}
  ,
-{id:"westmere",name:"Вестмер",countryId:"estran",regionId:"estran-heart",kind:"town",x:61,y:39,populationBand:"small",climate:"temperate",tags:["переправа","зерновые амбары"]},
-{id:"ashcombe",name:"Эшкомб",countryId:"estran",regionId:"estran-north",kind:"village",x:38,y:29,populationBand:"small",climate:"temperate",tags:["лесопилки","железная руда"]},
-{id:"daryat",name:"Дарьят",countryId:"sahrad",regionId:"sahrad-oasis",kind:"town",x:72,y:57,populationBand:"medium",climate:"hot-arid",tags:["каналы","финиковые сады"]},
-{id:"saffron-coast",name:"Шафрановый Порт",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:96,y:74,populationBand:"small",climate:"hot-arid",tags:["красители","рыбацкие артели"]},
-{id:"tidewatch",name:"Тайд-вотч",countryId:"varent",regionId:"varent-coast",kind:"port",x:7,y:43,populationBand:"medium",climate:"temperate",tags:["маяки","верфи"]},
-{id:"saltmere",name:"Солёный Мер",countryId:"varent",regionId:"varent-coast",kind:"town",x:25,y:60,populationBand:"small",climate:"temperate",tags:["соляные склады","рыбный рынок"]},
-{id:"stonebridge",name:"Каменный Мост",countryId:"tharvek",regionId:"tharvek-range",kind:"town",x:34,y:13,populationBand:"small",climate:"mountain",tags:["мост через ущелье","постоялый двор"]},
-{id:"deepforge",name:"Глубокая Кузня",countryId:"tharvek",regionId:"tharvek-range",kind:"mining-town",x:53,y:5,populationBand:"small",climate:"mountain",tags:["рудники","плавильни"]},
-{id:"mossford",name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:14,y:13,populationBand:"small",climate:"cold",tags:["брод","травники"]},
-{id:"lake-ward",name:"Озерный Дозор",countryId:"elyndor",regionId:"elyndor-forest",kind:"town",x:31,y:28,populationBand:"small",climate:"cold",tags:["рыбацкие пристани","лодочные мастера"]},
-{id:"reedhaven",name:"Тростниковая Гавань",countryId:"kharum",regionId:"kharum-delta",kind:"port",x:65,y:91,populationBand:"medium",climate:"hot-humid",tags:["речные баржи","рисовые склады"]},
-{id:"ivory-gate",name:"Врата Слоновой Кости",countryId:"kharum",regionId:"kharum-delta",kind:"town",x:94,y:91,populationBand:"medium",climate:"hot-humid",tags:["таможня","имперская дорога"]}
+{id:"westmere",name:"Вестмер",countryId:"estran",regionId:"estran-heart",kind:"town",x:44,y:40,populationBand:"small",climate:"temperate",tags:["переправа","зерновые амбары"]},
+{id:"ashcombe",name:"Эшкомб",countryId:"estran",regionId:"estran-north",kind:"village",x:22,y:30,populationBand:"small",climate:"temperate",tags:["лесопилки","железная руда"]},
+{id:"daryat",name:"Дарьят",countryId:"sahrad",regionId:"sahrad-oasis",kind:"town",x:53,y:80,populationBand:"medium",climate:"hot-arid",tags:["каналы","финиковые сады"]},
+{id:"saffron-coast",name:"Шафрановый Порт",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:35,y:71,populationBand:"small",climate:"hot-arid",tags:["красители","рыбацкие артели"]},
+{id:"tidewatch",name:"Тайд-вотч",countryId:"varent",regionId:"varent-coast",kind:"port",x:91,y:12,populationBand:"medium",climate:"temperate",tags:["маяки","верфи"]},
+{id:"saltmere",name:"Солёный Мер",countryId:"varent",regionId:"varent-coast",kind:"town",x:58,y:28,populationBand:"small",climate:"temperate",tags:["соляные склады","рыбный рынок"]},
+{id:"stonebridge",name:"Каменный Мост",countryId:"tharvek",regionId:"tharvek-range",kind:"town",x:90,y:58,populationBand:"small",climate:"mountain",tags:["мост через ущелье","постоялый двор"]},
+{id:"deepforge",name:"Глубокая Кузня",countryId:"tharvek",regionId:"tharvek-range",kind:"mining-town",x:95,y:38,populationBand:"small",climate:"mountain",tags:["рудники","плавильни"]},
+{id:"mossford",name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:6,y:22,populationBand:"small",climate:"cold",tags:["брод","травники"]},
+{id:"lake-ward",name:"Озерный Дозор",countryId:"elyndor",regionId:"elyndor-forest",kind:"town",x:16,y:25,populationBand:"small",climate:"cold",tags:["рыбацкие пристани","лодочные мастера"]},
+{id:"reedhaven",name:"Тростниковая Гавань",countryId:"kharum",regionId:"kharum-delta",kind:"port",x:73,y:93,populationBand:"medium",climate:"hot-humid",tags:["речные баржи","рисовые склады"]},
+{id:"ivory-gate",name:"Врата Слоновой Кости",countryId:"kharum",regionId:"kharum-delta",kind:"town",x:93,y:94,populationBand:"medium",climate:"hot-humid",tags:["таможня","имперская дорога"]}
 ];
-export const ROUTES:Route[]=[
-{from:"koronholm",to:"roven",days:2,mode:"road",danger:"low"},{from:"roven",to:"millford",days:1,mode:"road",danger:"low"},
-{from:"koronholm",to:"northwatch",days:4,mode:"road",danger:"moderate",seasonalClosure:"сильные снегопады"},
-{from:"roven",to:"varentport",days:8,mode:"road",danger:"moderate"},{from:"varentport",to:"merovar",days:1,mode:"road",danger:"low"},{from:"merovar",to:"bluehaven",days:2,mode:"sea",danger:"moderate"},
-{from:"roven",to:"dravorn",days:9,mode:"road",danger:"high",seasonalClosure:"зимнее закрытие перевалов"},
-{from:"dravorn",to:"ironpass",days:2,mode:"mountain-pass",danger:"high",seasonalClosure:"зимой перевал закрыт"},
-{from:"northwatch",to:"lethariel",days:7,mode:"road",danger:"high"},{from:"lethariel",to:"willowmere",days:2,mode:"road",danger:"low"},
-{from:"merovar",to:"miraj",days:12,mode:"sea",danger:"moderate"},{from:"miraj",to:"qadira",days:3,mode:"road",danger:"high"},
-{from:"qadira",to:"safra",days:4,mode:"road",danger:"high"},{from:"qadira",to:"har-kadar",days:18,mode:"sea",danger:"high"},{from:"har-kadar",to:"azrakar",days:3,mode:"river",danger:"moderate"},
-{from:"azrakar",to:"namar",days:2,mode:"river",danger:"moderate"},{from:"har-kadar",to:"sunspire",days:5,mode:"road",danger:"moderate"},
-{from:"roven",to:"westmere",days:2,mode:"road",danger:"low"},
-{from:"westmere",to:"millford",days:1,mode:"road",danger:"low"},
-{from:"northwatch",to:"ashcombe",days:2,mode:"road",danger:"moderate",seasonalClosure:"сильные снегопады"},
-{from:"ashcombe",to:"koronholm",days:3,mode:"road",danger:"moderate"},
-{from:"qadira",to:"daryat",days:2,mode:"road",danger:"moderate"},
-{from:"daryat",to:"saffron-coast",days:3,mode:"road",danger:"high"},
-{from:"varentport",to:"tidewatch",days:2,mode:"sea",danger:"moderate"},
-{from:"tidewatch",to:"saltmere",days:2,mode:"road",danger:"low"},
-{from:"dravorn",to:"stonebridge",days:2,mode:"mountain-pass",danger:"moderate",seasonalClosure:"снегопады и лавинная опасность"},
-{from:"stonebridge",to:"deepforge",days:2,mode:"road",danger:"moderate"},
-{from:"lethariel",to:"mossford",days:2,mode:"road",danger:"low"},
-{from:"mossford",to:"lake-ward",days:2,mode:"river",danger:"moderate"},
-{from:"har-kadar",to:"reedhaven",days:2,mode:"river",danger:"low"},
-{from:"reedhaven",to:"ivory-gate",days:3,mode:"road",danger:"moderate"}
+/**
+ * Дороги и пути (0.18.0). Дни не задаются вручную: они считаются из расстояния на карте и способа пути,
+ * поэтому карта и время всегда сходятся. 1 единица карты = KM_PER_MAP_UNIT км.
+ * Скорости: пешком или повозкой по дороге, горным перевалом, вниз по реке, морем под парусом.
+ * Это проектные значения, не канон.
+ */
+export const KM_PER_MAP_UNIT = 10;
+export const KM_PER_DAY: Record<Route["mode"], number> = { road: 30, "mountain-pass": 15, river: 45, sea: 100 };
+export const routeKm = (from: MapNode, to: MapNode) => Math.round(Math.hypot(from.x - to.x, from.y - to.y) * KM_PER_MAP_UNIT);
+type RouteSpec = Omit<Route, "days">;
+const ROUTE_SPECS: RouteSpec[] = [
+// Эстран: сердце, север, переправы на Лире.
+{from:"koronholm",to:"roven",mode:"road",danger:"low"},{from:"roven",to:"millford",mode:"road",danger:"low"},
+{from:"roven",to:"westmere",mode:"road",danger:"low"},{from:"westmere",to:"koronholm",mode:"road",danger:"low"},
+{from:"koronholm",to:"northwatch",mode:"road",danger:"moderate",seasonalClosure:"сильные снегопады"},
+{from:"northwatch",to:"ashcombe",mode:"road",danger:"moderate",seasonalClosure:"сильные снегопады"},{from:"ashcombe",to:"koronholm",mode:"road",danger:"moderate"},
+// Через внутреннее море Лиар: из Ровена вниз по Лиру и морем.
+{from:"roven",to:"varentport",mode:"sea",danger:"moderate"},{from:"roven",to:"miraj",mode:"sea",danger:"moderate"},
+// Варент на северо-востоке.
+{from:"westmere",to:"saltmere",mode:"road",danger:"moderate"},{from:"saltmere",to:"varentport",mode:"road",danger:"low"},
+{from:"varentport",to:"merovar",mode:"road",danger:"low"},{from:"merovar",to:"bluehaven",mode:"road",danger:"low"},{from:"bluehaven",to:"tidewatch",mode:"sea",danger:"moderate"},
+// Тарвек на востоке: горы и перевалы.
+{from:"varentport",to:"ironpass",mode:"mountain-pass",danger:"high",seasonalClosure:"зимой перевал закрыт"},{from:"ironpass",to:"dravorn",mode:"mountain-pass",danger:"high",seasonalClosure:"зимнее закрытие перевалов"},
+{from:"dravorn",to:"deepforge",mode:"road",danger:"moderate"},{from:"dravorn",to:"stonebridge",mode:"mountain-pass",danger:"moderate",seasonalClosure:"снегопады и лавинная опасность"},
+// Элиндор на западе: побережье и леса.
+{from:"koronholm",to:"lethariel",mode:"road",danger:"high"},{from:"lethariel",to:"willowmere",mode:"road",danger:"low"},
+{from:"lethariel",to:"mossford",mode:"road",danger:"low"},{from:"mossford",to:"lake-ward",mode:"river",danger:"moderate"},
+// Сахрад на юге: южный берег Лиара и оазисы.
+{from:"millford",to:"saffron-coast",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"qadira",mode:"road",danger:"high"},
+{from:"miraj",to:"daryat",mode:"road",danger:"moderate"},{from:"daryat",to:"qadira",mode:"road",danger:"moderate"},{from:"qadira",to:"safra",mode:"road",danger:"high"},
+// Кхарум на дальнем юго-востоке: караваны и дельта.
+{from:"daryat",to:"azrakar",mode:"road",danger:"high"},{from:"stonebridge",to:"namar",mode:"road",danger:"high"},
+{from:"azrakar",to:"namar",mode:"river",danger:"moderate"},{from:"namar",to:"har-kadar",mode:"river",danger:"low"},
+{from:"har-kadar",to:"sunspire",mode:"road",danger:"moderate"},{from:"har-kadar",to:"reedhaven",mode:"river",danger:"low"},{from:"reedhaven",to:"ivory-gate",mode:"road",danger:"moderate"}
 ];
+export const ROUTES:Route[]=ROUTE_SPECS.map(spec=>{
+  const a=MAP_NODES.find(n=>n.id===spec.from)!, b=MAP_NODES.find(n=>n.id===spec.to)!;
+  return {...spec,days:Math.max(1,Math.ceil(routeKm(a,b)/KM_PER_DAY[spec.mode]))};
+});
 
 /** Условные контуры государств для схематической карты Ардана (координаты 0–100). */
 export interface CountryShape { countryId: string; points: Array<[number, number]> }
 export const COUNTRY_SHAPES: CountryShape[] = [
- {countryId:"varent",points:[[5,39],[15,34],[25,39],[28,49],[23,60],[12,63],[5,53]]},
- {countryId:"elyndor",points:[[12,8],[26,5],[36,13],[33,26],[24,32],[13,25]]},
- {countryId:"tharvek",points:[[34,2],[49,0],[58,8],[53,19],[43,21],[34,14]]},
- {countryId:"estran",points:[[36,25],[49,21],[63,31],[67,45],[59,58],[45,56],[35,44]]},
- {countryId:"sahrad",points:[[69,48],[83,43],[96,54],[98,69],[88,78],[74,73],[67,61]]},
- {countryId:"kharum",points:[[63,76],[76,70],[92,75],[99,88],[91,98],[73,97],[62,88]]}
+ {countryId:"estran",points:[[18,26],[30,18],[46,30],[50,38],[44,46],[40,52],[38,62],[26,62],[18,50]]},
+ {countryId:"varent",points:[[50,22],[66,10],[86,6],[96,10],[92,24],[80,34],[70,40],[60,40],[50,34]]},
+ {countryId:"tharvek",points:[[72,40],[84,32],[98,34],[98,62],[90,66],[78,62],[72,52]]},
+ {countryId:"elyndor",points:[[2,18],[14,14],[20,22],[18,34],[16,50],[6,52],[2,40]]},
+ {countryId:"sahrad",points:[[26,66],[40,64],[50,70],[60,72],[66,82],[60,94],[38,96],[24,86]]},
+ {countryId:"kharum",points:[[66,76],[78,68],[92,70],[99,80],[99,98],[70,98],[64,88]]}
+];
+
+/** Моря и реки для рисованной карты (0.18.0): внутреннее море Лиар по Библии, Открытое море на западе, река Лир через Ровен. */
+export interface MapWater { id: string; name: string; kind: "sea" | "river"; points: Array<[number, number]> }
+export const MAP_WATERS: MapWater[] = [
+ {id:"liar",name:"море Лиар",kind:"sea",points:[[44,48],[52,40],[62,42],[70,48],[72,58],[66,68],[54,68],[44,62],[40,56]]},
+ {id:"open-sea",name:"Открытое море",kind:"sea",points:[[0,0],[2,0],[2,100],[0,100]]},
+ {id:"lir",name:"река Лир",kind:"river",points:[[22,36],[28,41],[34,44],[38,47],[42,52]]}
 ];
 
 export const routesFrom=(id:string)=>ROUTES.filter(r=>r.from===id||r.to===id);

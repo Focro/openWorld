@@ -7,6 +7,7 @@
  * - api_keys: ключ ИИ ТОЛЬКО в зашифрованном виде (тот же шифротекст, что в браузере). Пароль не уходит никуда.
  * - moderation_strikes: предупреждения пишет функция report_child_safety_strike, бан на четвёртом.
  *
+ * Вход только через Google.
  * Адрес проекта и открытый ключ приходят из переменных сборки VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY.
  * Это публичный ключ (его защищает RLS), но в репозиторий он всё равно не кладётся.
  * Без них игра работает как раньше, только локально.
@@ -52,13 +53,6 @@ const fail = (error: unknown): never => { throw new Error(friendlyError(error));
 // ===== вход =====
 export async function signInWithGoogle(cloud: Cloud): Promise<void> {
   const { error } = await cloud.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectUrl() } });
-  if (error) fail(error);
-}
-/** Вход по ссылке из письма: без пароля. */
-export async function signInWithEmailLink(cloud: Cloud, email: string): Promise<void> {
-  const clean = email.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error("Проверьте адрес почты.");
-  const { error } = await cloud.auth.signInWithOtp({ email: clean, options: { emailRedirectTo: redirectUrl() } });
   if (error) fail(error);
 }
 export async function signOut(cloud: Cloud): Promise<void> { await cloud.auth.signOut(); }

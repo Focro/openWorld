@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { getCloudSave, listCloudSaves, putCloudSave, signInWithEmailLink, signInWithGoogle, signOut, type Cloud, type CloudSaveInfo, AUTO_SLOT, GRAVEYARD_WORLD } from "../cloud/account";
+import { getCloudSave, listCloudSaves, putCloudSave, signInWithGoogle, signOut, type Cloud, type CloudSaveInfo, AUTO_SLOT, GRAVEYARD_WORLD } from "../cloud/account";
 
-/** Вход: Google или ссылка на почту. Используется и в настройках, и на первом экране. */
+/** Вход через Google. Используется и в настройках, и на первом экране. */
 export function SignInForm({ cloud, compact = false }: { cloud: Cloud; compact?: boolean }) {
-  const [email, setEmail] = useState("");
+  // Вход только через Google (решение автора): без паролей и писем.
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   async function google() {
     setBusy(true); setMessage("");
     try { await signInWithGoogle(cloud); } catch (e) { setMessage(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
-  async function mail() {
-    setBusy(true); setMessage("");
-    try { await signInWithEmailLink(cloud, email); setMessage("Письмо отправлено. Откройте его на этом устройстве и нажмите ссылку."); }
-    catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
-    setBusy(false);
-  }
   return <div className="account-signin">
     {!compact && <p className="hint">С аккаунтом игра хранит сохранения в облаке и продолжается на любом устройстве. Ключ ИИ хранится там же, но только зашифрованным вашим паролем.</p>}
     <div className="save-row"><button className="primary" disabled={busy} onClick={google}>ВОЙТИ ЧЕРЕЗ GOOGLE</button></div>
-    <label>Или по почте<input type="email" inputMode="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={e => setEmail(e.target.value)} /></label>
-    <div className="save-row"><button disabled={busy || !email.trim()} onClick={mail}>ПРИСЛАТЬ ССЫЛКУ ДЛЯ ВХОДА</button></div>
     {message && <p className="hint" role="status">{message}</p>}
   </div>;
 }
