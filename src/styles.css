@@ -93,3 +93,4 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .map-river{fill:none;stroke:#4f8fb3;stroke-width:.8;stroke-linecap:round;stroke-linejoin:round}
 .map-water-label{fill:#a9cbe0;font-size:2.4px;font-style:italic;text-anchor:middle}
 .map-compass path{fill:#f1e7d6}.map-compass text{fill:#f1e7d6;font-size:2.6px;text-anchor:middle;font-weight:700}
+.map-proposal{color:#c9a77a;font-size:12px}

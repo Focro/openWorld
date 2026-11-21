@@ -26,6 +26,8 @@ export function runawayChance(state: GameState, age: number): number {
 export interface JourneyOptions {
   /** Рядом есть те, кто за ребёнком смотрит (родители, опекуны, няня). Без них ребёнок может уйти сам. */
   hasGuardians?: boolean;
+  /** Идти только по суше, без моря (дольше, зато без платы за судно). */
+  overlandOnly?: boolean;
 }
 /** Плата за место на судне в день пути (монеты). Пешком по дороге платить не нужно. */
 export const FARE_PER_DAY: Record<Route["mode"], number> = { road: 0, "mountain-pass": 0, river: 2, sea: 4 };
@@ -69,7 +71,7 @@ export function isRouteSeasonallyClosed(route: Route, minute: number): boolean {
   return winter && /(зим|снег|лавин|перевал закрыт)/u.test(text);
 }
 
-export function findVeloriaRoute(from: string, to: string, minute = 0): RoutePlan | null {
+export function findVeloriaRoute(from: string, to: string, minute = 0, options: { overlandOnly?: boolean } = {}): RoutePlan | null {
   if (!nodeIds.has(from) || !nodeIds.has(to)) return null;
   if (from === to) return { from, to, segments: [], totalDays: 0, danger: "low" };
 
@@ -94,6 +96,7 @@ export function findVeloriaRoute(from: string, to: string, minute = 0): RoutePla
 
     for (const edge of ROUTES) {
       if (isRouteSeasonallyClosed(edge, minute)) continue;
+      if (options.overlandOnly && edge.mode === "sea") continue;
       const next = edge.from === current ? edge.to : edge.to === current ? edge.from : null;
       if (!next || !pending.has(next)) continue;
       const oriented: Route = edge.from === current ? edge : { ...edge, from: current, to: next };
@@ -123,7 +126,7 @@ export function beginVeloriaJourney(state: GameState, destinationId: string, opt
     const gateName = from === "roven" ? "Южных ворот" : "местных ворот или пристани";
     return { state, ok: false, message: `Чтобы покинуть поселение, сначала доберитесь до ${gateName}. Путь проходит через местные улицы.` };
   }
-  const plan = findVeloriaRoute(from, destinationId, state.minute);
+  const plan = findVeloriaRoute(from, destinationId, state.minute, { overlandOnly: options.overlandOnly });
   if (!plan || !plan.segments.length) return { state, ok: false, message: "Маршрут не найден или вы уже находитесь в этом поселении." };
   // Правдоподобие (решение автора): малыш сам не уйдёт; ребёнка при семье не отпустят, но он может сбежать;
   // сирота без опекунов может уйти сам. Дорога для ребёнка без взрослых опаснее.
@@ -145,6 +148,15 @@ export function beginVeloriaJourney(state: GameState, destinationId: string, opt
   const next: GameState = { ...state, money: state.money - fare, journey: { destinationId, route: plan.segments, segmentIndex: 0, daysRemaining: first.days, elapsedDays: 0, ...(child ? { alone: true } : {}), ...(runawayFrom ? { runawayFrom } : {}) } };
   const message = `Вы отправляетесь из ${MAP_NODES.find(n => n.id === from)?.name ?? from}.${fare ? ` За место на судне отдано ${fare} монет.` : ""} Путь займёт около ${plan.totalDays} дней; опасность маршрута: ${plan.danger === "low" ? "низкая" : plan.danger === "moderate" ? "умеренная" : "высокая"}.${runawayFrom ? " Вы ушли тайком: дома вас скоро хватятся и станут искать." : child ? " Вы идёте один, без взрослых: для ребёнка дорога куда опаснее." : ""}`;
   return { state: recordTravel(next, state.minute, message, `route:${first.from}->${first.to}`), ok: true, message };
+}
+
+/** Варианты пути для справки на карте: самый быстрый и, если он идёт морем, самый быстрый по суше. */
+export function travelOptions(from: string, to: string, minute = 0): Array<{ overland: boolean; plan: RoutePlan }> {
+  const fastest = findVeloriaRoute(from, to, minute);
+  if (!fastest) return [];
+  const out = [{ overland: !fastest.segments.some(s => s.mode === "sea"), plan: fastest }];
+  if (!out[0]!.overland) { const land = findVeloriaRoute(from, to, minute, { overlandOnly: true }); if (land) out.push({ overland: true, plan: land }); }
+  return out;
 }
 
 /** Продвигает путешествие ровно на один день. Игрок не переносится сразу в пункт назначения. */
