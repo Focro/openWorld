@@ -59,7 +59,7 @@ export function resolveInheritedAppearance(draft: VeloriaCharacterDraft): Appear
 export type CampaignStart = { ok: true; world: WorldData; state: GameState; notice: string } | { ok: false; errors: string[] };
 
 /**
- * Создаёт кампанию. Если передано состояние умершего героя — новый герой продолжает тот же мир
+ * Создаёт кампанию. Если передано состояние умершего героя: новый герой продолжает тот же мир
  * (хроника и память NPC сохраняются), иначе начинается новая версия мира.
  */
 export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: GameState): CampaignStart {
@@ -130,7 +130,7 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     birthMinute, nowMinute: state.minute, aptitudes: draft.attributes,
     seed: `${draft.familySeed ?? draft.name}:${draft.name}`,
     sex: isPrince ? "male" : draft.sex ?? "unspecified",
-    // Обычный новорождённый: задатки — как у принца, темперамент и телосложение выбирает игрок.
+    // Обычный новорождённый: задатки: как у принца, темперамент и телосложение выбирает игрок.
     temperament: draft.temperament, build: draft.bodyBuild, heightTendency: draft.heightTendency
   });
   if (isBirth && !isPrince) {

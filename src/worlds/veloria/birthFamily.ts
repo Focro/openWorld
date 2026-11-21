@@ -3,8 +3,8 @@
  *
  * Мир сам собирает семью новорождённого из устойчивого seed анкеты: состав дома, достаток,
  * возраст и характер родителей, старшие братья и сёстры, бабушка, кормилица. Одна и та же
- * анкета всегда даёт ту же семью; другой seed — другую. Внешность родителей берётся из населения
- * Эстрана (иногда родитель приезжий), внешность ребёнка — только от них.
+ * анкета всегда даёт ту же семью; другой seed: другую. Внешность родителей берётся из населения
+ * Эстрана (иногда родитель приезжий), внешность ребёнка: только от них.
  *
  * Это сгенерированная семья, а не канон: никто из этих людей не входит в родословные домов.
  */
@@ -229,7 +229,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
       legalParentIds: kind === "unmarried-mother" ? [mother.id] : parentIds, legalParentage: kind === "unmarried-mother" || parentIds.length === 1 ? "one-known" : "both-known",
       guardianIds: guardians.map(g => g.id), birthStatus: kind === "unmarried-mother" ? "unrecognized" : "legitimate",
       parentalUnion: { status: kind === "unmarried-mother" ? "unmarried" : "married" }, recognitions: [],
-      succession: { status: "undetermined", basis: "Простолюдинская семья: наследство — дом и ремесло по обычаю Ровена." }
+      succession: { status: "undetermined", basis: "Простолюдинская семья: наследство: дом и ремесло по обычаю Ровена." }
     }
   };
 }

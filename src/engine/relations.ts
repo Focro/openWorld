@@ -2,14 +2,14 @@ import type { Relation } from "./types";
 
 export const REL_MIN = -100;
 export const REL_MAX = 100;
-/** Максимальное изменение одного параметра за одно событие — отношения меняются постепенно. */
+/** Максимальное изменение одного параметра за одно событие: отношения меняются постепенно. */
 export const MAX_STEP = 5;
 
 export const neutralRelation = (): Relation => ({ trust: 0, sympathy: 0, fear: 0, respect: 0 });
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-/** Применяет изменение к отношению: шаг ограничен ±MAX_STEP, итог — в [−100, 100]. Нечисла игнорируются. */
+/** Применяет изменение к отношению: шаг ограничен ±MAX_STEP, итог: в [−100, 100]. Нечисла игнорируются. */
 export function applyRelationDelta(rel: Relation, delta: Partial<Relation>): Relation {
   const next = { ...rel };
   for (const key of Object.keys(next) as (keyof Relation)[]) {

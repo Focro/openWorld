@@ -32,7 +32,7 @@ export function nextWorldEvent(world: WorldData, state: GameState): ScheduledWor
 
 function applyWorldEvent(world: WorldData, state: GameState, event: ScheduledWorldEvent): { state: GameState; chronicle: GameEvent } {
   const npcDeaths = event.npcDeathId ? { ...(state.npcDeaths ?? {}), [event.npcDeathId]: event.minute } : state.npcDeaths;
-  // Свидетели — те, кто физически находится на месте события (умерший свидетелем не считается).
+  // Свидетели: те, кто физически находится на месте события (умерший свидетелем не считается).
   const witnesses = npcsAt(world, event.minute, event.locationId, state.npcDeaths).filter(id => id !== event.npcDeathId);
   const chronicle: GameEvent = { id: `e${state.chronicle.length + 1}`, minute: event.minute, locationId: event.locationId, text: event.text, witnesses, source: { kind: "system" } };
   const npcMemory = { ...state.npcMemory };
@@ -63,7 +63,7 @@ function advanceDevTo(world: WorldData, state: GameState, minute: number, notice
   const result = advanceDevelopment(world, state, minute);
   if (!result) return state;
   notices.push(...result.notices);
-  // Вехи развития фиксируются в личной памяти; ранние — с пометкой, что сознательно не помнятся.
+  // Вехи развития фиксируются в личной памяти; ранние: с пометкой, что сознательно не помнятся.
   const playerMemory = [...state.playerMemory];
   for (const notice of result.notices.filter(n => n.important)) {
     const framed = memoryFraming(result.development, notice.text);
@@ -74,7 +74,7 @@ function advanceDevTo(world: WorldData, state: GameState, minute: number, notice
 
 /**
  * Продвигает «жизнь» от state.minute до targetMinute. Состояние state.minute
- * при входе — исходная минута; на выходе — targetMinute.
+ * при входе: исходная минута; на выходе: targetMinute.
  */
 export function advanceWorldTime(world: WorldData, state: GameState, targetMinute: number): TimeAdvance {
   if (targetMinute <= state.minute || state.lifeStatus === "dead") return { state, events: [], notices: [] };

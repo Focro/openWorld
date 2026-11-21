@@ -44,16 +44,16 @@ export function attachSettlementMaps(source: WorldData): WorldData {
     const features = node.tags.join(", ");
 
     const localLocations: LocationDef[] = [
-      { id: squareId, name: `${node.name} — центральная площадь`, description: `Центр поселения. Здесь сходятся местные дороги; вокруг видны признаки местной жизни: ${features}.`, exits: [
+      { id: squareId, name: `${node.name}: центральная площадь`, description: `Центр поселения. Здесь сходятся местные дороги; вокруг видны признаки местной жизни: ${features}.`, exits: [
         { to: marketId, distanceM: 180, terrain: "street" }, { to: innId, distanceM: 260, terrain: "street" }, { to: gateId, distanceM: 420, terrain: "street" }
       ] },
-      { id: marketId, name: `${node.name} — торговые ряды`, description: `Местный рынок ${node.name}. Ассортимент зависит от положения поселения в государстве ${country?.name ?? node.countryId}; характерные занятия: ${features}.`, exits: [
+      { id: marketId, name: `${node.name}: торговые ряды`, description: `Местный рынок ${node.name}. Ассортимент зависит от положения поселения в государстве ${country?.name ?? node.countryId}; характерные занятия: ${features}.`, exits: [
         { to: squareId, distanceM: 180, terrain: "street" }, { to: innId, distanceM: 220, terrain: "street" }
       ], shop: { keeperId: `${node.id}:merchant`, prices: { bread: 3, rope: 10, bandage: 6, wool_cloak: 20 } } },
-      { id: innId, name: `${node.name} — постоялый двор`, description: `Постоялый двор для жителей, приезжих и обозов. Новости здесь распространяются быстрее, чем в тихих кварталах.`, exits: [
+      { id: innId, name: `${node.name}: постоялый двор`, description: `Постоялый двор для жителей, приезжих и обозов. Новости здесь распространяются быстрее, чем в тихих кварталах.`, exits: [
         { to: squareId, distanceM: 260, terrain: "street" }, { to: marketId, distanceM: 220, terrain: "street" }, { to: gateId, distanceM: 360, terrain: "street" }
       ] },
-      { id: gateId, name: `${node.name} — ${gateName.toLocaleLowerCase("ru-RU")}`, description: `Вход и выход из поселения ${node.name}. Здесь проверяют путников и обозы; за воротами начинаются межгородские дороги.`, exits: [
+      { id: gateId, name: `${node.name}, ${gateName.toLocaleLowerCase("ru-RU")}`, description: `Вход и выход из поселения ${node.name}. Здесь проверяют путников и обозы; за воротами начинаются межгородские дороги.`, exits: [
         { to: squareId, distanceM: 420, terrain: "road" }, { to: innId, distanceM: 360, terrain: "street" }
       ] }
     ];
@@ -68,19 +68,19 @@ export function attachSettlementMaps(source: WorldData): WorldData {
       guard: localResident(node.countryId, node.kind, `${node.id}:guard`, "стёганка и знак местной стражи")
     };
     const merchant: NpcDef = {
-      id: merchantId, name: `${residents.merchant.name} — торговец ${node.name}`, appearance: residents.merchant.appearance,
+      id: merchantId, name: `${residents.merchant.name}, торговец ${node.name}`, appearance: residents.merchant.appearance,
       homeId: innId, roleTags: ["merchant", "commoner"], originStateId: residents.merchant.originStateId,
       goals: ["Сохранить прибыль лавки", `Найти надёжных поставщиков для ${node.name}`],
       schedule: [{ from: 7, to: 19, locationId: marketId, activity: "торгует и принимает покупателей" }]
     };
     const innkeeper: NpcDef = {
-      id: innkeeperId, name: `${residents.innkeeper.name} — хозяин двора ${node.name}`, appearance: residents.innkeeper.appearance,
+      id: innkeeperId, name: `${residents.innkeeper.name}, хозяин двора ${node.name}`, appearance: residents.innkeeper.appearance,
       homeId: innId, roleTags: ["merchant", "commoner"], originStateId: residents.innkeeper.originStateId,
       goals: ["Удержать постоялый двор прибыльным", "Не допустить драк и неоплаченных счетов"],
       schedule: [{ from: 0, to: 24, locationId: innId, activity: "ведёт постоялый двор" }]
     };
     const guard: NpcDef = {
-      id: guardId, name: `${residents.guard.name} — караульный ${node.name}`, appearance: residents.guard.appearance,
+      id: guardId, name: `${residents.guard.name}, караульный ${node.name}`, appearance: residents.guard.appearance,
       homeId: gateId, roleTags: ["guard", "commoner"], originStateId: residents.guard.originStateId,
       goals: ["Содержать ворота под контролем", "Не пропустить опасных нарушителей"],
       schedule: [{ from: 5, to: 23, locationId: gateId, activity: "несёт караульную службу" }]

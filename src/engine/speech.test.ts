@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, speechProfile, stripDashes, addressedNpc } from "./speech";
+import { applyAction } from "./rules";
+import { npcsAt } from "./world";
+import { startVeloriaCampaign } from "../worlds/veloria/campaign";
+import type { GameState, NpcDef, WorldData } from "./types";
+
+const ATTRS = { "Сила": 15, "Выносливость": 15, "Ловкость": 14, "Интеллект": 14, "Восприятие": 14, "Харизма": 14, "Воля": 14 };
+function adult(): { world: WorldData; state: GameState } {
+  const r = startVeloriaCampaign({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Ирина", age: 24, originId: "merchant-child", statusId: "guild-free", professionId: "merchant", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS } } });
+  if (!r.ok) throw new Error(r.errors.join(" "));
+  return { world: r.world, state: r.state };
+}
+/** Находит место и время, где рядом с игроком есть люди. */
+function crowded(world: WorldData, state: GameState): GameState {
+  for (let hour = 0; hour < 24; hour++) for (const id of Object.keys(world.locations)) {
+    const minute = state.minute + hour * 60;
+    if (npcsAt(world, minute, id, state.npcDeaths).length >= 1) return { ...state, minute, playerLocation: id };
+  }
+  throw new Error("нет людей");
+}
+const npc = (id: string, extra: Partial<NpcDef>): NpcDef => ({ id, name: id, homeId: "x", goals: [], schedule: [], ...extra });
+
+describe("речь NPC: паспорт голоса", () => {
+  const { world, state } = adult();
+  it("девочка и взрослый мужчина звучат по-разному", () => {
+    const w: WorldData = { ...world, npcs: { ...world.npcs, girl: npc("girl", { age: 6, roleTags: ["commoner"] }), smith: npc("smith", { age: 30, roleTags: ["guard"], originStateId: "tharvek" }) } };
+    const girl = speechProfile(w, state, "girl"), smith = speechProfile(w, state, "smith");
+    expect(girl).toMatch(/ребёнок 6 лет/);
+    expect(girl).not.toMatch(/по-служебному|книжная/);
+    expect(smith).toMatch(/30 лет/);
+    expect(smith).toMatch(/скупо и прямо/);
+    expect(girl).not.toEqual(smith);
+  });
+  it("короткий и без длинного тире", () => {
+    for (const id of Object.keys(world.npcs).slice(0, 40)) {
+      const profile = speechProfile(world, state, id);
+      expect(profile.length).toBeLessThan(260);
+      expect(profile).not.toMatch(/[—–]/);
+    }
+  });
+  it("stripDashes убирает тире", () => {
+    expect(stripDashes("Да — конечно. — Иди")).toBe("Да, конечно. Иди");
+    expect(stripDashes("— Привет")).toBe("Привет");
+    expect(stripDashes("северо—запад")).toBe("северо-запад");
+  });
+});
+
+describe("живая сцена", () => {
+  const base = adult();
+  const state = crowded(base.world, base.state);
+  const world = base.world;
+  const present = npcsAt(world, state.minute, state.playerLocation, state.npcDeaths);
+  const first = world.npcs[present[0]!]!;
+  const firstName = first.name.split(/\s+[—–-]\s+/)[0]!;
+
+  it("компактный контекст: люди рядом, их голоса и отношение, без биографий", () => {
+    const context = buildSceneContext(world, state, `Здравствуйте, ${firstName}!`);
+    expect(context.npcs.length).toBeGreaterThan(0);
+    expect(context.npcs.length).toBeLessThanOrEqual(4);
+    expect(context.to).toBe(first.id);
+    expect(context.npcs[0]!.id).toBe(first.id);
+    expect(context.npcs[0]!.talk.length).toBeGreaterThan(5);
+    const envelope = buildSceneEnvelope(context, "Здравствуйте");
+    expect(JSON.stringify(envelope.context).length).toBeLessThan(2500);
+    expect(envelope.outputContract.speakers).toContain(first.id);
+  });
+
+  it("обращение по имени находит адресата", () => {
+    expect(addressedNpc(world, present, `${firstName}, ты тут?`)).toBe(first.id);
+    expect(addressedNpc(world, present, "кто-нибудь?")).toBeUndefined();
+  });
+
+  it("говорят только присутствующие, не больше двух, текст очищен", () => {
+    const scene = coerceScene({ replies: [
+      { npc: first.id, text: "«Ну здравствуй — давно не виделись»" },
+      { npc: "stranger", text: "меня тут нет" },
+      { npc: first.id, text: "второе" },
+      { npc: first.id, text: "третье" }
+    ], narration: "Кивает — устало." }, present);
+    expect(scene).not.toBeNull();
+    expect(scene!.replies).toHaveLength(2);
+    expect(scene!.replies[0]!.text).toBe("Ну здравствуй, давно не виделись");
+    expect(scene!.narration).toBe("Кивает, устало.");
+    expect(coerceScene({ replies: [] }, present)).toBeNull();
+    expect(coerceScene("мусор", present)).toBeNull();
+  });
+
+  it("сказанное попадает в хронику, память свидетелей и игрока", () => {
+    const said = applyAction(world, state, { type: "say", text: `Привет, ${firstName}` });
+    expect(said.ok).toBe(true);
+    const { state: next, lines } = applyScene(world, said.state, { replies: [{ npcId: first.id, text: "И тебе привет." }] });
+    expect(lines[0]).toContain("И тебе привет.");
+    const last = next.chronicle.at(-1)!;
+    expect(last.source).toEqual({ kind: "npc", id: first.id });
+    expect(next.npcMemory[first.id]!.at(-1)!.text).toContain("И тебе привет.");
+    expect(next.playerMemory.at(-1)!.text).toContain("И тебе привет.");
+    expect(next.minute).toBe(said.state.minute);
+    // Следующая сцена помнит разговор.
+    expect(buildSceneContext(world, next, "а ещё?").recent.join(" ")).toContain("И тебе привет.");
+  });
+});
