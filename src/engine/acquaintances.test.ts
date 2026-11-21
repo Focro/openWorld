@@ -13,7 +13,8 @@ describe("экран «Люди»", () => {
     expect(people.length).toBeGreaterThan(1);
     const family = people.filter(p => p.family && p.alive);
     expect(family.length).toBeGreaterThan(0);
-    for (const p of family) { expect(p.nature).toBeTruthy(); expect(p.nature).not.toMatch(/^(мать|отец):/); }
+    for (const p of family) { expect(p.nature).toBeTruthy(); expect(p.nature).not.toMatch(/^(мать|отец):/); expect(p.role).toBeTruthy(); }
+    expect(family.some(p => /^(мать|отец)/.test(p.role!))).toBe(true);
     const text = JSON.stringify(people);
     for (const p of people) expect(Object.keys(p).sort()).toEqual(expect.arrayContaining(["id", "name", "alive", "family"]));
     expect(text).not.toMatch(/"(trust|sympathy|fear|respect|memory|attitude)"/);
