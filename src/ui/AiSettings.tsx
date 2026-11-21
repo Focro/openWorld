@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AI_PROVIDERS, isAiProviderId, type AiProviderId } from "../ai/proxyClient";
+import { loadUsage } from "../ai/usage";
 import { clearVaultRecord, decryptApiKey, encryptApiKey, loadVaultRecord, passwordProblems, saveVaultRecord, type UnlockedKeySession } from "../ai/keyVault";
 
 /** Настройка ИИ: свой ключ хранится только зашифрованным паролем игрока. Игра работает и без ИИ. */
@@ -14,6 +15,8 @@ export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, 
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const usage = loadUsage();
+  const [limit, setLimit] = useState(() => { try { return localStorage.getItem("openworld.ai.daily-limit") ?? "50"; } catch { return "50"; } });
 
   async function save() {
     const problems = passwordProblems(password);
@@ -61,5 +64,8 @@ export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, 
       {record && <button onClick={forget}>УДАЛИТЬ КЛЮЧ ИЗ БРАУЗЕРА</button>}
     </div>
     {message && <p className="hint">{message}</p>}
+    <h3 className="sub">Расход сегодня</h3>
+    <p className="hint">Запросов к ИИ: {usage.requests} · токенов: {usage.inputTokens} на вход, {usage.outputTokens} на выход · из кэша: {usage.cacheHits} · понято без ИИ: {usage.understoodLocally}.</p>
+    <label>Дневной лимит запросов (0 — без лимита)<input type="number" min={0} max={1000} value={limit} onChange={e => { setLimit(e.target.value); try { localStorage.setItem("openworld.ai.daily-limit", String(Math.max(0, Number(e.target.value) || 0))); } catch { /* хранилище недоступно */ } }} /></label>
   </div>;
 }
