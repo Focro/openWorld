@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Создать релиз для новой версии
         env:
           GH_TOKEN: ${{ github.token }}
@@ -22,8 +24,16 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Релиз $TAG уже есть, пропускаю."
-            exit 0
+            # Релиз есть. Если его тег стоит на коммите из текущей истории main, ничего не делаем.
+            # Если тег держит старую (переписанную) историю, удаляем релиз и тег и создаём заново.
+            git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
+            OLD=$(git rev-list -n 1 "$TAG" 2>/dev/null || true)
+            if [ -n "$OLD" ] && git merge-base --is-ancestor "$OLD" "$GITHUB_SHA" 2>/dev/null; then
+              echo "Релиз $TAG уже есть, пропускаю."
+              exit 0
+            fi
+            echo "Тег $TAG не из текущей истории main: пересоздаю релиз."
+            gh release delete "$TAG" --yes --cleanup-tag
           fi
           awk -v v="$VERSION" '
             $0 ~ "^## " v "( |$)" { f=1; next }
