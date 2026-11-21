@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Политика конфиденциальности · OpenWorld</title><meta name="robots" content="index,follow"><link rel="icon" href="./favicon.ico">
+<style>
+:root{--bg:#F5F6FA;--surface:#FFFFFF;--fg:#1D1F2A;--muted:#666B7E;--accent:#5468E0;--line:#E1E4EE;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#14151B;--surface:#1D1F28;--fg:#E6E7EE;--muted:#9A9EB1;--accent:#8D9BFF;--line:#30333F;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 16px 64px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+header a{color:var(--fg);text-decoration:none;font-weight:700}
+.lang{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.lang button{border:0;background:none;color:var(--muted);font:600 13px inherit;padding:6px 12px;border-radius:999px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--accent);color:#fff}
+article{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:24px 20px;margin-top:12px}
+h1{font-size:1.6rem;line-height:1.25;margin:0 0 4px}h2{font-size:1.1rem;margin:28px 0 6px}
+p,li{margin:6px 0}ul{padding-left:20px}.date{color:var(--muted);font-size:14px;margin:0 0 16px}
+a{color:var(--accent)}footer{color:var(--muted);font-size:14px;margin-top:20px;text-align:center}
+[hidden]{display:none!important}
+</style></head><body><main>
+<header><a href="./">OpenWorld</a><div class="lang" role="group" aria-label="Язык / Language"><button type="button" data-l="ru" aria-pressed="true">RU</button><button type="button" data-l="en" aria-pressed="false">EN</button></div></header>
+<article lang="ru" data-l="ru">
+<h1>Политика конфиденциальности</h1>
+<p class="date">Действует с 22 ноября 2026 года</p>
+<p>OpenWorld (focro.github.io/openWorld) это текстовая игра, в которой историю рассказывает ИИ. Здесь просто и честно описано, какие данные мы получаем, зачем и как вы можете их удалить.</p>
+<h2>1. Кто отвечает за данные</h2>
+<p>Проект OpenWorld, автор Focro. Связаться: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+<h2>2. Какие данные мы получаем</h2>
+<ul>
+<li><b>Из аккаунта Google</b> при входе: имя, адрес почты и внутренний идентификатор Google. Мы запрашиваем только эти базовые данные (openid, email, profile). Доступа к вашей почте, файлам, контактам и другим сервисам Google у нас нет.</li>
+<li><b>Дата рождения</b>, которую вы указываете при входе. Она нужна, чтобы включать взрослый режим только тем, кому есть 18. Изменить её сами вы не сможете, только через нас.</li>
+<li><b>Настройки</b>: язык, имя в игре, включён ли взрослый режим.</li>
+<li><b>Сохранения игры</b>: персонажи, мир, хроника, дневник.</li>
+<li><b>Ключ ИИ</b>, если вы его добавили. Он шифруется вашим паролем прямо в браузере (PBKDF2 и AES-GCM), и на сервер попадает только зашифрованный вид. Ваш пароль мы не получаем и не храним, поэтому прочитать ключ не можем ни мы, ни кто-то ещё.</li>
+<li><b>Отметки о нарушениях</b>: дата и короткая причина, если сработала защита детей (см. Условия использования).</li>
+</ul>
+<h2>3. Зачем</h2>
+<p>Только чтобы игра работала: узнавать вас при входе, хранить ваши жизни и миры, соблюдать возрастные ограничения и правила безопасности. Мы не показываем рекламу, не продаём и не передаём ваши данные для маркетинга.</p>
+<h2>4. Где хранятся данные и кто их обрабатывает</h2>
+<ul>
+<li><b>Supabase</b>: аккаунты, настройки, сохранения, зашифрованные ключи. Доступ к записям защищён так, что каждый видит только свои.</li>
+<li><b>Google</b>: вход через ваш аккаунт Google.</li>
+<li><b>GitHub Pages</b>: раздаёт файлы сайта.</li>
+<li><b>Cloudflare</b>: передаёт ваши запросы к выбранному вами сервису ИИ. Текст сцен мы на сервере не храним.</li>
+<li><b>Сервис ИИ, который вы выбрали</b> (OpenRouter, DeepSeek, Anthropic или OpenAI): получает ваши действия и сжатое описание сцены, чтобы написать продолжение. Он работает по вашему ключу и по своим собственным правилам конфиденциальности, их стоит прочитать на сайте выбранного сервиса.</li>
+</ul>
+<h2>5. Браузер</h2>
+<p>Сайт хранит в браузере данные входа, настройки и копию сохранений (localStorage). Рекламных и следящих cookie нет.</p>
+<h2>6. Сколько храним</h2>
+<p>Пока у вас есть аккаунт. Сохранения и ключи вы можете удалить в игре в любой момент. После удаления аккаунта всё связанное с ним стирается из базы, а резервные копии Supabase перезаписываются в течение их обычного срока.</p>
+<h2>7. Ваши права</h2>
+<p>Вы можете узнать, какие данные о вас хранятся, исправить их, скачать или удалить аккаунт целиком. Напишите на <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a> с той почты, через которую входите, и мы ответим в течение 30 дней. Отключить доступ OpenWorld к аккаунту Google можно также в настройках Google: myaccount.google.com/permissions.</p>
+<h2>8. Возраст</h2>
+<p>OpenWorld не предназначен для детей младше 13 лет. Если по закону вашей страны нужен больший возраст, действует он. Взрослый режим доступен только с 18 лет. Если вы узнали, что аккаунт создал ребёнок младше 13, напишите нам, и мы его удалим.</p>
+<h2>9. Изменения</h2>
+<p>Если политика изменится, мы обновим эту страницу и дату вверху. О важных изменениях сообщим в игре.</p>
+</article>
+<article lang="en" data-l="en" hidden>
+<h1>Privacy Policy</h1>
+<p class="date">Effective 22 November 2026</p>
+<p>OpenWorld (focro.github.io/openWorld) is a text game where an AI tells the story. This page explains, plainly and honestly, what data we get, why, and how you can delete it.</p>
+<h2>1. Who is responsible</h2>
+<p>The OpenWorld project, author Focro. Contact: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+<h2>2. What data we get</h2>
+<ul>
+<li><b>From your Google account</b> when you sign in: name, email address and Google's internal account ID. We only request these basic scopes (openid, email, profile). We have no access to your mail, files, contacts or any other Google service.</li>
+<li><b>Date of birth</b> you enter at sign-in. It is used so that only people aged 18+ can turn on adult mode. You cannot change it yourself, only through us.</li>
+<li><b>Settings</b>: language, in-game name, whether adult mode is on.</li>
+<li><b>Game saves</b>: characters, world, chronicle, journal.</li>
+<li><b>Your AI key</b>, if you add one. It is encrypted with your password right in the browser (PBKDF2 and AES-GCM), and only the encrypted form reaches the server. We never receive or store your password, so neither we nor anyone else can read the key.</li>
+<li><b>Violation records</b>: date and a short reason if the child-safety protection is triggered (see the Terms of Use).</li>
+</ul>
+<h2>3. Why</h2>
+<p>Only to make the game work: recognise you when you sign in, keep your lives and worlds, enforce age limits and safety rules. We show no ads and do not sell or share your data for marketing.</p>
+<h2>4. Where data is stored and who processes it</h2>
+<ul>
+<li><b>Supabase</b>: accounts, settings, saves, encrypted keys. Access rules let each person see only their own records.</li>
+<li><b>Google</b>: sign-in with your Google account.</li>
+<li><b>GitHub Pages</b>: serves the website files.</li>
+<li><b>Cloudflare</b>: forwards your requests to the AI service you chose. We do not store scene text on the server.</li>
+<li><b>The AI service you chose</b> (OpenRouter, DeepSeek, Anthropic or OpenAI): receives your actions and a compact description of the scene to write what happens next. It works with your key and under its own privacy policy, which is worth reading on that service's website.</li>
+</ul>
+<h2>5. Your browser</h2>
+<p>The site keeps sign-in data, settings and a copy of your saves in your browser (localStorage). There are no advertising or tracking cookies.</p>
+<h2>6. How long we keep data</h2>
+<p>For as long as you have an account. You can delete saves and keys in the game at any time. When an account is deleted, everything linked to it is erased from the database, and Supabase backups are overwritten within their normal cycle.</p>
+<h2>7. Your rights</h2>
+<p>You can find out what data we hold about you, correct it, download it or delete your account entirely. Write to <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a> from the address you sign in with, and we will reply within 30 days. You can also remove OpenWorld's access in your Google settings: myaccount.google.com/permissions.</p>
+<h2>8. Age</h2>
+<p>OpenWorld is not intended for children under 13. If the law in your country sets a higher age, that age applies. Adult mode is available only from 18. If you learn that a child under 13 has created an account, write to us and we will delete it.</p>
+<h2>9. Changes</h2>
+<p>If this policy changes, we will update this page and the date at the top. We will announce important changes in the game.</p>
+</article>
+<footer><span data-l="ru"><a href="./terms.html">Условия использования</a> · <a href="./">На главную</a></span><span data-l="en" hidden><a href="./terms.html?lang=en">Terms of Use</a> · <a href="./">Home</a></span></footer>
+</main>
+<script>
+(function(){function set(l){document.documentElement.lang=l;document.querySelectorAll('[data-l]').forEach(function(e){if(e.tagName==='BUTTON')e.setAttribute('aria-pressed',String(e.dataset.l===l));else e.hidden=e.dataset.l!==l});document.title=(l==='en'?'Privacy Policy':'Политика конфиденциальности')+' · OpenWorld'}
+var q=new URLSearchParams(location.search).get('lang');set(q==='en'||q==='ru'?q:((navigator.language||'ru').toLowerCase().indexOf('ru')===0?'ru':'en'));
+document.querySelector('.lang').addEventListener('click',function(e){var b=e.target.closest('button');if(b)set(b.dataset.l)})})();
+</script></body></html>
