@@ -77,6 +77,8 @@ export interface NpcDef {
   schedule: ScheduleEntry[];
   /** Социальная роль важна для реакции на публичные заявления и правонарушения. */
   roleTags?: Array<"guard" | "clergy" | "healer" | "noble" | "merchant" | "commoner">;
+  /** Откуда NPC родом (id страны/региона мира). Нужен, чтобы приезжие отличались от местных. */
+  originStateId?: string;
   /** Устойчивая внешность NPC; текущие изменения хранятся в GameState.npcAppearances. */
   appearance?: CharacterAppearanceState;
   /** Абсолютная минута рождения в шкале кампании. До неё NPC не существует в мире. */

@@ -1,6 +1,6 @@
 # Контекст продолжения OpenWorld
 
-Дата фиксации: 21.11.2026 · версия 0.13.0
+Дата фиксации: 21.11.2026 · версия 0.14.0
 
 ## Коротко о проекте и пользователе
 
@@ -10,6 +10,10 @@
 
 ## Что сделано в 0.13.0
 См. `RELEASE_NOTES_0.13.0_RU.md`. Ключевые модули: `engine/development.ts`, `engine/timeflow.ts`, `worlds/veloria/reynarCourt.ts`, `worlds/veloria/campaign.ts`, `ui/LifePanel.tsx`, `ai/keyVault.ts`, `ai/proxyClient.ts`, `ui/AiSettings.tsx`, `server/ai-proxy.mjs`.
+
+## Что сделано в 0.14.0
+См. `RELEASE_NOTES_0.14.0_RU.md`. Модули: `worlds/veloria/populations.ts`, `nobleAppearance.ts`, `proposedHouses.ts`, `clergy.ts`, `birthFamily.ts`, `engine/intent.ts`, `ai/intentCache.ts`, `ai/usage.ts`.
+Правила от автора: облик по странам, иностранцы редкость; пробелы канона заполнять, помечая как предложение; контекст ИИ держать компактным; смерть матери второго принца — тайна, может раскрыться позже; даты младших детей Рейнаров неизвестны (оставлены допущения).
 
 ## Что дальше
 См. `docs/REMAINING_TASKS_RU.md`.

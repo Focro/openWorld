@@ -1,3 +1,4 @@
+import { buildIntentContext, type IntentContext } from "./intent";
 import { applyAction } from "./rules";
 import { formatClock, formatWorldDate, yearKLOf } from "./time";
 import { npcLocation, npcsAt } from "./world";
@@ -113,7 +114,8 @@ export function buildNpcDialogueEnvelope(context: NpcContext, interlocutorText: 
 }
 
 export interface ActionProposer {
-  propose(context: PlayerContext, playerText: string): Promise<unknown>;
+  /** Получает короткий контекст намерения (intent.ts), а не полный контекст сцены: так дешевле. */
+  propose(context: IntentContext, playerText: string): Promise<unknown>;
 }
 
 export function buildPlayerContext(world: WorldData, state: GameState, memoryLimit = 10, query = ""): PlayerContext {
@@ -278,7 +280,7 @@ export async function resolveWithAi(
 ): Promise<ActionResult> {
   let raw: unknown;
   try {
-    raw = await proposer.propose(buildPlayerContext(world, state, 10, playerText), playerText);
+    raw = await proposer.propose(buildIntentContext(world, state, playerText, allowedActionsFor(state)), playerText);
   } catch {
     return { state, ok: false, message: "ИИ недоступен. Мир не изменился.", events: [] };
   }

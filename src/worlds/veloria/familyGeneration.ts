@@ -3,13 +3,11 @@ import type { NpcDef, WorldData } from "../../engine/types";
 import type { VeloriaCharacterDraft } from "./character";
 import type { CharacterFamilyRecord } from "./family";
 import { VELORIA_CANON } from "./lore";
+import { regionalName, sampleResidentAppearance, type StateId } from "./populations";
+import { generateNewbornHousehold, type HouseholdKind, type Wealth } from "./birthFamily";
 import {
   getChildAppearanceOptions,
   type AppearanceProfile,
-  type EyeColor,
-  type FacialFeatureSet,
-  type HairColor,
-  type HairTexture,
   type ParentHeritage,
   type SkinTone
 } from "./heritage";
@@ -18,11 +16,6 @@ const CURRENT_YEAR = VELORIA_CANON.calendar.currentYearKL;
 const MASCULINE_NAMES = ["Эдрен", "Тален", "Остен", "Йорен", "Леван", "Ренар", "Дамир", "Орест"];
 const FEMININE_NAMES = ["Ива", "Нера", "Сера", "Мира", "Лина", "Эна", "Вейра", "Адела"];
 const SURNAMES = ["Норрен", "Сорел", "Элвин", "Вейл", "Келлер", "Мерр", "Тален", "Ровен"];
-const SKIN_TONES: SkinTone[] = [2, 3, 4, 5];
-const HAIR_COLORS: HairColor[] = ["black", "dark-brown", "brown", "auburn", "blond"];
-const HAIR_TEXTURES: HairTexture[] = ["straight", "wavy", "curly"];
-const EYE_COLORS: EyeColor[] = ["brown", "dark-brown", "hazel", "green", "blue", "grey"];
-const FACIAL_FEATURES: FacialFeatureSet[] = ["soft", "angular", "broad", "narrow"];
 
 export interface GeneratedFamilyAssignment {
   available: boolean;
@@ -33,6 +26,8 @@ export interface GeneratedFamilyAssignment {
   guardians: NpcDef[];
   defaultAppearance?: AppearanceProfile;
   summary: string;
+  /** Только для старта с рождения в обычной семье. */
+  household?: { kind: HouseholdKind; wealth: Wealth; homeId: string };
 }
 
 function hash(value: string): number {
@@ -65,15 +60,13 @@ function workForOrigin(originId: VeloriaCharacterDraft["originId"], second: bool
   return { locationId: second ? "grey-fox" : "lower-market", activity: second ? "занимается домашними делами" : "работает на подённой работе" };
 }
 
-function parentHeritage(id: string, name: string, seed: number): ParentHeritage {
-  const appearance: AppearanceProfile = {
-    skinTone: pick(SKIN_TONES, seed),
-    hairColor: pick(HAIR_COLORS, seed >>> 3),
-    hairTexture: pick(HAIR_TEXTURES, seed >>> 6),
-    eyeColor: pick(EYE_COLORS, seed >>> 9),
-    facialFeatures: pick(FACIAL_FEATURES, seed >>> 12)
-  };
-  return { id, name, appearance };
+/**
+ * Родитель — житель Ровена: внешность берётся из населения Эстрана, изредка родитель
+ * оказывается приезжим (Ровен — торговый город на реке). См. populations.ts.
+ */
+export function parentHeritage(id: string, name: string, seed: number): ParentHeritage & { originStateId: StateId } {
+  const { originStateId, ...appearance } = sampleResidentAppearance("estran", `parent:${seed}`, "city");
+  return { id, name, appearance, originStateId };
 }
 
 function npcFromParent(
@@ -146,6 +139,18 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
       summary: "Биологические родители: Гарен Вальд и женщина из далёкой восточной земли. Родители не состояли в браке; Гарен признал сына. Элиана (в 723 КЛ — принцесса, королевой станет в 735 КЛ) не является твоей матерью: она жена Гарена и испытывает к тебе личную неприязнь из-за его измены. Королевская кормилица Мейра назначена опекуном на время младенчества."
     };
   }
+  if (draft.age === 0) {
+    const seed = hash(draft.familySeed ?? draft.name.trim().toLocaleLowerCase("ru-RU"));
+    const occupied = new Set(existingNpcIds);
+    let familyId = `roven-family-${seed.toString(36)}`;
+    for (let i = 1; occupied.has(`${familyId}-parent-a`) || occupied.has(`${familyId}-parent-b`) || occupied.has(`${familyId}-sister`); i++) familyId = `roven-family-${seed.toString(36)}-${i}`;
+    const household = generateNewbornHousehold(draft, familyId, `${seed}`);
+    if ("error" in household) return { available: false, reason: household.error, members: [], biologicalParents: [], guardians: [], summary: household.error };
+    return {
+      available: true, record: household.record, members: household.members, biologicalParents: household.biologicalParents, guardians: household.guardians,
+      defaultAppearance: household.appearance, summary: household.summary, household: { kind: household.kind, wealth: household.wealth, homeId: household.homeId }
+    };
+  }
   const unsupportedNobleOrigins: VeloriaCharacterDraft["originId"][] = ["minor-heir", "noble-younger", "acknowledged-bastard", "impoverished-noble"];
   if (unsupportedNobleOrigins.includes(draft.originId)) {
     return {
@@ -187,8 +192,13 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
   if (isBiologicalFamily || isChosenFamily) {
     for (let index = 0; index < 2; index++) {
       const id = ids[index]!;
+      const heritage = parentHeritage(id, parentNames[index]!, seed + index * 7919);
+      // Приезжий родитель носит имя своей земли; фамилия семьи общая.
+      if (heritage.originStateId !== "estran") {
+        parentNames[index] = `${regionalName(heritage.originStateId, index === 0 ? "male" : "female", `parent:${seed}:${index}`).given} ${surname}`;
+        heritage.name = parentNames[index]!;
+      }
       const name = parentNames[index]!;
-      const heritage = parentHeritage(id, name, seed + index * 7919);
       const parentAgeAtBirth = Math.min(38, Math.max(17, 88 - draft.age)) + index * 2;
       const age = draft.age + parentAgeAtBirth;
       const lifeStatus = draft.familyState === "lost" ? "missing" : "alive";

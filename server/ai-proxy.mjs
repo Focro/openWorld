@@ -29,7 +29,8 @@ export const config = {
   port: Number(process.env.AI_PROXY_PORT ?? 8787),
   defaultProvider: process.env.AI_PROVIDER ?? "anthropic",
   effort: process.env.AI_EFFORT ?? "low",
-  maxTokens: 2048,
+  // Ответ — короткий JSON действия; большой лимит только тратит деньги игрока.
+  maxTokens: Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 200),
   maxBodyBytes: 64 * 1024,
   perMinute: Number(process.env.AI_MAX_REQUESTS_PER_MINUTE ?? 6),
   perDay: Number(process.env.AI_MAX_REQUESTS_PER_DAY ?? 300),
@@ -84,7 +85,7 @@ export function createRateLimiter({ perMinute, perDay }, now = () => Date.now())
 export function validateEnvelope(body) {
   if (!body || typeof body !== "object") return "Пустой запрос.";
   const env = body.envelope;
-  if (!env || env.protocol !== "openworld-ai-context-v1") return "Неизвестный протокол контекста.";
+  if (!env || !["openworld-ai-context-v1", "openworld-intent-v1"].includes(env.protocol)) return "Неизвестный протокол контекста.";
   if (typeof env.playerText !== "string" || !env.playerText.trim() || env.playerText.length > 1000) return "Текст игрока: от 1 до 1000 символов.";
   if (!Array.isArray(env.systemInstructions) || !env.context || !env.outputContract) return "Неполный контекст.";
   if (!Array.isArray(env.outputContract.allowedActions)) return "Не указан список допустимых действий.";
@@ -102,9 +103,8 @@ export function extractProposal(text) {
 export function buildSystemPrompt(envelope) {
   return [
     ...envelope.systemInstructions,
-    `Ответь ТОЛЬКО одним JSON-объектом без пояснений. Поле "type" обязательно и должно быть одним из: ${envelope.outputContract.allowedActions.join(", ")}.`,
-    "Для действий младенца используй {\"type\":\"infant\",\"act\":\"<действие>\"}, для прожитого времени — {\"type\":\"live\",\"days\":N}.",
-    "Если намерение игрока невозможно по возрасту, месту или фактам, верни {\"type\":\"look\"}."
+    "Ответь ТОЛЬКО одним JSON-объектом без пояснений. Поле \"type\" обязательно и берётся из списка acts / allowedActions.",
+    "Если намерение невозможно по возрасту, месту или фактам, верни {\"type\":\"look\"}."
   ].join("\n");
 }
 const userContent = envelope => JSON.stringify({ context: envelope.context, playerText: envelope.playerText });

@@ -9,7 +9,7 @@ describe("Veloria upper society roster", () => {
   it("covers every named member of all 30 canonical houses", () => {
     expect(UPPER_SOCIETY_ROSTER).toHaveLength(NOBLE_HOUSES.reduce((sum, house) => sum + house.members.length, 0));
     expect(new Set(UPPER_SOCIETY_ROSTER.map(person => person.id)).size).toBe(UPPER_SOCIETY_ROSTER.length);
-    expect(new Set(UPPER_SOCIETY_ROSTER.map(person => person.houseId)).size).toBe(30);
+    expect(new Set(UPPER_SOCIETY_ROSTER.map(person => person.houseId)).size).toBe(48);
   });
 
   it("gives every currently confirmed living noble a stable personality profile", () => {
