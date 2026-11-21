@@ -1,0 +1,15 @@
+{
+  "name": "openworld-ai-proxy",
+  "private": true,
+  "version": "0.13.0",
+  "type": "module",
+  "description": "Серверный прокси ИИ для OpenWorld RPG: ключи не попадают в клиентский бандл, расходы ограничены.",
+  "scripts": {
+    "start": "node ai-proxy.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0"
+  },
+  "engines": { "node": ">=20" }
+}

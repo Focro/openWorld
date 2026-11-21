@@ -20,7 +20,7 @@ export const RUMOR_DROP_BELOW = 0.2;
 export function spreadGossip(world: WorldData, state: GameState): GameState {
   const groups = new Map<string, string[]>();
   for (const id of Object.keys(world.npcs).sort()) {
-    const loc = npcLocation(world, id, state.minute);
+    const loc = npcLocation(world, id, state.minute, state.npcDeaths);
     if (!loc) continue;
     groups.set(loc, [...(groups.get(loc) ?? []), id]);
   }
@@ -30,25 +30,20 @@ export function spreadGossip(world: WorldData, state: GameState): GameState {
   for (const members of groups.values()) {
     if (members.length < 2) continue;
     for (const listener of members) {
-      // Для каждого события слушатель берёт самую уверенную версию (при равенстве — по id рассказчика).
       const best = new Map<string, { entry: MemoryEntry; teller: string }>();
       for (const teller of members) {
         if (teller === listener) continue;
         for (const entry of state.npcMemory[teller] ?? []) {
           if (!entry.eventId || entry.confidence < GOSSIP_MIN_SHARE) continue;
-          if ((state.npcMemory[listener] ?? []).some((m) => m.eventId === entry.eventId)) continue;
+          if ((state.npcMemory[listener] ?? []).some(m => m.eventId === entry.eventId)) continue;
           const cur = best.get(entry.eventId);
           if (!cur || entry.confidence > cur.entry.confidence) best.set(entry.eventId, { entry, teller });
         }
       }
       for (const { entry, teller } of best.values()) {
         npcMemory[listener] = [...(npcMemory[listener] ?? []), {
-          minute: state.minute,
-          text: entry.text,
-          kind: "heard",
-          confidence: entry.confidence * GOSSIP_FACTOR,
-          eventId: entry.eventId!,
-          source: teller
+          minute: state.minute, text: entry.text, kind: "heard",
+          confidence: entry.confidence * GOSSIP_FACTOR, eventId: entry.eventId!, source: teller
         }];
         changed = true;
       }
@@ -62,7 +57,7 @@ export function pruneRumors(state: GameState): GameState {
   let changed = false;
   const npcMemory: Record<string, MemoryEntry[]> = {};
   for (const [id, list] of Object.entries(state.npcMemory)) {
-    const kept = list.filter((m) =>
+    const kept = list.filter(m =>
       m.kind !== "heard" ||
       (state.minute - m.minute <= RUMOR_TTL_MINUTES && m.confidence >= RUMOR_DROP_BELOW));
     if (kept.length !== list.length) changed = true;
