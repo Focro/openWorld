@@ -3,9 +3,12 @@ export interface Country {
  id:string; name:string; government:string; ruler:string; capital:string; climate:Climate;
  culture:string; primaryFaith:string; languages:string[]; laws:string[]; exports:string[]; tensions:string[]; description:string;
 }
-export interface Region {id:string;countryId:string;name:string;terrain:string;resources:string[];notes:string}
-export interface MapNode {id:string;name:string;countryId:string;regionId:string;kind:string;x:number;y:number;populationBand:string;climate:Climate;tags:string[]}
-export interface Route {from:string;to:string;days:number;mode:"road"|"river"|"sea"|"mountain-pass";danger:"low"|"moderate"|"high";seasonalClosure?:string}
+export interface Region {id:string;countryId:string;name:string;terrain:string;resources:string[];notes:string;
+ /** true: названо в Библии мира. Иначе проектное допущение. */ canon?:boolean}
+export interface MapNode {id:string;name:string;countryId:string;regionId:string;kind:string;x:number;y:number;populationBand:string;climate:Climate;tags:string[];
+ /** true: место названо в Библии мира. Иначе проектное допущение (название и положение наши). */ canon?:boolean}
+export interface Route {from:string;to:string;days:number;
+ /** Название дороги, если оно есть в каноне (например, «Западный тракт»). */ name?:string;mode:"road"|"river"|"sea"|"mountain-pass";danger:"low"|"moderate"|"high";seasonalClosure?:string}
 
 export const COUNTRIES:Country[]=[
 {id:"estran",name:"Королевство Эстран",government:"наследственная монархия",ruler:"королева Элиана III",capital:"koronholm",climate:"temperate",culture:"эстранская",primaryFaith:"sevenfold",languages:["эстранский","староарданский"],laws:["вассальная военная служба","наследование преимущественно старшему законному ребёнку","гильдейское ученичество"],exports:["зерно","лён","железо"],tensions:["корона против крупных вассалов","задержки зерновых обозов"],description:"Земледельческое королевство на старых торговых дорогах."},
@@ -17,31 +20,32 @@ export const COUNTRIES:Country[]=[
 ];
 export const REGIONS:Region[]=[
 {id:"estran-heart",countryId:"estran",name:"Эстранское сердце",terrain:"речные долины и поля",resources:["зерно","лён","скот"],notes:"Столица и Ровен."},
-{id:"estran-north",countryId:"estran",name:"Северные холмы",terrain:"холмы и леса",resources:["железо","камень","лес"],notes:"Зимой дороги трудны."},
+{id:"estran-south",canon:true,countryId:"estran",name:"Южная долина",terrain:"поля и мельницы",resources:["зерно","скот","лён"],notes:"Мельницы и поместья."},
+{id:"estran-north",canon:true,countryId:"estran",name:"Северные холмы",terrain:"холмы и леса",resources:["железо","камень","лес"],notes:"Зимой дороги трудны."},
 {id:"sahrad-oasis",countryId:"sahrad",name:"Пояс оазисов",terrain:"пустыня и солончаки",resources:["вода","соль","финики"],notes:"Поселения стоят у колодцев."},
 {id:"sahrad-coast",countryId:"sahrad",name:"Медное побережье",terrain:"жаркое сухое побережье",resources:["медь","рыба","стекло"],notes:"Порты связывают султанат с Варентом."},
-{id:"varent-coast",countryId:"varent",name:"Западные гавани",terrain:"заливы и острова",resources:["рыба","корабельный лес"],notes:"Главные морские пути."},
+{id:"varent-coast",countryId:"varent",name:"Гавани Лиги",terrain:"заливы и острова",resources:["рыба","корабельный лес"],notes:"Главные морские пути."},
 {id:"tharvek-range",countryId:"tharvek",name:"Высокий хребет",terrain:"горы и перевалы",resources:["железо","олово","камень"],notes:"Перевалы закрываются снегом."},
 {id:"elyndor-forest",countryId:"elyndor",name:"Старые леса",terrain:"леса и озёра",resources:["древесина","травы","меха"],notes:"Священные рощи."},
 {id:"kharum-delta",countryId:"kharum",name:"Великая дельта",terrain:"жаркие влажные равнины",resources:["рис","хлопок","сахар"],notes:"Каналы и плотная сеть городов."}
 ];
 export const MAP_NODES:MapNode[]=[
-{id:"koronholm",name:"Коронхольм",countryId:"estran",regionId:"estran-heart",kind:"capital",x:30,y:37,populationBand:"large",climate:"temperate",tags:["двор","суд","монетный двор"]},
-{id:"roven",name:"Ровен",countryId:"estran",regionId:"estran-heart",kind:"city",x:38,y:47,populationBand:"medium",climate:"temperate",tags:["торговля","река Лир"]},
+{id:"koronholm",canon:true,name:"Коронхольм",countryId:"estran",regionId:"estran-heart",kind:"capital",x:30,y:37,populationBand:"large",climate:"temperate",tags:["двор","суд","монетный двор"]},
+{id:"roven",canon:true,name:"Ровен",countryId:"estran",regionId:"estran-heart",kind:"city",x:38,y:47,populationBand:"medium",climate:"temperate",tags:["торговля","река Лир"]},
 {id:"northwatch",name:"Нортвотч",countryId:"estran",regionId:"estran-north",kind:"fort",x:27,y:24,populationBand:"small",climate:"cold",tags:["гарнизон","рудники"]},
-{id:"millford",name:"Миллфорд",countryId:"estran",regionId:"estran-heart",kind:"town",x:33,y:56,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
-{id:"qadira",name:"Кадира",countryId:"sahrad",regionId:"sahrad-oasis",kind:"capital",x:44,y:83,populationBand:"large",climate:"hot-arid",tags:["султанский двор","оазис"]},
+{id:"millford",name:"Миллфорд",countryId:"estran",regionId:"estran-south",kind:"town",x:33,y:56,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
+{id:"qadira",canon:true,name:"Кадира",countryId:"sahrad",regionId:"sahrad-oasis",kind:"capital",x:44,y:83,populationBand:"large",climate:"hot-arid",tags:["султанский двор","оазис"]},
 {id:"safra",name:"Сафра",countryId:"sahrad",regionId:"sahrad-oasis",kind:"desert-stop",x:35,y:89,populationBand:"small",climate:"hot-arid",tags:["караван-сарай","колодец"]},
-{id:"miraj",name:"Мираж",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:55,y:72,populationBand:"medium",climate:"hot-arid",tags:["порт","медь"]},
-{id:"varentport",name:"Варенпорт",countryId:"varent",regionId:"varent-coast",kind:"capital",x:64,y:37,populationBand:"large",climate:"temperate",tags:["совет Лиги","морское право","главная гавань"]},
+{id:"miraj",canon:true,name:"Мираж",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:55,y:72,populationBand:"medium",climate:"hot-arid",tags:["порт","медь"]},
+{id:"varentport",canon:true,name:"Варенпорт",countryId:"varent",regionId:"varent-coast",kind:"capital",x:64,y:37,populationBand:"large",climate:"temperate",tags:["совет Лиги","морское право","главная гавань"]},
 {id:"merovar",name:"Меровар",countryId:"varent",regionId:"varent-coast",kind:"city",x:73,y:29,populationBand:"large",climate:"temperate",tags:["банки","торговые палаты","финансовые дома"]},
 {id:"bluehaven",name:"Синяя Гавань",countryId:"varent",regionId:"varent-coast",kind:"port",x:83,y:19,populationBand:"medium",climate:"temperate",tags:["моряки","контрабанда"]},
-{id:"dravorn",name:"Драворн",countryId:"tharvek",regionId:"tharvek-range",kind:"capital",x:87,y:47,populationBand:"medium",climate:"mountain",tags:["княжеский конклав"]},
+{id:"dravorn",canon:true,name:"Драворн",countryId:"tharvek",regionId:"tharvek-range",kind:"capital",x:87,y:47,populationBand:"medium",climate:"mountain",tags:["княжеский конклав"]},
 {id:"ironpass",name:"Железный Перевал",countryId:"tharvek",regionId:"tharvek-range",kind:"fort",x:78,y:43,populationBand:"small",climate:"mountain",tags:["застава","рудники"]},
-{id:"lethariel",name:"Летариэль",countryId:"elyndor",regionId:"elyndor-forest",kind:"capital",x:10,y:32,populationBand:"medium",climate:"cold",tags:["родовые советы","озёра"]},
+{id:"lethariel",canon:true,name:"Летариэль",countryId:"elyndor",regionId:"elyndor-forest",kind:"capital",x:10,y:32,populationBand:"medium",climate:"cold",tags:["родовые советы","озёра"]},
 {id:"willowmere",name:"Ивовый Предел",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:13,y:44,populationBand:"small",climate:"cold",tags:["священная роща"]},
-{id:"har-kadar",name:"Хар-Кадар",countryId:"kharum",regionId:"kharum-delta",kind:"capital",x:87,y:87,populationBand:"metropolis",climate:"hot-humid",tags:["императорский двор","главные каналы","имперский совет"]},
-{id:"azrakar",name:"Азракар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:74,y:82,populationBand:"large",climate:"hot-humid",tags:["верхний архив","писцовые школы","реестры"]},
+{id:"har-kadar",canon:true,name:"Хар-Кадар",countryId:"kharum",regionId:"kharum-delta",kind:"capital",x:87,y:87,populationBand:"metropolis",climate:"hot-humid",tags:["императорский двор","главные каналы","имперский совет"]},
+{id:"azrakar",canon:true,name:"Азракар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:74,y:82,populationBand:"large",climate:"hot-humid",tags:["верхний архив","писцовые школы","реестры"]},
 {id:"namar",name:"Намар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:81,y:75,populationBand:"large",climate:"hot-humid",tags:["рисовые рынки","текстиль"]},
 {id:"sunspire",name:"Солнечный Шпиль",countryId:"kharum",regionId:"kharum-delta",kind:"monastery",x:95,y:78,populationBand:"small",climate:"hot-humid",tags:["храмовая школа","архивы"]}
  ,
@@ -53,7 +57,7 @@ export const MAP_NODES:MapNode[]=[
 {id:"saltmere",name:"Солёный Мер",countryId:"varent",regionId:"varent-coast",kind:"town",x:58,y:28,populationBand:"small",climate:"temperate",tags:["соляные склады","рыбный рынок"]},
 {id:"stonebridge",name:"Каменный Мост",countryId:"tharvek",regionId:"tharvek-range",kind:"town",x:90,y:58,populationBand:"small",climate:"mountain",tags:["мост через ущелье","постоялый двор"]},
 {id:"deepforge",name:"Глубокая Кузня",countryId:"tharvek",regionId:"tharvek-range",kind:"mining-town",x:95,y:38,populationBand:"small",climate:"mountain",tags:["рудники","плавильни"]},
-{id:"mossford",name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:6,y:22,populationBand:"small",climate:"cold",tags:["брод","травники"]},
+{id:"mossford",name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:9,y:21,populationBand:"small",climate:"cold",tags:["брод","травники"]},
 {id:"lake-ward",name:"Озерный Дозор",countryId:"elyndor",regionId:"elyndor-forest",kind:"town",x:16,y:25,populationBand:"small",climate:"cold",tags:["рыбацкие пристани","лодочные мастера"]},
 {id:"reedhaven",name:"Тростниковая Гавань",countryId:"kharum",regionId:"kharum-delta",kind:"port",x:73,y:93,populationBand:"medium",climate:"hot-humid",tags:["речные баржи","рисовые склады"]},
 {id:"ivory-gate",name:"Врата Слоновой Кости",countryId:"kharum",regionId:"kharum-delta",kind:"town",x:93,y:94,populationBand:"medium",climate:"hot-humid",tags:["таможня","имперская дорога"]}
@@ -83,10 +87,10 @@ const ROUTE_SPECS: RouteSpec[] = [
 {from:"varentport",to:"ironpass",mode:"mountain-pass",danger:"high",seasonalClosure:"зимой перевал закрыт"},{from:"ironpass",to:"dravorn",mode:"mountain-pass",danger:"high",seasonalClosure:"зимнее закрытие перевалов"},
 {from:"dravorn",to:"deepforge",mode:"road",danger:"moderate"},{from:"dravorn",to:"stonebridge",mode:"mountain-pass",danger:"moderate",seasonalClosure:"снегопады и лавинная опасность"},
 // Элиндор на западе: побережье и леса.
-{from:"koronholm",to:"lethariel",mode:"road",danger:"high"},{from:"lethariel",to:"willowmere",mode:"road",danger:"low"},
+{from:"koronholm",to:"lethariel",mode:"road",danger:"high",name:"Западный тракт"},{from:"lethariel",to:"willowmere",mode:"road",danger:"low"},
 {from:"lethariel",to:"mossford",mode:"road",danger:"low"},{from:"mossford",to:"lake-ward",mode:"river",danger:"moderate"},
 // Сахрад на юге: южный берег Лиара и оазисы.
-{from:"millford",to:"saffron-coast",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"qadira",mode:"road",danger:"high"},
+{from:"millford",to:"saffron-coast",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"miraj",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"qadira",mode:"road",danger:"high"},
 {from:"miraj",to:"daryat",mode:"road",danger:"moderate"},{from:"daryat",to:"qadira",mode:"road",danger:"moderate"},{from:"qadira",to:"safra",mode:"road",danger:"high"},
 // Кхарум на дальнем юго-востоке: караваны и дельта.
 {from:"daryat",to:"azrakar",mode:"road",danger:"high"},{from:"stonebridge",to:"namar",mode:"road",danger:"high"},
@@ -104,16 +108,22 @@ export const COUNTRY_SHAPES: CountryShape[] = [
  {countryId:"estran",points:[[18,26],[30,18],[46,30],[50,38],[44,46],[40,52],[38,62],[26,62],[18,50]]},
  {countryId:"varent",points:[[50,22],[66,10],[86,6],[96,10],[92,24],[80,34],[70,40],[60,40],[50,34]]},
  {countryId:"tharvek",points:[[72,40],[84,32],[98,34],[98,62],[90,66],[78,62],[72,52]]},
- {countryId:"elyndor",points:[[2,18],[14,14],[20,22],[18,34],[16,50],[6,52],[2,40]]},
+ {countryId:"elyndor",points:[[6,18],[14,14],[20,22],[18,34],[16,50],[8,52],[6,40]]},
  {countryId:"sahrad",points:[[26,66],[40,64],[50,70],[60,72],[66,82],[60,94],[38,96],[24,86]]},
  {countryId:"kharum",points:[[66,76],[78,68],[92,70],[99,80],[99,98],[70,98],[64,88]]}
+];
+
+/** Острова Элиндора у западного берега (по Библии: «на западе острова и прибрежные города»). Очертания наши. */
+export const MAP_ISLANDS: Array<{ countryId: string; points: Array<[number, number]> }> = [
+ {countryId:"elyndor",points:[[1,26],[4,24],[4.6,30],[2,32]]},
+ {countryId:"elyndor",points:[[1.5,40],[4.2,38],[4.4,44],[1.8,45]]}
 ];
 
 /** Моря и реки для рисованной карты (0.18.0): внутреннее море Лиар по Библии, Открытое море на западе, река Лир через Ровен. */
 export interface MapWater { id: string; name: string; kind: "sea" | "river"; points: Array<[number, number]> }
 export const MAP_WATERS: MapWater[] = [
  {id:"liar",name:"море Лиар",kind:"sea",points:[[44,48],[52,40],[62,42],[70,48],[72,58],[66,68],[54,68],[44,62],[40,56]]},
- {id:"open-sea",name:"Открытое море",kind:"sea",points:[[0,0],[2,0],[2,100],[0,100]]},
+ {id:"open-sea",name:"Открытое море",kind:"sea",points:[[0,0],[5,0],[5,100],[0,100]]},
  {id:"lir",name:"река Лир",kind:"river",points:[[22,36],[28,41],[34,44],[38,47],[42,52]]}
 ];
 

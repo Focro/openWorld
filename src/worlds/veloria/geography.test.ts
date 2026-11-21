@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, ROUTES, KM_PER_DAY, routeKm } from "./atlas";
-import { findVeloriaRoute } from "./travel";
+import { COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, REGIONS, ROUTES, KM_PER_DAY, routeKm } from "./atlas";
+import { findVeloriaRoute, travelOptions } from "./travel";
 
 const inside = (x: number, y: number, pts: Array<[number, number]>) => {
   let r = false;
@@ -32,5 +32,21 @@ describe("география по Библии мира", () => {
     // Чем дальше на карте, тем дольше путь по суше.
     expect(findVeloriaRoute("roven", "koronholm")!.totalDays).toBeLessThan(findVeloriaRoute("roven", "northwatch")!.totalDays);
     expect(findVeloriaRoute("roven", "har-kadar")!.totalDays).toBeGreaterThan(findVeloriaRoute("roven", "qadira")!.totalDays);
+  });
+  it("места из Библии помечены каноном, остальное проектное", () => {
+    const canon = MAP_NODES.filter(n => n.canon).map(n => n.id).sort();
+    expect(canon).toEqual(["azrakar", "dravorn", "har-kadar", "koronholm", "lethariel", "miraj", "qadira", "roven", "varentport"]);
+    expect(REGIONS.filter(r => r.canon).map(r => r.name).sort()).toEqual(["Северные холмы", "Южная долина"]);
+    expect(ROUTES.find(r => r.name === "Западный тракт")).toBeDefined();
+  });
+  it("где можно обойти по суше, есть и сухопутный путь", () => {
+    for (const to of ["varentport", "miraj"]) {
+      const opts = travelOptions("roven", to);
+      expect(opts.length, to).toBe(2);
+      expect(opts[0]!.overland).toBe(false);
+      expect(opts[1]!.overland).toBe(true);
+      expect(opts[1]!.plan.segments.some(s => s.mode === "sea")).toBe(false);
+      expect(opts[1]!.plan.totalDays).toBeGreaterThan(opts[0]!.plan.totalDays);
+    }
   });
 });

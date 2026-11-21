@@ -39,11 +39,11 @@ import { generateVeloriaFamily } from "./worlds/veloria/familyGeneration";
 import { getChildAppearanceOptions, validateChildAppearance } from "./worlds/veloria/heritage";
 import { FAITHS } from "./worlds/veloria/faiths";
 import { WORLD_DIFFICULTIES, type WorldDifficultyId } from "./worlds/veloria/difficulty";
-import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES, MAP_WATERS } from "./worlds/veloria/atlas";
+import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES, MAP_WATERS, MAP_ISLANDS } from "./worlds/veloria/atlas";
 import { MAP_IMAGE, knownSettlementIds, mapHitAt, type MapHit } from "./worlds/veloria/mapLayer";
 import { knownPeople, ageText } from "./engine/acquaintances";
 import { DEATH_IS_FINAL_MESSAGE, buryIfDead, loadBlockedByDeath, loadGraveyard, mergeGraveyards, newLifeId, saveGraveyard, type GraveRecord } from "./engine/permadeath";
-import { advanceVeloriaJourney, beginVeloriaJourney, findVeloriaRoute } from "./worlds/veloria/travel";
+import { advanceVeloriaJourney, beginVeloriaJourney, findVeloriaRoute, travelOptions } from "./worlds/veloria/travel";
 import "./styles.css";
 
 function familyMemberLabel(member: import("./engine/types").NpcDef): string {
@@ -90,6 +90,7 @@ function ArdanMap({ current, destination, route, known }: { current: string; des
         return <polygon key={shape.countryId} points={shape.points.map(point=>point.join(",")).join(" ")} className={`country-shape country-${shape.countryId}`}><title>{country?.name ?? shape.countryId}</title></polygon>;
       })}
       {!MAP_IMAGE && MAP_WATERS.map(w => w.kind === "sea" ? <polygon key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-sea"/> : <polyline key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-river"/>)}
+      {!MAP_IMAGE && MAP_ISLANDS.map((isle, i) => <polygon key={`isle-${i}`} points={isle.points.map(p=>p.join(",")).join(" ")} className={`country-shape country-${isle.countryId}`}/>)}
       {!MAP_IMAGE && <text x="57" y="56" className="map-water-label">море Лиар</text>}
       <g className="map-compass" transform="translate(94 8)"><path d="M0 -5 L1.6 0 L0 -1 L-1.6 0 Z"/><text x="0" y="3.8">С</text></g>
       {ROUTES.map((edge,i)=>{
@@ -105,7 +106,7 @@ function ArdanMap({ current, destination, route, known }: { current: string; des
       {here && <g className="map-pin" transform={`translate(${here.x} ${here.y})`}><path d="M0 0 L-2.2 -4.2 A2.6 2.6 0 1 1 2.2 -4.2 Z" /><circle cx="0" cy="-5.6" r="1" /></g>}
       {hit && <circle cx={hit.x} cy={hit.y} r="3.2" className="map-hit" />}
     </svg>
-    {hit ? <div className="map-card" role="status"><b>{hit.name}</b><span>{hit.detail}</span>{hit.id === current && <em>Вы здесь</em>}{hit.kind === "settlement" && hit.id !== current && (() => { const r = findVeloriaRoute(current, hit.id); if (!r) return <span>Отсюда туда дороги нет.</span>; const how = [...new Set(r.segments.map(s => s.mode === "sea" ? "морем" : s.mode === "river" ? "по реке" : s.mode === "mountain-pass" ? "горным перевалом" : "по дороге"))].join(", "); return <span>Путь от вас: около {r.totalDays} {r.totalDays % 10 === 1 && r.totalDays % 100 !== 11 ? "дня" : "дней"} ({how}).</span>; })()}<button aria-label="Закрыть" onClick={() => setHit(null)}>×</button></div>
+    {hit ? <div className="map-card" role="status"><b>{hit.name}</b><span>{hit.detail}</span>{hit.id === current && <em>Вы здесь</em>}{hit.kind === "settlement" && hit.id !== current && (() => { const opts = travelOptions(current, hit.id); if (!opts.length) return <span>Отсюда туда дороги нет.</span>; const days = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "день" : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? "дня" : "дней"}`; return <span>{opts.map(o => `${o.overland ? (o.plan.segments.some(s => s.mode === "river") ? "По суше и реке" : "По суше") : "Морем"}: ${days(o.plan.totalDays)}`).join(" · ")}</span>; })()}{!hit.canon && <small className="map-proposal">Этого названия нет в каноне: оно наше, проектное.</small>}<button aria-label="Закрыть" onClick={() => setHit(null)}>×</button></div>
       : <p className="map-tip">Нажмите на карту, чтобы узнать, что это за место.</p>}
     <div className="map-legend"><span><i className="legend-current"/>Вы здесь</span><span><i className="legend-destination"/>Цель</span><span><i className="legend-route"/>Выбранный путь</span></div>
   </div>;
@@ -259,7 +260,8 @@ export default function App() {
   const location = world.locations[game.playerLocation] ?? world.locations[world.startLocationId]!;
   const currentSettlementId = game.settlementId ?? "roven";
   const currentSettlement = MAP_NODES.find(node => node.id === currentSettlementId);
-  const selectedRoute = useMemo(() => findVeloriaRoute(currentSettlementId, destinationId), [currentSettlementId, destinationId]);
+  const [overlandOnly, setOverlandOnly] = useState(false);
+  const selectedRoute = useMemo(() => findVeloriaRoute(currentSettlementId, destinationId, game.minute, { overlandOnly }), [currentSettlementId, destinationId, overlandOnly, game.minute]);
   const statuses = useMemo(() => availableStatuses(draft.originId), [draft.originId]);
   const professions = useMemo(() => availableProfessions(draft.originId, draft.statusId), [draft.originId, draft.statusId]);
   const scenarios = useMemo(() => availableScenarios(draft.originId), [draft.originId]);
@@ -418,7 +420,7 @@ export default function App() {
     if (worldId !== "veloria") { setNotice("Глобальная карта путешествий доступна только в кампании Велории."); return; }
     // Опекуны рядом: живые родители, опекуны, родня или няня (кормилица не в счёт).
     const hasGuardians = Object.values(world.npcs).some(n => n.caregiving && n.caregiving.role !== "wet-nurse" && n.lifeStatus !== "dead" && !(game.npcDeaths && game.npcDeaths[n.id] !== undefined));
-    const result = beginVeloriaJourney(game, destinationId, { hasGuardians });
+    const result = beginVeloriaJourney(game, destinationId, { hasGuardians, overlandOnly });
     if (result.state !== game) setGame(result.state);
     setNotice(result.message);
     if (result.ok || result.state !== game) setLog(l => [...l, result.message]);
@@ -532,6 +534,7 @@ export default function App() {
       {game.journey ? <div className="journey-card"><b>Маршрут до {MAP_NODES.find(n=>n.id===game.journey!.destinationId)?.name ?? game.journey.destinationId}</b><p>Сейчас: {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.from)?.name ?? game.journey.route[game.journey.segmentIndex]?.from} → {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.to)?.name ?? game.journey.route[game.journey.segmentIndex]?.to}</p><p>Участок {game.journey.segmentIndex+1} из {game.journey.route.length}. Осталось дней на участке: <strong>{game.journey.daysRemaining}</strong>. В пути: {game.journey.elapsedDays} дн.</p><p className="hint">Время продвигается по одному дню за действие. При достижении промежуточного пункта обновляется положение героя.</p><button className="primary" onClick={advanceJourney}>ПРОДВИНУТЬСЯ НА ОДИН ДЕНЬ</button></div> : <>
         <label>Куда отправиться<select value={destinationId} onChange={e=>setDestinationId(e.target.value)}>{MAP_NODES.filter(node=>node.id!==currentSettlementId&&knownPlaces.has(node.id)).map(node=><option key={node.id} value={node.id}>{node.name}, {COUNTRIES.find(c=>c.id===node.countryId)?.name}</option>)}</select></label>
         {selectedRoute ? <div className="start-preview"><b>Маршрут: {selectedRoute.totalDays} игровых дней</b><p>{selectedRoute.segments.map(segment=>`${MAP_NODES.find(n=>n.id===segment.from)?.name ?? segment.from} → ${MAP_NODES.find(n=>n.id===segment.to)?.name ?? segment.to} (${segment.days} дн., ${segment.mode === "road" ? "дорога" : segment.mode === "river" ? "река" : segment.mode === "sea" ? "море" : "горный перевал"}, опасность: ${segment.danger === "low" ? "низкая" : segment.danger === "moderate" ? "умеренная" : "высокая"})`).join("; ")}</p><small>Погодные закрытия и сезонные ограничения пока показываются как справочные данные и будут подключены к календарю.</small></div> : <div className="warning">Маршрут между этими точками не найден.</div>}
+        <label className="inline-check"><input type="checkbox" checked={overlandOnly} onChange={e=>setOverlandOnly(e.target.checked)}/> Только по суше, без моря</label>
         <button className="primary" disabled={!selectedRoute || selectedRoute.totalDays===0} onClick={startJourney}>НАЧАТЬ ПУТЕШЕСТВИЕ</button>
       </>}
       <h3 className="sub">Поселения на карте</h3><div className="region-list">{MAP_NODES.map(node=><div key={node.id}><b>{node.name}</b><span>{COUNTRIES.find(c=>c.id===node.countryId)?.name} · {node.kind}</span></div>)}</div>
