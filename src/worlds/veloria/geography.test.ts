@@ -33,11 +33,9 @@ describe("география по Библии мира", () => {
     expect(findVeloriaRoute("roven", "koronholm")!.totalDays).toBeLessThan(findVeloriaRoute("roven", "northwatch")!.totalDays);
     expect(findVeloriaRoute("roven", "har-kadar")!.totalDays).toBeGreaterThan(findVeloriaRoute("roven", "qadira")!.totalDays);
   });
-  it("каноном помечены места из Библии, аудита канона и реестра домов, остальное проектное", () => {
-    const canon = MAP_NODES.filter(n => n.canon).map(n => n.id).sort();
-    // Библия: 9 городов. Аудит канона: Меровар, Нортвотч, Железный Перевал. Реестр домов: Сафра, Синяя Гавань, Ивовый Предел, Намар.
-    expect(canon).toEqual(["azrakar", "bluehaven", "dravorn", "har-kadar", "ironpass", "koronholm", "lethariel", "merovar", "miraj", "namar", "northwatch", "qadira", "roven", "safra", "varentport", "willowmere"]);
-    expect(REGIONS.filter(r => r.canon).map(r => r.name).sort()).toEqual(["Медное побережье", "Северные холмы", "Южная долина"]);
+  it("все места и края карты в каноне (утверждены автором 21.11.2026)", () => {
+    expect(MAP_NODES.filter(n => !n.canon).map(n => n.id)).toEqual([]);
+    expect(REGIONS.filter(r => !r.canon).map(r => r.name)).toEqual([]);
     expect(ROUTES.find(r => r.name === "Западный тракт")).toBeDefined();
   });
   it("где можно обойти по суше, есть и сухопутный путь", () => {

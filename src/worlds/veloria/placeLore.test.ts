@@ -28,6 +28,6 @@ describe("описания мест на карте", () => {
     const m = MAP_NODES.find(n => n.id === "miraj")!;
     const hit = mapHitAt(m.x, m.y)!;
     expect(hit.story?.text).toMatch(/Скрытый базар/);
-    expect(hit.story?.hasProposal).toBe(true);
+    expect(hit.story?.hasProposal).toBe(false);
   });
 });
