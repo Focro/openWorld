@@ -17,6 +17,7 @@ import { validateChildAppearance, type AppearanceProfile } from "./heritage";
 import { validateFamilyRecord } from "./family";
 import type { WorldDifficultyId } from "./difficulty";
 import { SECOND_PRINCE_START_YEAR } from "./reynarCourt";
+import { seedHash } from "./populations";
 
 export interface VeloriaCampaignRecipe {
   kind: "veloria-character";
@@ -59,7 +60,7 @@ export function resolveInheritedAppearance(draft: VeloriaCharacterDraft): Appear
 export type CampaignStart = { ok: true; world: WorldData; state: GameState; notice: string } | { ok: false; errors: string[] };
 
 /**
- * Создаёт кампанию. Если передано состояние умершего героя — новый герой продолжает тот же мир
+ * Создаёт кампанию. Если передано состояние умершего героя: новый герой продолжает тот же мир
  * (хроника и память NPC сохраняются), иначе начинается новая версия мира.
  */
 export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: GameState): CampaignStart {
@@ -81,6 +82,10 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
   const world = buildVeloriaCampaignWorld(recipe);
   if (!world) return { ok: false, errors: ["Не удалось собрать мир для этой анкеты."] };
   const isPrince = draft.dynasticRole === "second-prince";
+  /** Старт с рождения: второй принц или новорождённый в обычной семье. */
+  const isBirth = isPrince || draft.age === 0;
+  /** «Новая жизнь»: обычное происхождение из каталога, возраст от 0 до 12. */
+  const newLife = Boolean(draft.birthOriginId) && !isPrince;
   const start = validation.start;
   const heritage = {
     ...family.record,
@@ -104,7 +109,11 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     if (!state) return { ok: false, errors: ["Не удалось продолжить мир новым героем."] };
   } else {
     state = createInitialState(world, draft.name.trim());
-    state.playerMemory[0] = { ...state.playerMemory[0]!, text: `Вы начинаете новую жизнь в Ровене: ${draft.name}, ${draft.age} лет. ${start.notes.join(" ")}`, kind: "own", confidence: 1 };
+    state.playerMemory[0] = newLife && !isBirth
+      ? { ...state.playerMemory[0]!, text: `[Детские воспоминания] ${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.6 }
+      : isBirth && !isPrince
+      ? { ...state.playerMemory[0]!, text: `[До первых связных воспоминаний] ${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.2 }
+      : { ...state.playerMemory[0]!, text: `Вы начинаете новую жизнь в Ровене: ${draft.name}, ${draft.age} лет. ${start.notes.join(" ")}`, kind: "own", confidence: 1 };
   }
   state = { ...state, playerProfile: profile, campaign: { worldId: "veloria", recipe: structuredClone(recipe) }, worldStartYearKL: world.startYearKL ?? 742 };
 
@@ -117,17 +126,48 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     state.relations["rey-second-prince-nurse"] = { trust: 30, sympathy: 55, fear: 0, respect: 5 };
     state.playerMemory = [{
       minute: state.minute, kind: "own", confidence: 0.2,
-      text: `[До первых связных воспоминаний] Вы родились в ${SECOND_PRINCE_START_YEAR} КЛ в королевской детской Коронхольма. Гарен Вальд признал вас сыном. Принцесса Элиана, его супруга, не является вашей матерью и холодна к вам из-за измены мужа. ${start.notes.join(" ")}`
+      // Подробности рождения уже есть в start.notes (character.ts), здесь их не повторяем.
+      text: `[До первых связных воспоминаний] ${start.notes.join(" ")}`
     }];
   }
   // Развитие: возраст отсчитывается от минуты рождения. Для взрослого старта вехи считаются пройденными.
-  const birthMinute = isPrince ? state.minute : state.minute - draft.age * MINUTES_PER_YEAR;
+  // У ребёнка из «Новой жизни» свой день рождения внутри года, а не ровно в день старта.
+  const birthdayOffset = newLife ? (seedHash(`${draft.familySeed ?? draft.name}:hero-birthday`) % 365) * 1440 : 0;
+  const birthMinute = isBirth ? state.minute : state.minute - draft.age * MINUTES_PER_YEAR - birthdayOffset;
   state.development = createDevelopment({
     birthMinute, nowMinute: state.minute, aptitudes: draft.attributes,
     seed: `${draft.familySeed ?? draft.name}:${draft.name}`,
     sex: isPrince ? "male" : draft.sex ?? "unspecified",
+    // Обычный новорождённый: задатки: как у принца, темперамент и телосложение выбирает игрок.
     temperament: draft.temperament, build: draft.bodyBuild, heightTendency: draft.heightTendency
   });
+  if (newLife && !isBirth) {
+    // Ребёнок уже прожил годы с этими людьми: привязанность к тем, кто растил, сложилась по их теплоте.
+    for (const member of family.members) {
+      const friend = member.id.includes("-friend-");
+      if (member.lifeStatus !== "alive" || (member.homeId !== family.household?.homeId && !friend)) continue;
+      if (friend) {
+        state.development.attachments[member.id] = { security: 15, familiarity: 55, wariness: 0, lastContactMinute: state.minute };
+        state.relations[member.id] = { trust: 30, sympathy: 45, fear: 0, respect: 5 };
+        continue;
+      }
+      const warmth = member.personality?.traits.warmth ?? 60;
+      const carer = member.caregiving?.role === "mother" || member.caregiving?.role === "father" || member.caregiving?.role === "guardian";
+      state.development.attachments[member.id] = { security: Math.round((carer ? 35 : 15) + warmth * 0.4), familiarity: carer ? 80 : 60, wariness: warmth < 40 ? 15 : 0, lastContactMinute: state.minute };
+      state.relations[member.id] = { trust: carer ? 45 : 25, sympathy: Math.round(warmth * 0.8), fear: warmth < 40 ? 15 : 0, respect: carer ? 20 : 5 };
+    }
+    state.playerProfile = { ...profile, heightCm: Math.round(state.development.physical.heightCm), weightKg: state.development.physical.weightKg };
+  }
+  if (isBirth && !isPrince) {
+    // Новорождённый уже знает голос матери, если она жива; родные получают тёплое стартовое отношение.
+    for (const member of family.members) {
+      if (member.lifeStatus !== "alive" || !member.caregiving) continue;
+      const mother = member.caregiving.role === "mother";
+      state.development.attachments[member.id] = { security: mother ? 30 : 8, familiarity: mother ? 20 : 5, wariness: 0, lastContactMinute: state.minute };
+      state.relations[member.id] = { trust: 30, sympathy: Math.round((member.personality?.traits.warmth ?? 60) * 0.9), fear: 0, respect: 5 };
+    }
+    state.playerProfile = { ...profile, heightCm: Math.round(state.development.physical.heightCm), weightKg: state.development.physical.weightKg };
+  }
   if (isPrince) {
     // Новорождённый уже знает голос матери: это единственная привязанность, существующая до рождения.
     state.development.attachments["rey-second-prince-mother"] = { security: 30, familiarity: 20, wariness: 0, lastContactMinute: state.minute };
@@ -138,11 +178,13 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
       skinTone: appearance?.skinTone, eyeColor: appearance?.eyeColor, naturalHairColor: appearance?.hairColor,
       hairTexture: appearance?.hairTexture, facialFeatures: appearance?.facialFeatures, description: draft.appearance?.trim() || undefined
     },
-    { hairstyle: draft.hairstyle?.trim() || "причёска не описана", clothing: isPrince ? "пелёнки" : "одежда стартового комплекта" }
+    { hairstyle: isBirth ? "редкие младенческие волосы" : draft.hairstyle?.trim() || (newLife ? "детская стрижка" : "причёска не описана"), clothing: isBirth ? "пелёнки" : newLife ? (draft.age < 2 ? "детская рубашонка" : "простая детская одежда") : "одежда стартового комплекта" }
   );
   const notice = previous?.lifeStatus === "dead"
     ? "Новый персонаж продолжает историю мира. Время, хроника и память NPC сохранены; умерший герой не возвращён."
-    : isPrince ? `Персонаж создан. Кампания началась с рождения во дворце Коронхольма в ${SECOND_PRINCE_START_YEAR} КЛ.` : "Персонаж создан. Кампания началась в Ровене.";
+    : isPrince ? `Персонаж создан. Кампания началась с рождения во дворце Коронхольма в ${SECOND_PRINCE_START_YEAR} КЛ.`
+    : newLife ? `Новая жизнь началась. ${start.notes[0] ?? ""}`.trim()
+    : isBirth ? "Персонаж создан. Кампания началась с рождения в Ровене." : "Персонаж создан. Кампания началась в Ровене.";
   return { ok: true, world, state, notice };
 }
 

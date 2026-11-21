@@ -164,7 +164,7 @@ export interface DevelopmentState {
     /** Накопленный дефицит роста от недоедания и болезней, см. */
     growthDeficitCm: number;
   };
-  /** Потребности, важные прежде всего в младенчестве. 0 — удовлетворено, 100 — острая нужда. */
+  /** Потребности, важные прежде всего в младенчестве. 0: удовлетворено, 100: острая нужда. */
   needs: { hunger: number; tiredness: number; distress: number };
   /** Последняя минута сна/кормления для отображения. */
   lastFedMinute: number;
@@ -211,7 +211,7 @@ function stableHash(value: string): number {
 const seeded = (seed: string) => (stableHash(seed) % 10000) / 10000;
 
 const apt = (aptitudes: Record<string, number>, key: string) => clamp(aptitudes[key] ?? 15, 1, 30);
-/** Задаток 15 — средний темп; 30 — примерно на 18% быстрее, 1 — на 18% медленнее. */
+/** Задаток 15: средний темп; 30: примерно на 18% быстрее, 1: на 18% медленнее. */
 const aptitudeFactor = (value: number) => 1 + (value - 15) * 0.012;
 
 export function computePace(aptitudes: Record<string, number>, temperament: Temperament, seed: string): Record<DevelopmentDomain, number> {
@@ -342,7 +342,7 @@ export const hasMilestone = (dev: DevelopmentState | undefined, id: MilestoneId)
 
 export interface Capabilities {
   stage: LifeStageDef;
-  /** Максимум слов в реплике; 0 — речи нет, Infinity — без ограничений. */
+  /** Максимум слов в реплике; 0: речи нет, Infinity: без ограничений. */
   maxWordsPerUtterance: number;
   canWalk: boolean;
   /** Максимальная длина перехода, который ребёнок может пройти сам (метры). */
@@ -625,7 +625,7 @@ function simulateDay(world: WorldData, state: GameState, dev: DevelopmentState, 
 
 /**
  * Продвигает развитие от lastProcessedMinute до targetMinute.
- * Час за часом считаются потребности (только в первые шесть лет), день за днём — рост и вехи.
+ * Час за часом считаются потребности (только в первые шесть лет), день за днём: рост и вехи.
  */
 export function advanceDevelopment(world: WorldData, state: GameState, targetMinute: number): { development: DevelopmentState; notices: DevelopmentNotice[] } | null {
   const source = state.development;
@@ -723,7 +723,7 @@ export function performInfantAct(world: WorldData, state: GameState, act: Infant
       else reinforceHabit(next, { id: `seeks-${target.id}`, label: `ищет взглядом и тянется к: ${target.name}`, trigger: "тревога или усталость", context: `присутствие:${target.id}` }, minute, 3);
       return {
         ok: true, development: next, minutes: 5,
-        text: accepted ? `Вы тянетесь к ${target.name}, и вас берут на руки.` : `Вы тянетесь к ${target.name}, но в ответ — только сдержанный взгляд.`,
+        text: accepted ? `Вы тянетесь к ${target.name}, и вас берут на руки.` : `Вы тянетесь к ${target.name}, но в ответ: только сдержанный взгляд.`,
         eventText: `Младенец тянется к ${target.name}.`,
         relationDeltas: accepted ? { [target.id]: { sympathy: 2 } } : {}
       };

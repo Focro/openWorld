@@ -6,7 +6,7 @@ export type Transport = "walk" | "horse" | "cart";
 export const BASE_SPEED_M_PER_MIN: Record<Transport, number> = { walk: 80, horse: 200, cart: 120 };
 
 /**
- * Множитель скорости по местности. 0 — транспорт не проходит
+ * Множитель скорости по местности. 0: транспорт не проходит
  * (например, телега по лесу).
  */
 export const TERRAIN_FACTOR: Record<Terrain, Record<Transport, number>> = {
@@ -22,7 +22,7 @@ export const TERRAINS = Object.keys(TERRAIN_FACTOR) as Terrain[];
 
 /**
  * Время в пути в минутах (округляется вверх) или null, если не пройти / данные неверны.
- * Пока не учитываются погода, усталость и опасность маршрута — это следующие шаги.
+ * Пока не учитываются погода, усталость и опасность маршрута: это следующие шаги.
  */
 export function travelMinutes(distanceM: number, terrain: Terrain, transport: Transport): number | null {
   if (!Number.isFinite(distanceM) || distanceM <= 0) return null;

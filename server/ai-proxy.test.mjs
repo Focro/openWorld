@@ -37,8 +37,8 @@ test("provider resolution: server key, player key, model override only with own 
 test("openai-compatible providers: request shape and response parsing", async () => {
   const target = { providerId: "openai", provider: PROVIDERS.openai, apiKey: "k", model: "m" };
   const body = buildChatCompletionsRequest(target, envelope);
-  assert.equal(body.max_completion_tokens, 2048); assert.equal(body.messages[0].role, "system");
-  assert.equal(buildChatCompletionsRequest({ ...target, provider: PROVIDERS.deepseek }, envelope).max_tokens, 2048);
+  assert.equal(body.max_completion_tokens, 200); assert.equal(body.messages[0].role, "system");
+  assert.equal(buildChatCompletionsRequest({ ...target, provider: PROVIDERS.deepseek }, envelope).max_tokens, 200);
   let seen;
   const ok = await callProvider({ ...target, provider: PROVIDERS.deepseek }, envelope, async (url, init) => {
     seen = { url, auth: init.headers.Authorization };
@@ -51,4 +51,23 @@ test("openai-compatible providers: request shape and response parsing", async ()
   assert.equal((await callProvider(target, envelope, async () => { throw new Error("net"); })).status, 502);
   const filtered = await callProvider(target, envelope, async () => new Response(JSON.stringify({ choices: [{ message: { content: "" }, finish_reason: "content_filter" }] }), { status: 200 }));
   assert.equal(filtered.refused, true);
+});
+
+test("accepts the compact intent protocol and keeps the system prompt short", async () => {
+  const { buildSystemPrompt } = await import("./ai-proxy.mjs");
+  const intent = { protocol: "openworld-intent-v1", playerText: "иду на рынок", systemInstructions: ["коротко"], context: { acts: ["move"] }, outputContract: { allowedActions: ["move"] } };
+  assert.equal(validateEnvelope({ envelope: intent }), null);
+  assert.ok(buildSystemPrompt(intent).length < 300);
+});
+
+test("scene protocol: needs speakers, gets its own prompt and a larger but bounded token limit", async () => {
+  const { buildSystemPrompt, buildChatCompletionsRequest, maxTokensFor, config, PROVIDERS } = await import("./ai-proxy.mjs");
+  const scene = { protocol: "openworld-scene-v1", playerText: "Привет, Марта!", systemInstructions: ["живо"], context: { npcs: [] }, outputContract: { speakers: ["marta"] } };
+  assert.equal(validateEnvelope({ envelope: scene }), null);
+  assert.ok(validateEnvelope({ envelope: { ...scene, outputContract: {} } }));
+  assert.match(buildSystemPrompt(scene), /replies/);
+  assert.equal(maxTokensFor(scene), config.sceneMaxTokens);
+  assert.ok(config.sceneMaxTokens >= 1000 && config.sceneMaxTokens <= 4000);
+  const request = buildChatCompletionsRequest({ model: "m", provider: PROVIDERS.deepseek }, scene);
+  assert.equal(request.max_tokens, config.sceneMaxTokens);
 });

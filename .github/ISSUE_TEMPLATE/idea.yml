@@ -1,0 +1,14 @@
+name: Идея / Idea
+description: Предложить новое для игры или мира / Suggest something for the game or the world
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Идея / Idea
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Зачем это игроку / Why it matters to players

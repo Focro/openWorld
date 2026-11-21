@@ -1,6 +1,11 @@
 import type { WorldData } from "../../engine/types";
 import { createVeloriaWorld } from "./world";
 import { attachStartEntourage } from "./upperSociety";
+import { NEWBORN_ORIGINS, NEWBORN_ORIGIN_LABELS } from "./birthFamily";
+import { generateVeloriaFamily } from "./familyGeneration";
+import { birthOrigin, MAX_BIRTH_START_AGE } from "./birthOrigins";
+import { MAP_NODES } from "./atlas";
+import { yearsWord } from "./birthHousehold";
 import { buildReynarCourt, SECOND_PRINCE_START_YEAR } from "./reynarCourt";
 import { VELORIA_ORIGIN_LABELS } from "./lore";
 import { FAITHS } from "./faiths";
@@ -31,6 +36,8 @@ export interface VeloriaCharacterDraft {
   personality?: string; education?: string; faithId?: string; skills?: string; familyNotes?: string;
   /** Для старта с рождения: врождённый темперамент и ожидаемое телосложение (не готовый характер). */
   sex?: "male" | "female" | "unspecified";
+  /** «Новая жизнь в Велории» (0.16.0): происхождение из BIRTH_ORIGINS, старт с 0 до 12 лет. */
+  birthOriginId?: string;
   temperament?: Partial<import("../../engine/development").Temperament>;
   bodyBuild?: import("../../engine/development").BodyBuild;
   heightTendency?: import("../../engine/development").HeightTendency;
@@ -105,6 +112,23 @@ const SCENARIOS: Record<VeloriaStartScenario, VeloriaOriginId[]> = {
 };
 const ATTRIBUTES = ["Сила", "Выносливость", "Ловкость", "Интеллект", "Восприятие", "Харизма", "Воля"] as const;
 
+/**
+ * «Новая жизнь» (0.16.1): игрок распределяет 15 очков между пятью задатками по шкале 1–5.
+ * Внутри движок по-прежнему считает по шкале 1–30; восприятие и воля не выбираются и стоят средними.
+ */
+export const NEW_LIFE_ATTRIBUTES = ["Сила", "Выносливость", "Ловкость", "Интеллект", "Харизма"] as const;
+export const NEW_LIFE_POINTS = 15;
+const LEVEL_TO_INTERNAL = [0, 6, 10, 14, 20, 26] as const;
+export const HIDDEN_ATTRIBUTE_VALUE = 14;
+export function newLifeAttributes(levels: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = { "Восприятие": HIDDEN_ATTRIBUTE_VALUE, "Воля": HIDDEN_ATTRIBUTE_VALUE };
+  for (const key of NEW_LIFE_ATTRIBUTES) out[key] = LEVEL_TO_INTERNAL[Math.max(1, Math.min(5, Math.round(levels[key] ?? 3)))]!;
+  return out;
+}
+export function newLifeLevels(attributes: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(NEW_LIFE_ATTRIBUTES.map(key => { const i = LEVEL_TO_INTERNAL.indexOf((attributes[key] ?? 14) as never); return [key, i > 0 ? i : 3]; }));
+}
+
 export function availableStatuses(origin: VeloriaOriginId): VeloriaStatusId[] {
   return [...(ORIGIN_STATUS[origin] ?? [])];
 }
@@ -121,12 +145,23 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
   if (!draft.name.trim() || draft.name.trim().length > 40) errors.push("Имя: от 1 до 40 символов.");
   if (!Number.isInteger(draft.age) || draft.age < 0 || draft.age > 80) errors.push("Возраст: от 0 до 80 лет.");
   if (draft.age < 16 && draft.professionId !== "none") errors.push("Ребёнок младше 16 лет не может иметь полноценную взрослую профессию.");
-  if (draft.dynasticRole === "second-prince") {
+  const newLife = birthOrigin(draft.birthOriginId);
+  if (draft.birthOriginId && !newLife) errors.push("Неизвестное происхождение.");
+  if (newLife && draft.dynasticRole !== "second-prince" && (draft.age < 0 || draft.age > MAX_BIRTH_START_AGE)) errors.push(`Новая жизнь начинается с рождения или с возраста до ${MAX_BIRTH_START_AGE} лет.`);
+  if (newLife && !newLife.fixed && draft.dynasticRole === "second-prince") errors.push("Второй принц выбирается как своё происхождение.");
+  if (newLife && draft.dynasticRole !== "second-prince") {
+    if (draft.originId !== newLife.legacyOriginId || draft.statusId !== newLife.statusId) errors.push("Происхождение анкеты не совпадает с выбранным вариантом рождения.");
+  } else if (draft.dynasticRole === "second-prince") {
     if (draft.originId !== "acknowledged-bastard" || draft.statusId !== "noble" || draft.professionId !== "none" || draft.familyState !== "together" || draft.age !== 0 || draft.startScenarioId !== "ordinary" || draft.parentalUnionStatus !== "unmarried") errors.push("Сценарий второго принца начинается при рождении в 723 КЛ: дворянский статус, признанный сын, мать жива при рождении, родители не состояли в браке.");
   } else if (!ORIGIN_STATUS[draft.originId]?.includes(draft.statusId)) errors.push("Статус несовместим с происхождением.");
-  if (draft.dynasticRole !== "second-prince" && (!STATUS_PROFESSIONS[draft.statusId]?.includes(draft.professionId) ||
+  if (!newLife && draft.dynasticRole !== "second-prince" && (!STATUS_PROFESSIONS[draft.statusId]?.includes(draft.professionId) ||
       !PROFESSION_ORIGINS[draft.professionId]?.includes(draft.originId))) errors.push("Профессия несовместима с происхождением или статусом.");
-  if (draft.dynasticRole !== "second-prince" && !SCENARIOS[draft.startScenarioId]?.includes(draft.originId)) errors.push("Стартовая ситуация несовместима с биографией.");
+  if (!newLife && draft.dynasticRole !== "second-prince" && !SCENARIOS[draft.startScenarioId]?.includes(draft.originId)) errors.push("Стартовая ситуация несовместима с биографией.");
+  if (newLife && (draft.professionId !== "none" || draft.startScenarioId !== "ordinary")) errors.push("Детский старт: без профессии и в обычной ситуации.");
+  if (!newLife && draft.age === 0 && draft.dynasticRole !== "second-prince") {
+    if (!NEWBORN_ORIGINS.includes(draft.originId)) errors.push("С рождения можно начать только в обычной семье: арендаторы, земледельцы, ремесленники, торговцы, возчики или подкидыш у храма.");
+    if (draft.startScenarioId !== "ordinary") errors.push("Старт с рождения возможен только в обычной ситуации.");
+  }
   if (draft.biography.length > 2000) errors.push("Биография: максимум 2000 символов.");
   if (draft.heightCm !== undefined && (!Number.isInteger(draft.heightCm) || draft.heightCm < (draft.age < 5 ? 40 : draft.age < 12 ? 70 : draft.age < 16 ? 110 : 140) || draft.heightCm > (draft.age < 5 ? 125 : draft.age < 12 ? 165 : draft.age < 16 ? 200 : 205))) errors.push("Рост не соответствует допустимому диапазону для выбранного возраста.");
   if (draft.weightKg !== undefined && (!Number.isFinite(draft.weightKg) || draft.weightKg < (draft.age < 5 ? 2 : draft.age < 12 ? 8 : draft.age < 16 ? 25 : 40) || draft.weightKg > (draft.age < 5 ? 30 : draft.age < 12 ? 70 : draft.age < 16 ? 110 : 140))) errors.push("Вес не соответствует допустимому диапазону для выбранного возраста.");
@@ -142,12 +177,16 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
   if ((draft.skills?.length ?? 0) > 500) errors.push("Навыки: максимум 500 символов.");
   if ((draft.familyNotes?.length ?? 0) > 500) errors.push("Сведения о семье: максимум 500 символов.");
   if (draft.faithId !== undefined && draft.faithId !== "none" && !FAITHS.some(f => f.id === draft.faithId)) errors.push("Выбрана неизвестная религиозная традиция.");
-  for (const key of ATTRIBUTES) {
+  if (newLife) {
+    const levels = NEW_LIFE_ATTRIBUTES.map(key => LEVEL_TO_INTERNAL.indexOf(draft.attributes[key] as never));
+    if (levels.some(level => level < 1) || draft.attributes["Восприятие"] !== HIDDEN_ATTRIBUTE_VALUE || draft.attributes["Воля"] !== HIDDEN_ATTRIBUTE_VALUE) errors.push("Задатки: каждый от 1 до 5.");
+    else if (levels.reduce((a, b) => a + b, 0) !== NEW_LIFE_POINTS) errors.push(`Нужно распределить ровно ${NEW_LIFE_POINTS} очков между пятью задатками.`);
+  } else for (const key of ATTRIBUTES) {
     const value = draft.attributes[key];
     if (!Number.isInteger(value) || value < 1 || value > 30) errors.push(`${key}: от 1 до 30.`);
   }
-  if (Object.keys(draft.attributes).length !== 7 ||
-      Object.values(draft.attributes).reduce((a, b) => a + b, 0) !== 100) {
+  if (!newLife && (Object.keys(draft.attributes).length !== 7 ||
+      Object.values(draft.attributes).reduce((a, b) => a + b, 0) !== 100)) {
     errors.push("Нужно распределить ровно 100 очков между семью характеристиками.");
   }
   if (errors.length) return { ok: false, errors };
@@ -158,9 +197,26 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
     locationId: draft.dynasticRole === "second-prince" ? "rey:royal-nursery" : base.locationId,
     money: draft.dynasticRole === "second-prince" ? 0 : base.money,
     inventory: draft.dynasticRole === "second-prince" ? { swaddling_cloth: 1 } : { ...base.inventory }, notes: draft.dynasticRole === "second-prince"
-      ? ["Ты родился в 723 КЛ во дворце Коронхольма как второй сын Гарена Вальда от женщины из далёкой восточной земли. Гарен признал тебя, хотя родители не состояли в браке.", "Элиана — жена Гарена, но не твоя мать. Её личная неприязнь к тебе вызвана изменой супруга; публично она соблюдает королевский протокол. Кронпринц Альдрен остаётся первым в линии наследования.", "Кампания начинается в день твоего рождения. Характеристики анкеты отражают задатки, а не навыки новорождённого."]
+      ? ["Вы родились в 723 КЛ во дворце Коронхольма как второй сын Гарена Вальда от женщины из далёкой восточной земли. Гарен признал вас, хотя родители не состояли в браке.", "Элиана: жена Гарена, но не ваша мать. Её личная неприязнь к вам вызвана изменой супруга; публично она соблюдает королевский протокол. Кронпринц Альдрен остаётся первым в линии наследования.", "Кампания начинается в день вашего рождения. Характеристики анкеты отражают задатки, а не навыки новорождённого."]
       : [...base.notes]
   };
+  if (newLife && draft.dynasticRole !== "second-prince") {
+    const family = generateVeloriaFamily(draft);
+    const place = MAP_NODES.find(node => node.id === newLife.settlementId)?.name ?? newLife.settlementId;
+    start.settlementId = newLife.settlementId;
+    start.locationId = family.household?.homeId ?? start.locationId;
+    start.money = 0;
+    start.inventory = draft.age < 2 ? { swaddling_cloth: 1 } : { plain_clothes: 1 };
+    start.notes = [draft.age === 0
+      ? `Вы рождаетесь в ${742} КЛ, ${place}: ${newLife.label.toLocaleLowerCase("ru")}.`
+      : `Вам ${draft.age} ${yearsWord(draft.age)}. ${place}, ${742} КЛ: ${newLife.label.toLocaleLowerCase("ru")}.`];
+    return { ok: true, start };
+  }
+  if (draft.age === 0 && draft.dynasticRole !== "second-prince") {
+    const household = generateVeloriaFamily(draft).household;
+    start.locationId = household?.homeId ?? "temple"; start.money = 0; start.inventory = { swaddling_cloth: 1 };
+    start.notes = [`Вы рождаетесь в 742 КЛ в Ровене: ${NEWBORN_ORIGIN_LABELS[draft.originId] ?? "обычная семья"}.`];
+  }
   if (draft.startScenarioId === "journey") {
     start.locationId = "south-gate"; start.money = Math.max(1, start.money - 4);
     start.notes.push("Персонаж прибыл в Ровен после дороги; часть средств ушла на путь.");
@@ -178,7 +234,7 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
   }
   if (draft.familyState === "lost") start.notes.push("Близкие погибли или пропали; точная судьба требует биографической записи.");
   if (draft.familyState === "unknown") start.notes.push("Персонаж не знает достоверно, кто его родители.");
-  if (draft.familyState === "chosen-family") start.notes.push("Главные семейные связи — выбранная семья и близкие люди.");
+  if (draft.familyState === "chosen-family") start.notes.push("Главные семейные связи: выбранная семья и близкие люди.");
   return { ok: true, start };
 }
 
@@ -200,7 +256,9 @@ export function createVeloriaWorldForCharacter(draft: VeloriaCharacterDraft): Wo
     };
   } else {
     world = { ...world, startYearKL, npcs: { ...world.npcs, ...court.npcs }, locations: { ...world.locations, ...court.locations } };
-    world = attachStartEntourage(world, draft.originId);
+    if (draft.age > 0 && !draft.birthOriginId) world = attachStartEntourage(world, draft.originId);
+    else world = { ...world, items: { ...world.items, swaddling_cloth: { id: "swaddling_cloth", name: "Пелёнка" } } };
+    world.globalStartId = result.start.settlementId;
     world.startLocationId = result.start.locationId;
     world.startMoney = result.start.money;
     world.startInventory = { ...result.start.inventory };
