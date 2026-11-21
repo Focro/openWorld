@@ -21,6 +21,10 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run build
+        env:
+          # Задаются в Settings, Secrets and variables, Actions, вкладка Variables.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist

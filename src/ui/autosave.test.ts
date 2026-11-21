@@ -12,6 +12,10 @@ describe("автосохранение", () => {
     expect(info.ok).toBe(true);
     expect(JSON.parse(readAutosave(s)!).game.playerName).toBe("Лиан");
     expect(s.getItem(AUTOSAVE_KEY)).not.toBeNull();
+    writeAutosave("demo", { playerName: "Другой", playerProfile: { age: 3 } } as unknown as GameState, s);
+    expect(JSON.parse(readAutosave(s, "veloria")!).game.playerName).toBe("Лиан");
+    expect(JSON.parse(readAutosave(s)!).game.playerName).toBe("Другой");
+    expect(readAutosave(s, "elsewhere")).toBeNull();
   });
   it("не падает, если места нет", () => {
     const full = { getItem: () => null, setItem: () => { throw new Error("QuotaExceeded"); }, removeItem: () => undefined };

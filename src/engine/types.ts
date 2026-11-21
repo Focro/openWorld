@@ -182,6 +182,10 @@ export interface GameState {
   appearanceObservations?: Record<string, Record<string, AppearanceObservation>>;
   /** После подтверждённой смерти действия старого персонажа запрещены. */
   lifeStatus?: "alive" | "dead";
+  /** Номер этой жизни (0.18.0): по нему смерть героя окончательна и старое сохранение его не вернёт. */
+  lifeId?: string;
+  /** Поселения, где герой уже побывал (для карты). */
+  visitedSettlements?: string[];
   deathRecord?: DeathRecord;
   /** Реакция общества на заявления героя; не является объективным диагнозом. */
   socialState?: {
@@ -209,6 +213,10 @@ export interface GameState {
     segmentIndex: number;
     daysRemaining: number;
     elapsedDays: number;
+    /** Ребёнок в пути без взрослых (0.18.0): дорога для него опаснее. */
+    alone?: boolean;
+    /** Сбежал от семьи: дома его ищут. Откуда сбежал. */
+    runawayFrom?: string;
   };
   playerProfile?: {
     age: number; originId: string; statusId: string; professionId: string; dynasticRole?: string; birthYearKL?: number;
