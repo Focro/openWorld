@@ -87,7 +87,7 @@ const ROUTE_SPECS: RouteSpec[] = [
 {from:"varentport",to:"ironpass",mode:"mountain-pass",danger:"high",seasonalClosure:"зимой перевал закрыт"},{from:"ironpass",to:"dravorn",mode:"mountain-pass",danger:"high",seasonalClosure:"зимнее закрытие перевалов"},
 {from:"dravorn",to:"deepforge",mode:"road",danger:"moderate"},{from:"dravorn",to:"stonebridge",mode:"mountain-pass",danger:"moderate",seasonalClosure:"снегопады и лавинная опасность"},
 // Элиндор на западе: побережье и леса.
-{from:"koronholm",to:"lethariel",mode:"road",danger:"high",name:"Западный тракт"},{from:"lethariel",to:"willowmere",mode:"road",danger:"low"},
+{from:"koronholm",to:"lethariel",mode:"road",danger:"moderate"},{from:"lethariel",to:"willowmere",mode:"road",danger:"low"},
 {from:"lethariel",to:"mossford",mode:"road",danger:"low"},{from:"mossford",to:"lake-ward",mode:"river",danger:"moderate"},
 // Сахрад на юге: южный берег Лиара и оазисы.
 {from:"millford",to:"saffron-coast",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"miraj",mode:"road",danger:"moderate"},{from:"saffron-coast",to:"qadira",mode:"road",danger:"high"},
@@ -105,10 +105,13 @@ export const ROUTES:Route[]=ROUTE_SPECS.map(spec=>{
 /** Условные контуры государств для схематической карты Ардана (координаты 0–100). */
 export interface CountryShape { countryId: string; points: Array<[number, number]> }
 export const COUNTRY_SHAPES: CountryShape[] = [
- {countryId:"estran",points:[[18,26],[30,18],[46,30],[50,38],[44,46],[40,52],[38,62],[26,62],[18,50]]},
+ // Эстран выходит к западному морю полосой между землями Элиндора: по Библии он держит Западный тракт до побережья.
+ {countryId:"estran",points:[[18,26],[30,18],[46,30],[50,38],[44,46],[40,52],[38,62],[26,62],[18,50],[16.6,41],[5,41],[5,36],[18.4,36]]},
  {countryId:"varent",points:[[50,22],[66,10],[86,6],[96,10],[92,24],[80,34],[70,40],[60,40],[50,34]]},
  {countryId:"tharvek",points:[[72,40],[84,32],[98,34],[98,62],[90,66],[78,62],[72,52]]},
- {countryId:"elyndor",points:[[6,18],[14,14],[20,22],[18,34],[16,50],[8,52],[6,40]]},
+ // Элиндор: северные леса с Летариэлем и южные земли у Ивового Предела, между ними эстранская полоса.
+ {countryId:"elyndor",points:[[6,18],[14,14],[20,22],[18.4,36],[5,36],[6,30]]},
+ {countryId:"elyndor",points:[[5,41],[16.6,41],[16,50],[8,52],[6,46]]},
  {countryId:"sahrad",points:[[26,66],[40,64],[50,70],[60,72],[66,82],[60,94],[38,96],[24,86]]},
  {countryId:"kharum",points:[[66,76],[78,68],[92,70],[99,80],[99,98],[70,98],[64,88]]}
 ];
@@ -120,6 +123,12 @@ export const MAP_ISLANDS: Array<{ countryId: string; points: Array<[number, numb
 ];
 
 /** Моря и реки для рисованной карты (0.18.0): внутреннее море Лиар по Библии, Открытое море на западе, река Лир через Ровен. */
+/** Дороги, которые рисуются на карте отдельно от путей между поселениями. */
+export interface MapRoad { id: string; name: string; points: Array<[number, number]> }
+/** Западный тракт по Библии: караванная дорога от Коронхольма к портам западного побережья. Названных портов там пока нет. */
+export const MAP_ROADS: MapRoad[] = [
+ {id:"west-road",name:"Западный тракт",points:[[30,37],[24,38],[18,38.5],[5,38.5]]}
+];
 export interface MapWater { id: string; name: string; kind: "sea" | "river"; points: Array<[number, number]> }
 export const MAP_WATERS: MapWater[] = [
  {id:"liar",name:"море Лиар",kind:"sea",points:[[44,48],[52,40],[62,42],[70,48],[72,58],[66,68],[54,68],[44,62],[40,56]]},

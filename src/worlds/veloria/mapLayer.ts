@@ -6,13 +6,13 @@
  * достаточно указать путь к файлу в MAP_IMAGE и, если надо, поправить x и y мест в atlas.ts.
  * Тап по карте показывает ближайшее место: поселение, край (горы, леса, дельта) или державу.
  */
-import { COUNTRIES, COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, REGIONS } from "./atlas";
+import { COUNTRIES, COUNTRY_SHAPES, MAP_NODES, MAP_ROADS, MAP_WATERS, REGIONS } from "./atlas";
 import { placeStory, type PlaceStory } from "./placeLore";
 
 /** Картинка карты в public/ (путь относительно сайта) или null, пока её нет. */
 export const MAP_IMAGE: { src: string; width: number; height: number } | null = null;
 
-export type MapHitKind = "settlement" | "region" | "country" | "water";
+export type MapHitKind = "settlement" | "region" | "country" | "water" | "road";
 export interface MapHit { kind: MapHitKind; id: string; name: string; detail: string; x: number; y: number; /** Названо в Библии мира. */ canon: boolean; /** Что рассказать о месте: канон, проектное дополнение и дома. */ story?: PlaceStory | null }
 
 const KIND_WORD: Record<string, string> = { capital: "столица", city: "город", town: "городок", village: "деревня", fort: "крепость", port: "порт", oasis: "оазис" };
@@ -46,6 +46,10 @@ export function mapHitAt(x: number, y: number, settlementRadius = 4, regionRadiu
   if (node && dist(node) <= settlementRadius) {
     const country = COUNTRIES.find(c => c.id === node.countryId)?.name ?? node.countryId;
     return { kind: "settlement", id: node.id, name: node.name, detail: `${KIND_WORD[node.kind] ?? node.kind}, ${country}`, x: node.x, y: node.y, canon: node.canon === true, story: placeStory(node.id) };
+  }
+  // Дорога (Западный тракт): близко к её линии.
+  for (const road of MAP_ROADS) {
+    if (road.points.some((p, i) => i > 0 && distToSegment(x, y, road.points[i - 1]!, p) <= 1.5)) return { kind: "road", id: road.id, name: road.name, detail: "дорога", x, y, canon: true, story: placeStory(road.id) };
   }
   // Река: близко к её линии. Море: внутри очертания.
   for (const w of MAP_WATERS) {
