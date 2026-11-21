@@ -15,6 +15,7 @@ import type { LocationDef, NpcDef, NpcPersonality } from "../../engine/types";
 import type { CharacterFamilyRecord } from "./family";
 import type { AppearanceProfile, ParentHeritage } from "./heritage";
 import { childOf } from "./nobleAppearance";
+import { buildKin, lookFromLine, type KinElderInput, type KinMember } from "./kin";
 import { MAP_NODES } from "./atlas";
 import { POPULATIONS, regionalName, sampleResidentAppearance, seedHash, type StateId } from "./populations";
 import { birthOrigin, type BirthOrigin, type WealthHint, type WorkPlace } from "./birthOrigins";
@@ -52,6 +53,8 @@ export interface BirthHousehold {
   members: NpcDef[];
   guardians: NpcDef[];
   biologicalParents: ParentHeritage[];
+  /** Родные для шага «Внешность»: родители и их родители (0.19.0). */
+  kin: KinMember[];
   record: CharacterFamilyRecord;
   appearance?: AppearanceProfile;
   preview: BirthPreview;
@@ -203,6 +206,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const members: NpcDef[] = [];
   const guardians: NpcDef[] = [];
   const biologicalParents: ParentHeritage[] = [];
+  const elders: KinElderInput[] = [];
   const preview: BirthPreviewMember[] = [];
   const add = (spec: Spec, role: string, p: ReturnType<typeof personality>, extra: Partial<NpcDef>, occupation: string, livesWithYou = true, dress: string = clothing) => {
     const { word, ...pers } = p;
@@ -267,7 +271,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     addFriends(homeId, homeId, true);
     const summary = `Вас оставили младенцем: ${origin.home.name.toLocaleLowerCase("ru")}. Кто ваши родители, неизвестно. Растит вас ${g.name}.${heroAge > 0 ? ` Вам ${heroAge} ${yearsWord(heroAge)}.` : ""}`;
     return {
-      origin, kind, wealth: "бедно", settlementId: s, homeId, locations, links, members, guardians, biologicalParents, summary,
+      origin, kind, wealth: "бедно", settlementId: s, homeId, locations, links, members, guardians, biologicalParents, kin: [], summary,
       record: {
         characterId: `player:${familyId}`, birthYear: CURRENT_YEAR - heroAge, biologicalParentIds: [], biologicalParentage: "unknown", legalParentIds: [], legalParentage: "unknown",
         guardianIds: [gn.id, f.institutionId], birthStatus: "unknown", parentalUnion: { status: "unknown" }, recognitions: [],
@@ -321,10 +325,12 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
         familyRole: "other", caregiving: { role: "relative", canFeed: false }, schedule: [{ from: 0, to: 24, locationId: homeId, activity: "нянчит внуков и ведёт хозяйство" }]
       }, "нянчит внуков, ведёт хозяйство");
       guardians.push(gNpc);
+      elders.push({ id: gran.id, given: gran.given, sex: "female", side: paternal ? "father" : "mother", look: gran.look });
       const grandpaAge = granAge + between(`${seed}:grandpa-gap`, 0, 6);
       if (grandpaAge <= 80 && chance(`${seed}:grandpa`, 0.4)) {
         const gp = person(`${familyId}-grandfather`, "male", grandpaAge, { family: paternal ? surname : mother.name.split(" ").slice(-1)[0] });
         if (paternal && pattern === "given-of-father") gp.name = `${grandfatherGiven} ${surname}`;
+        elders.push({ id: gp.id, given: paternal && pattern === "given-of-father" ? grandfatherGiven : gp.given, sex: "male", side: paternal ? "father" : "mother", look: gp.look });
         add(gp, paternal ? "дедушка, отец отца" : "дедушка, отец матери", personality(`${seed}:grandpa`, "дедушка", "elder", origin.values, "male", gp.age), {
           familyRole: "other", caregiving: { role: "relative", canFeed: false }, schedule: [{ from: 0, to: 24, locationId: homeId, activity: "чинит утварь и сидит у очага" }]
         }, "помогает по дому, как позволяют силы");
@@ -406,7 +412,22 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
 
   addFriends(homeId === near ? square : near, near, false);
 
-  const childAppearance = fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
+  const kin = buildKin([
+    { id: mother.id, given: mother.given, sex: "female", look: mother.look, alive: motherAlive, state: mother.origin },
+    ...(fatherKnown ? [{ id: father.id, given: father.given, sex: "male" as const, look: father.look, alive: fatherAlive, state: father.origin }] : [])
+  ], elders, `${seed}:kin`);
+  // Варианты бабушек и дедушек входят в наследуемые варианты родителя.
+  for (const parent of biologicalParents) {
+    const side = parent.id === mother.id ? "mother" : "father";
+    const olds = kin.filter(k => k.side === side && k.relation !== "мама" && k.relation !== "папа");
+    const tones = olds.map(k => k.look.skinTone);
+    parent.familyVariants = {
+      skinToneRange: tones.length ? [Math.min(...tones), Math.max(...tones)] as [typeof tones[number], typeof tones[number]] : undefined,
+      hairColors: olds.map(k => k.look.hairColor), hairTextures: olds.map(k => k.look.hairTexture), eyeColors: olds.map(k => k.look.eyeColor), facialFeatures: olds.map(k => k.look.facialFeatures)
+    };
+  }
+  const line = lookFromLine(kin, 50, `${seed}:child`);
+  const childAppearance = kin.length ? { skinTone: line.skinTone, hairColor: line.hairColor, hairTexture: line.hairTexture, eyeColor: line.eyeColor, facialFeatures: line.facialFeatures } : fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
   const houseText: Record<Exclude<BirthHouseholdKind, "foundling">, string> = {
     "both-parents": "мать и отец растят вас вместе",
     "with-grandparents": "родители и старшие родные живут одним домом",
@@ -429,7 +450,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const parentIds = biologicalParents.map(p => p.id);
   const noble = origin.statusId === "noble";
   return {
-    origin, kind, wealth, settlementId: s, homeId, locations, links, members, guardians, biologicalParents, appearance: childAppearance, summary,
+    origin, kind, wealth, settlementId: s, homeId, locations, links, members, guardians, biologicalParents, kin, appearance: childAppearance, summary,
     record: {
       characterId: `player:${familyId}`, birthYear: CURRENT_YEAR - heroAge,
       biologicalParentIds: parentIds, biologicalParentage: parentIds.length === 2 ? "both-known" : "one-known",

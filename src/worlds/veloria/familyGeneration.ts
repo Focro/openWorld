@@ -34,6 +34,8 @@ export interface GeneratedFamilyAssignment {
   locations?: LocationDef[];
   links?: Array<{ from: string; to: string; distanceM: number }>;
   preview?: BirthPreview;
+  /** Родные для шага «Внешность»: мама, папа, бабушки и деды. Пусто у подкидыша и у второго принца. */
+  kin?: import("./kin").KinMember[];
 }
 
 function hash(value: string): number {
@@ -154,7 +156,7 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
     if ("error" in household) return { available: false, reason: household.error, members: [], biologicalParents: [], guardians: [], summary: household.error };
     return {
       available: true, record: household.record, members: household.members, biologicalParents: household.biologicalParents, guardians: household.guardians,
-      defaultAppearance: household.appearance, summary: household.summary, preview: household.preview, locations: household.locations, links: household.links,
+      defaultAppearance: household.appearance, summary: household.summary, preview: household.preview, kin: household.kin, locations: household.locations, links: household.links,
       household: { kind: household.kind, wealth: household.wealth, homeId: household.homeId, settlementId: household.settlementId }
     };
   }

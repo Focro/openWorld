@@ -41,6 +41,8 @@ export interface VeloriaCharacterDraft {
   temperament?: Partial<import("../../engine/development").Temperament>;
   bodyBuild?: import("../../engine/development").BodyBuild;
   heightTendency?: import("../../engine/development").HeightTendency;
+  /** Черты из шага «Внешность» (0.19.0): только то, что есть у родных. */
+  nose?: import("./kin").NoseShape; lips?: import("./kin").LipsShape; brows?: import("./kin").BrowShape; marks?: import("./kin").KinMark[];
 }
 export const VELORIA_START_SETTLEMENT_ID = "roven" as const;
 
