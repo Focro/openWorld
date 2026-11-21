@@ -5,11 +5,14 @@ import type { FormEvent } from "react";
 import { applyAction } from "./engine/rules";
 import { parseAction } from "./engine/parse";
 import { resolveWithAi } from "./engine/ai";
-import { UnlockedKeySession } from "./ai/keyVault";
+import { UnlockedKeySession, loadVaultRecord, saveVaultRecord } from "./ai/keyVault";
+import type { Session } from "@supabase/supabase-js";
+import { AUTO_SLOT, deleteCloudKeys, fetchProfile, getCloud, getCloudKey, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, type Profile } from "./cloud/account";
+import { AccountPanel, SignInForm } from "./ui/AccountPanel";
 import { ProxyActionProposer, isAiProviderId, type AiProviderId } from "./ai/proxyClient";
 import { AiSettings } from "./ui/AiSettings";
 import { understandFreeText } from "./engine/intent";
-import { ageFromBirthDate, isChildSafetyViolation, localSafetyStore, registerViolation } from "./engine/safety";
+import { ageFromBirthDate, isChildSafetyViolation, localSafetyStore, registerViolation, type SafetyStore } from "./engine/safety";
 import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, hasListeners, isGameLanguage, type GameLanguage, type SceneEvent, isNarrationPerson, type NarrationPerson } from "./engine/speech";
 import { CachingProposer } from "./ai/intentCache";
 import { loadUsage, recordUsage } from "./ai/usage";
@@ -142,9 +145,79 @@ export default function App() {
   const [birthError, setBirthError] = useState("");
   const playerRealAge = ageFromBirthDate(birthDate);
   const isAdultPlayer = playerRealAge !== null && playerRealAge >= 18;
-  const safetyStore = useMemo(() => localSafetyStore(), []);
-  const [safety, setSafety] = useState(() => safetyStore.load());
+  // Аккаунт (0.17.0): при входе дата рождения, взрослый режим, бан и сохранения живут в облаке.
+  const cloud = useMemo(() => getCloud(), []);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [cloudSavedAt, setCloudSavedAt] = useState<string>();
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
+  const localSafety = useMemo(() => localSafetyStore(), []);
+  const [safety, setSafety] = useState(() => localSafety.load());
+  // Предупреждения пишутся и в браузер, и в аккаунт: бан привязан к аккаунту, его не обойти очисткой браузера.
+  const safetyStore = useMemo<SafetyStore>(() => ({
+    load: () => localSafety.load(),
+    save: record => localSafety.save(record),
+    report: (_record, reason) => {
+      if (!cloud || !sessionRef.current) return;
+      void reportChildSafetyStrike(cloud, reason).then(server => {
+        const merged = { ...localSafety.load(), strikes: server.strikes, banned: server.banned || localSafety.load().banned };
+        localSafety.save(merged); setSafety(merged);
+      }).catch(() => { /* предупреждение уже записано локально */ });
+    }
+  }), [cloud, localSafety]);
   const [adultContent, setAdultContent] = useState(() => readPref("openworld.adult-content", "false") === "true");
+  useEffect(() => {
+    if (!cloud) return;
+    void cloud.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = cloud.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => data.subscription.unsubscribe();
+  }, [cloud]);
+  useEffect(() => {
+    if (!cloud || !session) { setProfile(null); return; }
+    let cancelled = false;
+    void fetchProfile(cloud, session.user.id).then(async p => {
+      if (cancelled || !p) return;
+      setProfile(p);
+      if (p.banned) { const banned = { ...localSafety.load(), banned: true }; localSafety.save(banned); setSafety(banned); }
+      if (p.birthDate) { writePref("openworld.birthdate", p.birthDate); setBirthDate(p.birthDate); }
+      setAdultContent(p.adultMode); writePref("openworld.adult-content", String(p.adultMode));
+      // Ключ ИИ: если в этом браузере его нет, берём зашифрованную запись из аккаунта (пароль всё равно нужен).
+      if (!loadVaultRecord()) { const remote = await getCloudKey(cloud).catch(() => null); if (remote) { saveVaultRecord(remote); setKeyTick(n => n + 1); } }
+    }).catch(error => setNotice(error instanceof Error ? error.message : String(error)));
+    return () => { cancelled = true; };
+  }, [cloud, session?.user.id]);
+  // Дата рождения, указанная до входа, один раз уходит в аккаунт.
+  useEffect(() => {
+    if (!cloud || !profile || profile.birthDate || !birthDate || ageFromBirthDate(birthDate) === null) return;
+    void saveBirthDate(cloud, profile.id, birthDate).then(() => setProfile({ ...profile, birthDate })).catch(error => setNotice(error instanceof Error ? error.message : String(error)));
+  }, [cloud, profile, birthDate]);
+  // Облачное автосохранение не чаще раза в 20 секунд и при сворачивании вкладки.
+  const lastCloudSave = useRef(0);
+  useEffect(() => {
+    if (!cloud || !session || !game.playerProfile || safety.banned) return;
+    const push = () => {
+      lastCloudSave.current = Date.now();
+      const json = JSON.stringify({ schemaVersion: 1, worldId, game, savedAt: new Date().toISOString() });
+      void putCloudSave(cloud, worldId, AUTO_SLOT, json).then(() => setCloudSavedAt(new Date().toISOString())).catch(() => { /* локальное автосохранение есть */ });
+    };
+    const wait = Math.max(1500, 20_000 - (Date.now() - lastCloudSave.current));
+    const timer = setTimeout(push, wait);
+    const flush = () => { if (document.visibilityState === "hidden") { clearTimeout(timer); push(); } };
+    document.addEventListener("visibilitychange", flush);
+    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", flush); };
+  }, [cloud, session?.user.id, game, worldId, safety.banned]);
+  /** После сохранения или удаления ключа в настройках ИИ повторяем это в аккаунте. */
+  function syncKeyToCloud() {
+    setKeyTick(n => n + 1);
+    if (!cloud || !session) return;
+    const record = loadVaultRecord();
+    void (record ? putCloudKey(cloud, record) : deleteCloudKeys(cloud)).catch(error => setNotice(error instanceof Error ? error.message : String(error)));
+  }
+  function toggleAdult(on: boolean) {
+    setAdultContent(on); writePref("openworld.adult-content", String(on));
+    if (cloud && profile) void saveAdultMode(cloud, profile.id, on).then(() => setProfile({ ...profile, adultMode: on })).catch(error => { setAdultContent(false); writePref("openworld.adult-content", "false"); setNotice(error instanceof Error ? error.message : String(error)); });
+  }
 
   // Мир собирается под персонажа из рецепта кампании; без рецепта используется базовый мир.
   const world = useMemo(() => resolveWorldForState(worldId, game.campaign) ?? getWorldEntry(worldId)!.create(), [worldId, game.campaign]);
@@ -355,13 +428,15 @@ export default function App() {
     <section className="panel">
       <div className="eyebrow">ПЕРЕД НАЧАЛОМ</div>
       <h2>Укажите дату рождения</h2>
-      <p>В этом мире есть жестокость, ложь, предательство и грубая речь. Откровенные сцены доступны только с 18 лет, поэтому нам нужна ваша дата рождения. Она хранится только в этом браузере.</p>
+      <p>В этом мире есть жестокость, ложь, предательство и грубая речь. Откровенные сцены доступны только с 18 лет, поэтому нам нужна ваша дата рождения. {cloud ? "Если вы войдёте в аккаунт, она сохранится в нём, и изменить её потом нельзя." : "Она хранится только в этом браузере."}</p>
       <label>Дата рождения<input type="date" value={birthInput} max={new Date().toISOString().slice(0, 10)} onChange={e => { setBirthInput(e.target.value); setBirthError(""); }} /></label>
       <div className="save-row"><button disabled={!birthInput} onClick={() => {
         if (ageFromBirthDate(birthInput) === null) { setBirthError("Проверьте дату."); return; }
         writePref("openworld.birthdate", birthInput); setBirthDate(birthInput);
       }}>ПРОДОЛЖИТЬ</button></div>
       {birthError && <p className="hint">{birthError}</p>}
+      {cloud && !session && <><div className="divider-line"/><p className="hint">Уже играли на другом устройстве? Войдите, и игра возьмёт дату и сохранения из аккаунта.</p><SignInForm cloud={cloud} compact /></>}
+      {session && <p className="hint">Вы вошли как {session.user.email ?? "игрок"}. Дату рождения сохраним в аккаунте.</p>}
     </section>
   </main>;
 
@@ -416,13 +491,14 @@ export default function App() {
     {tab === "СИСТЕМА" && <section className="panel"><div className="eyebrow">СИСТЕМА</div><h2>Сохранение и состояние проекта</h2><p className="hint">{autosave.ok && autosave.savedAt ? `Автосохранение включено: последнее в ${new Date(autosave.savedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}. Игра сама продолжит с этого места.` : game.playerProfile ? "Автосохранение не удалось: в браузере нет места или хранилище закрыто. Сохраните игру файлом." : "Автосохранение начнётся, когда появится герой."}</p><div className="save-row"><button onClick={exportSave}>ПОДГОТОВИТЬ СОХРАНЕНИЕ</button><button onClick={() => importSave()}>ЗАГРУЗИТЬ ИЗ ПОЛЯ</button></div><div className="save-row"><button onClick={downloadSave}>СКАЧАТЬ ФАЙЛ</button><label className="file-button">ОТКРЫТЬ ФАЙЛ<input type="file" accept="application/json,.json" onChange={e => { uploadSave(e.target.files?.[0]); e.target.value = ""; }} /></label></div><label>JSON сохранения<textarea rows={12} value={saveText} onChange={e=>setSaveText(e.target.value)} placeholder="Нажми «Подготовить сохранение» или вставь JSON сюда…"/></label>
       <div className="ai-settings"><h3 className="sub">Повествование</h3>
         <label>Как рассказчик обращается к герою<select value={narrationPerson} onChange={e => { if (isNarrationPerson(e.target.value)) { setNarrationPerson(e.target.value); writePref("openworld.narration-person", e.target.value); } }}><option value="2">На «вы»: «Торговка смотрит на вас»</option><option value="3">По имени: «Торговка смотрит на Ирину»</option></select></label>
-        <label className="inline-check"><input type="checkbox" disabled={!isAdultPlayer} checked={isAdultPlayer && adultContent} onChange={e => { setAdultContent(e.target.checked); writePref("openworld.adult-content", String(e.target.checked)); }} /> Откровенные сцены между взрослыми персонажами{isAdultPlayer ? "" : " (доступно с 18 лет)"}</label>
+        <label className="inline-check"><input type="checkbox" disabled={!isAdultPlayer} checked={isAdultPlayer && adultContent} onChange={e => toggleAdult(e.target.checked)} /> Откровенные сцены между взрослыми персонажами{isAdultPlayer ? "" : " (доступно с 18 лет)"}</label>
         <p className="hint">Рассказчик никогда не решает за вашего героя. Жестокость и грубость в мире есть всегда; откровенные сцены только между взрослыми и только с этой галочкой. Если герой или кто-то рядом младше 18, такие сцены исключены полностью.</p>
       </div>
-      <AiSettings lang={lang} onLang={value => { setLang(value); writePref("openworld.lang", value); }} session={keySession} endpoint={aiEndpoint} onEndpoint={value => { setAiEndpoint(value); writePref("openworld.ai.endpoint", value); }} enabled={aiEnabled} onEnabled={value => { setAiEnabled(value); writePref("openworld.ai.enabled", String(value)); }} provider={aiProvider} onProvider={value => { setAiProvider(value); writePref("openworld.ai.provider", value); }} model={aiModel} onModel={value => { setAiModel(value); writePref("openworld.ai.model", value); }} onChange={() => setKeyTick(n => n + 1)} />
+      <AiSettings lang={lang} onLang={value => { setLang(value); writePref("openworld.lang", value); }} session={keySession} endpoint={aiEndpoint} onEndpoint={value => { setAiEndpoint(value); writePref("openworld.ai.endpoint", value); }} enabled={aiEnabled} onEnabled={value => { setAiEnabled(value); writePref("openworld.ai.enabled", String(value)); }} provider={aiProvider} onProvider={value => { setAiProvider(value); writePref("openworld.ai.provider", value); }} model={aiModel} onModel={value => { setAiModel(value); writePref("openworld.ai.model", value); }} onChange={syncKeyToCloud} />
+      <AccountPanel cloud={cloud} session={session} cloudSavedAt={cloudSavedAt} worldId={worldId} currentSaveJson={() => game.playerProfile ? JSON.stringify({ schemaVersion: 1, worldId, game, savedAt: new Date().toISOString() }) : null} onLoad={json => { importSave(json); setTab("ИГРА"); }} />
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен: единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>✓ Живые ответы NPC через нейросеть: свой голос по возрасту, характеру, сословию и краю, память о разговоре</li><li>○ Правосудие и самостоятельные действия NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.16.1 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.17.0 · локальная альфа</span></footer>
   </main>;
 }

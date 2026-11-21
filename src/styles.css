@@ -71,3 +71,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .level-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #2b394c;border-radius:12px;background:#111925}
 .level-name{display:flex;flex-direction:column;font-size:14px;color:#e9edf5}.level-name small{font-size:11.5px;color:#8795a9}
 .pips{display:flex;gap:6px}.pips button{width:26px;height:26px;border-radius:50%;border:1.5px solid #45536a;background:#0e141e;padding:0}.pips button.on{background:#c59a5b;border-color:#c59a5b}
+
+/* Аккаунт (0.17.0) */
+.cloud-saves { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+.cloud-saves li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
