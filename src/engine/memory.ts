@@ -16,7 +16,7 @@ export interface ChronicleQuery {
 /** Поиск и фильтрация по хронике мира (объективной). */
 export function searchChronicle(state: GameState, q: ChronicleQuery): ChronicleEntry[] {
   const text = q.text ? normalize(q.text) : "";
-  return state.chronicle.filter((e) =>
+  return state.chronicle.filter(e =>
     (!text || normalize(e.text).includes(text)) &&
     (q.fromMinute === undefined || e.minute >= q.fromMinute) &&
     (q.toMinute === undefined || e.minute <= q.toMinute) &&
@@ -34,7 +34,7 @@ export interface Knower { npcId: string; kind: MemoryKind; confidence: number; f
 export function whoKnows(state: GameState, eventId: string): Knower[] {
   const out: Knower[] = [];
   for (const [npcId, list] of Object.entries(state.npcMemory)) {
-    const m = list.find((x) => x.eventId === eventId);
+    const m = list.find(x => x.eventId === eventId);
     if (m) out.push({ npcId, kind: m.kind, confidence: m.confidence, from: m.source });
   }
   return out;
