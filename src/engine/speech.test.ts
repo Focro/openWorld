@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, speechProfile, stripDashes, addressedNpc, removeHeroActions, SCENE_INSTRUCTIONS } from "./speech";
+import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, speechProfile, stripDashes, addressedNpc, removeHeroActions, removeSexualContent, SCENE_INSTRUCTIONS } from "./speech";
 import { applyAction } from "./rules";
 import { npcsAt } from "./world";
 import { startVeloriaCampaign } from "../worlds/veloria/campaign";
@@ -124,7 +124,45 @@ describe("мир не пишет за героя", () => {
   });
   it("осмотр получает описание места, разговор нет", () => {
     const { world, state } = adult();
-    expect(buildSceneContext(world, state, "осмотреться", "ru", "look").place).toBeTruthy();
-    expect(buildSceneContext(world, state, "привет", "ru", "speech").place).toBeUndefined();
+    expect(buildSceneContext(world, state, "осмотреться", { event: "look" }).place).toBeTruthy();
+    expect(buildSceneContext(world, state, "привет", { event: "speech" }).place).toBeUndefined();
+  });
+});
+
+describe("взрослые темы и несовершеннолетние", () => {
+  const { world, state } = adult();
+  it("взрослый режим включается только по выбору игрока и только без несовершеннолетних", () => {
+    expect(buildSceneContext(world, state, "привет").adult).toBe(false);
+    const grown = buildSceneContext(world, state, "привет", { adult: true });
+    expect(grown.adult).toBe(grown.minors ? false : true);
+    const child: GameState = { ...state, playerProfile: { ...state.playerProfile!, age: 12 }, ...(state.development ? { development: { ...state.development, birthMinute: state.minute - 12 * 365 * 1440 } } : {}) };
+    const ctx = buildSceneContext(world, child, "привет", { adult: true });
+    expect(ctx.adult).toBe(false);
+    expect(ctx.minors).toBe(true);
+  });
+  it("ребёнок рядом тоже исключает взрослые сцены", () => {
+    const busy = crowded(world, state);
+    const host = world.npcs[npcsAt(world, busy.minute, busy.playerLocation, busy.npcDeaths)[0]!]!;
+    const w: WorldData = { ...world, npcs: { ...world.npcs, kid: npc("kid", { age: 9, homeId: host.homeId, schedule: host.schedule, lifeSchedules: host.lifeSchedules }) } };
+    expect(npcsAt(w, busy.minute, busy.playerLocation, busy.npcDeaths)).toContain("kid");
+    const ctx = buildSceneContext(w, busy, "привет", { adult: true });
+    expect(ctx.minors).toBe(true);
+    expect(ctx.adult).toBe(false);
+  });
+  it("сексуальные описания вырезаются, если они запрещены, и остаются, если разрешены", () => {
+    const narration = "В комнате пахнет воском. Их стоны от страсти слышны за стеной. Свеча догорает.";
+    expect(coerceScene({ replies: [], narration }, [], "Ирина", false)!.narration).toBe("В комнате пахнет воском. Свеча догорает.");
+    expect(coerceScene({ replies: [], narration }, [], "Ирина", true)!.narration).toBe(narration);
+    // Слово «член» в обычном смысле не трогаем.
+    expect(removeSexualContent("Он член городского совета.").removed).toBe(0);
+  });
+  it("у людей свои цели и мораль, повествование в выбранном лице", () => {
+    const ctx = buildSceneContext(world, state, "привет", { person: "3" });
+    expect(ctx.voice).toBe("3");
+    expect(ctx.npcs.some(n => n.wants || n.moral)).toBe(true);
+    const rules = SCENE_INSTRUCTIONS.join(" ");
+    expect(rules).toMatch(/не подстраиваются под героя/);
+    expect(rules).toMatch(/minors true, никакого сексуального/);
+    expect(rules).toMatch(/никогда не описывается/);
   });
 });

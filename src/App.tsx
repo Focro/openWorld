@@ -8,7 +8,7 @@ import { UnlockedKeySession } from "./ai/keyVault";
 import { ProxyActionProposer, isAiProviderId, type AiProviderId } from "./ai/proxyClient";
 import { AiSettings } from "./ui/AiSettings";
 import { understandFreeText } from "./engine/intent";
-import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, hasListeners, isGameLanguage, type GameLanguage, type SceneEvent } from "./engine/speech";
+import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, hasListeners, isGameLanguage, type GameLanguage, type SceneEvent, isNarrationPerson, type NarrationPerson } from "./engine/speech";
 import { CachingProposer } from "./ai/intentCache";
 import { loadUsage, recordUsage } from "./ai/usage";
 import { createInitialState } from "./engine/world";
@@ -113,6 +113,10 @@ export default function App() {
   const [, setKeyTick] = useState(0);
   const [lang, setLang] = useState<GameLanguage>(() => { const v = readPref("openworld.lang", "ru"); return isGameLanguage(v) ? v : "ru"; });
   const sceneHintShown = useRef(false);
+  const [narrationPerson, setNarrationPerson] = useState<NarrationPerson>(() => { const v = readPref("openworld.narration-person", "2"); return isNarrationPerson(v) ? v : "2"; });
+  const [ageConfirmed, setAgeConfirmed] = useState(() => readPref("openworld.age-confirmed", "false") === "true");
+  const [ageDeclined, setAgeDeclined] = useState(false);
+  const [adultContent, setAdultContent] = useState(() => readPref("openworld.adult-content", "false") === "true");
 
   // Мир собирается под персонажа из рецепта кампании; без рецепта используется базовый мир.
   const world = useMemo(() => resolveWorldForState(worldId, game.campaign) ?? getWorldEntry(worldId)!.create(), [worldId, game.campaign]);
@@ -181,10 +185,11 @@ export default function App() {
       }
       return;
     }
-    const envelope = buildSceneEnvelope(buildSceneContext(world, after, playerText, lang, event), playerText);
+    const context = buildSceneContext(world, after, playerText, { lang, event, person: narrationPerson, adult: ageConfirmed && adultContent });
+    const envelope = buildSceneEnvelope(context, playerText);
     setAiBusy(true);
     makeProxy().writeScene(envelope).then(raw => {
-      const scene = coerceScene(raw, envelope.outputContract.speakers, after.playerName);
+      const scene = coerceScene(raw, envelope.outputContract.speakers, after.playerName, context.adult);
       if (!scene) return;
       const applied = applyScene(world, after, scene);
       setGame(current => current === after ? applied.state : current);
@@ -286,6 +291,20 @@ export default function App() {
     setWorldId(imported.worldId); setGame(migrated); setLog(migrated.playerMemory.map(m => m.text));
     setNotice(imported.sourceFormat === "legacy-branch-save" ? "Старое сохранение движка 0.4 импортировано в демо-мир." : "Сохранение загружено.");
   }
+
+  if (!ageConfirmed) return <main className="shell age-gate">
+    <section className="panel">
+      <div className="eyebrow">18+</div>
+      <h2>Игра для взрослых</h2>
+      <p>В этом мире есть жестокость, ложь, предательство, грубая речь и взрослые темы. Люди здесь не подстраиваются под вашего героя. Играть можно только с 18 лет.</p>
+      {ageDeclined
+        ? <p className="hint">Эта игра пока не для вас. Возвращайтесь, когда исполнится 18.</p>
+        : <div className="save-row">
+          <button onClick={() => { writePref("openworld.age-confirmed", "true"); setAgeConfirmed(true); }}>МНЕ ЕСТЬ 18</button>
+          <button onClick={() => setAgeDeclined(true)}>МНЕ НЕТ 18</button>
+        </div>}
+    </section>
+  </main>;
 
   return <main className="shell">
     <header className="topbar"><div><div className="eyebrow">TEXT ROLEPLAY SIMULATOR</div><h1>LIVING WORLD <span>RPG</span></h1></div><div className="status"><i /> LOCAL ALPHA</div></header>
@@ -403,10 +422,15 @@ export default function App() {
       <h3 className="sub">Память игрока</h3><ul className="memory">{game.playerMemory.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}</li>)}</ul><h3 className="sub">Память NPC</h3>{Object.values(world.npcs).map(npc=><div key={npc.id}><b className="npc">{npc.name}</b><p className="muted">Отношение к игроку: {describeAttitude(game.relations[npc.id]!)}</p>{(game.npcMemory[npc.id]??[]).length?<ul className="memory">{game.npcMemory[npc.id]!.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}{rumorNote(m)}</li>)}</ul>:<p className="muted">Пока нет воспоминаний.</p>}</div>)}</section>}
 
     {tab === "СИСТЕМА" && <section className="panel"><div className="eyebrow">СИСТЕМА</div><h2>Сохранение и состояние проекта</h2><div className="save-row"><button onClick={exportSave}>ПОДГОТОВИТЬ СОХРАНЕНИЕ</button><button onClick={importSave}>ЗАГРУЗИТЬ ИЗ ПОЛЯ</button></div><label>JSON сохранения<textarea rows={12} value={saveText} onChange={e=>setSaveText(e.target.value)} placeholder="Нажми «Подготовить сохранение» или вставь JSON сюда…"/></label>
+      <div className="ai-settings"><h3 className="sub">Повествование</h3>
+        <label>Как рассказчик обращается к герою<select value={narrationPerson} onChange={e => { if (isNarrationPerson(e.target.value)) { setNarrationPerson(e.target.value); writePref("openworld.narration-person", e.target.value); } }}><option value="2">На «вы»: «Торговка смотрит на вас»</option><option value="3">По имени: «Торговка смотрит на Ирину»</option></select></label>
+        <label className="inline-check"><input type="checkbox" checked={adultContent} onChange={e => { setAdultContent(e.target.checked); writePref("openworld.adult-content", String(e.target.checked)); }} /> Откровенные сцены между взрослыми персонажами</label>
+        <p className="hint">Рассказчик никогда не решает за вашего героя. Жестокость и грубость в мире есть всегда; откровенные сцены только между взрослыми и только с этой галочкой. Если герой или кто-то рядом младше 18, такие сцены исключены полностью.</p>
+      </div>
       <AiSettings lang={lang} onLang={value => { setLang(value); writePref("openworld.lang", value); }} session={keySession} endpoint={aiEndpoint} onEndpoint={value => { setAiEndpoint(value); writePref("openworld.ai.endpoint", value); }} enabled={aiEnabled} onEnabled={value => { setAiEnabled(value); writePref("openworld.ai.enabled", String(value)); }} provider={aiProvider} onProvider={value => { setAiProvider(value); writePref("openworld.ai.provider", value); }} model={aiModel} onModel={value => { setAiModel(value); writePref("openworld.ai.model", value); }} onChange={() => setKeyTick(n => n + 1)} />
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен: единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>✓ Живые ответы NPC через нейросеть: свой голос по возрасту, характеру, сословию и краю, память о разговоре</li><li>○ Правосудие и самостоятельные действия NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.15.1 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.15.2 · локальная альфа</span></footer>
   </main>;
 }

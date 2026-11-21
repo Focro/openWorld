@@ -1,7 +1,7 @@
 {
   "name": "openworld-ai-proxy",
   "private": true,
-  "version": "0.15.1",
+  "version": "0.15.2",
   "type": "module",
   "description": "Серверный прокси ИИ для OpenWorld RPG: ключи не попадают в клиентский бандл, расходы ограничены.",
   "scripts": {
