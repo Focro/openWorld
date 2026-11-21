@@ -65,7 +65,7 @@ npm test         # tests
 npm run build    # build for GitHub Pages
 ```
 
-Stack: React, TypeScript, Vite, Vitest. The engine (`src/engine/`) is kept separate from the worlds (`src/worlds/`), so new worlds can be added without touching the rules. The AI proxy server lives in `server/`. Detailed docs are in [docs/](docs/) (mostly in Russian).
+Stack: React, TypeScript, Vite, Vitest. The engine (`src/engine/`) is kept separate from the worlds (`src/worlds/`), so new worlds can be added without touching the rules. The AI proxy server lives in `server/`. Technical docs are in [docs/](docs/) (in Russian).
 
 ## Feedback
 
