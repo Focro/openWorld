@@ -15,3 +15,13 @@ export function formatClock(minute: number): string {
 export function hourInRange(hour: number, from: number, to: number): boolean {
   return from <= to ? hour >= from && hour < to : hour >= from || hour < to;
 }
+
+/** Велорийский год начинается с 742 KL; год содержит 365 дней в текущей модели. */
+export const yearKLOf = (minute: number, startYearKL = 742): number => startYearKL + Math.floor(Math.max(0, Math.floor(minute / MINUTES_PER_DAY)) / 365);
+export const dayOfYear = (minute: number): number => (Math.max(0, Math.floor(minute / MINUTES_PER_DAY)) % 365) + 1;
+
+
+/** Короткая дата для контекста ИИ и журнала: внутриигровой год и порядковый день. */
+export function formatWorldDate(minute: number, startYearKL = 742): string {
+  return `${yearKLOf(minute, startYearKL)} КЛ, день ${dayOfYear(minute)} из 365`;
+}
