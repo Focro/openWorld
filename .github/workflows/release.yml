@@ -34,5 +34,5 @@ jobs:
             echo "Подробности в CHANGELOG.md." > notes.md
           fi
           gh release create "$TAG" --target "$GITHUB_SHA" \
-            --title "OpenWorld $VERSION (альфа)" \
+            --title "OpenWorld $VERSION" \
             --notes-file notes.md --prerelease

@@ -7,7 +7,6 @@
 [![Version](https://img.shields.io/github/package-json/v/Focro/openWorld?label=version&color=5b7c99)](https://github.com/Focro/openWorld/releases)
 [![Tests](https://img.shields.io/github/actions/workflow/status/Focro/openWorld/ci.yml?branch=main&label=tests)](https://github.com/Focro/openWorld/actions)
 [![License](https://img.shields.io/badge/license-all_rights_reserved-7a9a7e)](LICENSE)
-![Status](https://img.shields.io/badge/status-alpha-c9a96e)
 
 [**Play in your browser**](https://focro.github.io/openWorld/) · [Changelog](CHANGELOG.md) · [Русский](README.md)
 

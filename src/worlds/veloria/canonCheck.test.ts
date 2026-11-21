@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkCanon } from "./canonCheck";
 import { INSTITUTIONS } from "./institutions";
 import { NOBLE_HOUSES, validateGenealogies } from "./nobleHouses";
-import { SECRET_CULTS } from "./cults";
-import { BLACK_MARKETS } from "./blackMarkets";
 import { RARE_PEOPLES } from "./peoples";
-import { RARE_INDIVIDUALS } from "./rareIndividuals";
 
 describe("Veloria canon integrity", () => {
   it("registers institutions separately from noble houses and cities", () => {
@@ -33,9 +30,7 @@ describe("Veloria canon integrity", () => {
     }
   });
 
-  it("registers distinct cults, local black markets and rare peoples", () => {
-    expect(SECRET_CULTS.length).toBeGreaterThanOrEqual(3);
-    expect(BLACK_MARKETS.some(x => x.nodeId === "roven" && x.visibility === "rumored")).toBe(true);
+  it("registers rare peoples", () => {
     expect(RARE_PEOPLES.some(x => x.id === "elvari")).toBe(true);
     expect(RARE_PEOPLES.some(x => x.id === "vampirism" && x.kind === "condition")).toBe(true);
   });

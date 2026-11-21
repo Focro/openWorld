@@ -1,13 +1,9 @@
 import { COUNTRIES, MAP_NODES, REGIONS, ROUTES } from "./atlas";
 import { CONTINENTS } from "./continents";
 import { FAITHS } from "./faiths";
-import { HIDDEN_ACTORS } from "./hiddenActors";
 import { NOBLE_HOUSES } from "./nobleHouses";
 import { INSTITUTIONS } from "./institutions";
-import { SECRET_CULTS } from "./cults";
-import { BLACK_MARKETS } from "./blackMarkets";
 import { RARE_PEOPLES } from "./peoples";
-import { RARE_INDIVIDUALS } from "./rareIndividuals";
 
 /** Текущий год канона (Библия, раздел 2). */
 export const CANON_CURRENT_YEAR = 742;
@@ -50,11 +46,7 @@ export function checkCanon(): CanonIssue[] {
   }
   for (const c of COUNTRIES)
     if (!MAP_NODES.some((n) => n.id === c.capital && n.countryId === c.id)) add("id-mismatch", `страна ${c.id}: столица «${c.capital}» не найдена среди узлов карты`);
-  for (const a of HIDDEN_ACTORS) {
-    const n = MAP_NODES.find((x) => x.id === a.startingNodeId);
-    if (!n) add("id-mismatch", `скрытая фигура ${a.id}: нет узла ${a.startingNodeId}`);
-    else if (n.countryId !== a.countryId) add("id-mismatch", `скрытая фигура ${a.id}: узел ${n.id} принадлежит другой стране`);
-  }
+
 
   for (const h of NOBLE_HOUSES) {
     for (const k of [...h.allies, ...h.rivals])
@@ -105,28 +97,13 @@ export function checkCanon(): CanonIssue[] {
   while (queue.length) for (const n of adj.get(queue.shift()!) ?? []) if (!reach.has(n)) { reach.add(n); queue.push(n); }
   for (const n of MAP_NODES) if (!reach.has(n.id)) add("routes", `узел ${n.id} недостижим из Ровена`);
 
-  const cultIds = new Set(SECRET_CULTS.map(x => x.id));
-  for (const cult of SECRET_CULTS) {
-    if (!countryIds.has(cult.countryId)) add("id-mismatch", `культ ${cult.id}: государство ${cult.countryId} не найдено`);
-    for (const regionId of cult.operatingRegions)
-      if (!REGIONS.some(r => r.id === regionId && cult.operatingCountries.includes(r.countryId)))
-        add("id-mismatch", `культ ${cult.id}: регион ${regionId} не найден среди мест деятельности`);
-  }
-  for (const market of BLACK_MARKETS) {
-    const node = MAP_NODES.find(n => n.id === market.nodeId);
-    if (!node || node.countryId !== market.countryId)
-      add("id-mismatch", `чёрный рынок ${market.id}: узел ${market.nodeId} не найден в ${market.countryId}`);
-    for (const cultId of market.connectedCultIds)
-      if (!cultIds.has(cultId)) add("dangling-ref", `чёрный рынок ${market.id}: культ ${cultId} не зарегистрирован`);
-  }
   const peopleIds = new Set(RARE_PEOPLES.map(x => x.id));
   for (const people of RARE_PEOPLES) for (const regionId of people.knownRegions)
     if (!REGIONS.some(r => r.id === regionId))
       add("id-mismatch", `народ/состояние ${people.id}: регион ${regionId} не найден`);
-  for (const person of RARE_INDIVIDUALS) {
-    if (!peopleIds.has(person.speciesId)) add("dangling-ref", `редкая фигура ${person.id}: тип ${person.speciesId} не зарегистрирован`);
-    if (!MAP_NODES.some(n => n.id === person.homeNodeId)) add("id-mismatch", `редкая фигура ${person.id}: узел ${person.homeNodeId} не найден`);
-  }
+  // Тайные реестры (культы, чёрные рынки, скрытые и редкие фигуры) хранятся вне публичного репозитория.
+  void peopleIds;
+
 
   return issues;
 }
