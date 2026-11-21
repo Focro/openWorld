@@ -1,3 +1,4 @@
+import { validateKinChoice } from "./kin";
 /**
  * Сборка кампании Велории из анкеты: мир под персонажа + начальное состояние.
  *
@@ -72,8 +73,13 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
   const familyErrors = validateFamilyRecord(family.record);
   if (familyErrors.length) return { ok: false, errors: familyErrors.map(issue => issue.message) };
   const appearance = resolveInheritedAppearance(draft);
-  if (draft.dynasticRole !== "second-prince" && appearance && family.biologicalParents.length === 2) {
-    const errors = validateChildAppearance(family.biologicalParents[0]!, family.biologicalParents[1]!, appearance);
+  if (draft.dynasticRole !== "second-prince" && appearance && family.biologicalParents.length >= 1) {
+    const errors = validateChildAppearance(family.biologicalParents[0]!, family.biologicalParents[1] ?? family.biologicalParents[0]!, appearance);
+    if (errors.length) return { ok: false, errors };
+  }
+  // Правило автора: выбранные черты есть у кого-то из родных (мама, папа, бабушки, деды).
+  if (draft.dynasticRole !== "second-prince" && family.kin?.length) {
+    const errors = validateKinChoice(family.kin, { skinTone: draft.skinTone, hairColor: draft.hairColor, hairTexture: draft.hairTexture, eyeColor: draft.eyeColor, facialFeatures: draft.facialFeatures, nose: draft.nose, lips: draft.lips, brows: draft.brows, heightTendency: draft.heightTendency, bodyBuild: draft.bodyBuild, marks: draft.marks });
     if (errors.length) return { ok: false, errors };
   }
   if (!isHaircutDescriptionAllowed(draft.hairstyle ?? "")) return { ok: false, errors: ["Причёска описывает только форму и длину волос. Природный цвет определяется происхождением и здесь не меняется."] };
