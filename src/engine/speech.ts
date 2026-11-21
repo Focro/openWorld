@@ -164,7 +164,11 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
   // Сначала тот, к кому обращаются, затем близкие и знакомые, затем остальные.
   const score = (id: string) => (id === to ? 100 : 0) + (world.npcs[id]!.caregiving ? 20 : 0) + (state.relations[id] ? 5 : 0) + (loc.shop?.keeperId === id ? 3 : 0);
   const chosen = [...present].sort((a, b) => score(b) - score(a)).slice(0, maxNpcs);
-  const recentEntries = state.chronicle.filter(event => event.locationId === loc.id).slice(-4);
+  // Бытовые фоновые записи («оказались рядом») только тратят токены и сбивают сцену.
+  // Старые сохранения без пометки routine распознаём по тексту.
+  const isRoutine = (event: GameState["chronicle"][number]) => event.routine === true || /обменялись несколькими словами в локации|оказались рядом в локации/.test(event.text);
+  const routineIds = new Set(state.chronicle.filter(isRoutine).map(event => event.id));
+  const recentEntries = state.chronicle.filter(event => event.locationId === loc.id && !isRoutine(event)).slice(-4);
   const recentIds = new Set(recentEntries.map(event => event.id));
   const facts = buildTriggeredKnowledge(world, state, playerText);
   // Несовершеннолетний герой или ребёнок рядом исключают любые сексуальные сцены, что бы ни выбрал игрок.
@@ -178,7 +182,7 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
     me: `${state.playerName}, ${age}`,
     npcs: chosen.map(id => {
       const npc = world.npcs[id]!;
-      const memories = (state.npcMemory[id] ?? []).filter((entry: MemoryEntry) => !entry.eventId || !recentIds.has(entry.eventId)).slice(-2).map(entry => trim(entry.text, 120));
+      const memories = (state.npcMemory[id] ?? []).filter((entry: MemoryEntry) => !entry.eventId || (!recentIds.has(entry.eventId) && !routineIds.has(entry.eventId))).slice(-2).map(entry => trim(entry.text, 120));
       const who = npc.caregiving ? CARE_ROLE[npc.caregiving.role] : loc.shop?.keeperId === id ? "хозяин лавки" : undefined;
       return {
         id, name: shortName(npc),

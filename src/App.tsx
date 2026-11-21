@@ -300,8 +300,22 @@ export default function App() {
     setWorldId(id); setGame(next); setLog(next.playerMemory.map(m => m.text)); setQuery(""); setNotice("Создана новая сессия в выбранном мире.");
   }
   function exportSave() { setSaveText(JSON.stringify({ schemaVersion:1, worldId, game }, null, 2)); setNotice("Сохранение подготовлено в поле ниже. Скопируй его в файл."); }
-  function importSave() {
-    const imported = importGamePayload(saveText, WORLDS.map(world => world.id), "demo");
+  /** Сохранение файлом: на телефоне копировать сотни килобайт JSON из поля неудобно. */
+  function downloadSave() {
+    const blob = new Blob([JSON.stringify({ schemaVersion:1, worldId, game })], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = `openworld-save-${yearKLOf(game.minute, game.worldStartYearKL ?? 742)}KL.json`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice("Файл сохранения скачан.");
+  }
+  function uploadSave(file: File | undefined) {
+    if (!file) return;
+    void file.text().then(text => importSave(text));
+  }
+  function importSave(source = saveText) {
+    const imported = importGamePayload(source, WORLDS.map(world => world.id), "demo");
     if (!imported) { setNotice("Не удалось загрузить: формат, версия или выбранный мир сохранения неверны."); return; }
     const migrated = migrateStateForWorld(imported.worldId, imported.game);
     setWorldId(imported.worldId); setGame(migrated); setLog(migrated.playerMemory.map(m => m.text));
@@ -445,7 +459,7 @@ export default function App() {
     {tab === "ПАМЯТЬ" && <section className="panel"><div className="eyebrow">ХРОНИКА И ЗНАНИЯ</div><h2>Память мира</h2><h3 className="sub">Объективная хроника</h3><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по хронике…"/>{found.length?<ul className="memory">{found.map(c=><li key={c.id}><span>{formatClock(c.minute)}</span>{c.text}</li>)}</ul>:<div className="placeholder">{game.chronicle.length?"Ничего не найдено.":"Событий пока нет."}</div>}
       <h3 className="sub">Память игрока</h3><ul className="memory">{game.playerMemory.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}</li>)}</ul><h3 className="sub">Память NPC</h3>{Object.values(world.npcs).map(npc=><div key={npc.id}><b className="npc">{npc.name}</b><p className="muted">Отношение к игроку: {describeAttitude(game.relations[npc.id]!)}</p>{(game.npcMemory[npc.id]??[]).length?<ul className="memory">{game.npcMemory[npc.id]!.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}{rumorNote(m)}</li>)}</ul>:<p className="muted">Пока нет воспоминаний.</p>}</div>)}</section>}
 
-    {tab === "СИСТЕМА" && <section className="panel"><div className="eyebrow">СИСТЕМА</div><h2>Сохранение и состояние проекта</h2><div className="save-row"><button onClick={exportSave}>ПОДГОТОВИТЬ СОХРАНЕНИЕ</button><button onClick={importSave}>ЗАГРУЗИТЬ ИЗ ПОЛЯ</button></div><label>JSON сохранения<textarea rows={12} value={saveText} onChange={e=>setSaveText(e.target.value)} placeholder="Нажми «Подготовить сохранение» или вставь JSON сюда…"/></label>
+    {tab === "СИСТЕМА" && <section className="panel"><div className="eyebrow">СИСТЕМА</div><h2>Сохранение и состояние проекта</h2><div className="save-row"><button onClick={exportSave}>ПОДГОТОВИТЬ СОХРАНЕНИЕ</button><button onClick={() => importSave()}>ЗАГРУЗИТЬ ИЗ ПОЛЯ</button></div><div className="save-row"><button onClick={downloadSave}>СКАЧАТЬ ФАЙЛ</button><label className="file-button">ОТКРЫТЬ ФАЙЛ<input type="file" accept="application/json,.json" onChange={e => { uploadSave(e.target.files?.[0]); e.target.value = ""; }} /></label></div><label>JSON сохранения<textarea rows={12} value={saveText} onChange={e=>setSaveText(e.target.value)} placeholder="Нажми «Подготовить сохранение» или вставь JSON сюда…"/></label>
       <div className="ai-settings"><h3 className="sub">Повествование</h3>
         <label>Как рассказчик обращается к герою<select value={narrationPerson} onChange={e => { if (isNarrationPerson(e.target.value)) { setNarrationPerson(e.target.value); writePref("openworld.narration-person", e.target.value); } }}><option value="2">На «вы»: «Торговка смотрит на вас»</option><option value="3">По имени: «Торговка смотрит на Ирину»</option></select></label>
         <label className="inline-check"><input type="checkbox" disabled={!isAdultPlayer} checked={isAdultPlayer && adultContent} onChange={e => { setAdultContent(e.target.checked); writePref("openworld.adult-content", String(e.target.checked)); }} /> Откровенные сцены между взрослыми персонажами{isAdultPlayer ? "" : " (доступно с 18 лет)"}</label>
@@ -455,6 +469,6 @@ export default function App() {
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен: единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>✓ Живые ответы NPC через нейросеть: свой голос по возрасту, характеру, сословию и краю, память о разговоре</li><li>○ Правосудие и самостоятельные действия NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.15.3 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.15.4 · локальная альфа</span></footer>
   </main>;
 }

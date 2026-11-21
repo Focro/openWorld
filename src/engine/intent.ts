@@ -120,6 +120,10 @@ export function understandFreeText(world: WorldData, state: GameState, text: str
   for (const [target, type] of TYPO_TARGETS) if (verb.length >= 6 && editDistance(verb, target) <= 1) {
     return type === "wait" ? { ok: true, action: { type: "wait", minutes: 60 } } : { ok: true, action: { type } };
   }
+  // Малыш говорит отдельными словами: «мама», «дай», «не хочу». Это речь, а не команда.
+  const spoken = raw.split(/\s+/).filter(Boolean).length;
+  if (state.development && ageMonths(state.development, state.minute) < 72 && caps.maxWordsPerUtterance > 0 && spoken <= caps.maxWordsPerUtterance)
+    return { ok: true, action: { type: "say", text: raw.slice(0, 200) } };
   return null;
 }
 

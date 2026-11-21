@@ -31,3 +31,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .ai-settings { margin: 16px 0; display: grid; gap: 8px; }
 .inline-check { display: flex; align-items: center; gap: 8px; }
 .inline-check input { width: auto; }
+
+/* 0.15.3: сохранение файлом */
+.panel label.file-button{display:inline-flex;flex-direction:row;margin:0;background:#273346;border:1px solid #45536a;color:#dce5f2;border-radius:7px;padding:8px 11px;font-size:11px;cursor:pointer}.panel label.file-button input{display:none}

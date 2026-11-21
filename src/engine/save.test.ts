@@ -45,3 +45,16 @@ describe("save format migration", () => {
     expect(imported?.game.playerName).toBe("Новый герой");
   });
 });
+
+describe("память NPC не разрастается бытовыми встречами", () => {
+  it("оставляет последние бытовые записи и всё значимое", async () => {
+    const { compactNpcMemory, ROUTINE_MEMORY_PER_NPC } = await import("./memory");
+    const routine = Array.from({ length: 50 }, (_, i) => ({ minute: i, text: `А и Б оказались рядом в локации «Двор», каждый занимаясь своим делом.`, kind: "witnessed" as const, confidence: 1 }));
+    const important = { minute: 99, text: "Путник говорит: «Я из другого мира»", kind: "witnessed" as const, confidence: 1 };
+    const state = { chronicle: [], npcMemory: { a: [...routine.slice(0, 25), important, ...routine.slice(25)] } } as unknown as import("./types").GameState;
+    const compact = compactNpcMemory(state);
+    expect(compact.npcMemory.a!.length).toBe(ROUTINE_MEMORY_PER_NPC + 1);
+    expect(compact.npcMemory.a!.some(m => m.text === important.text)).toBe(true);
+    expect(compact.npcMemory.a!.at(-1)!.minute).toBe(49);
+  });
+});

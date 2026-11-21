@@ -108,6 +108,12 @@ describe("birth into an ordinary family", () => {
     expect(sizes.size).toBeGreaterThanOrEqual(4);
     expect(generateVeloriaFamily(newborn("free-farmer", "x")).summary).toBe(generateVeloriaFamily(newborn("free-farmer", "x")).summary);
   });
+  it("never gives two people in one household the same first name", () => {
+    for (const origin of ["tenant-farmer", "craft-apprentice", "merchant-child", "temple-orphan"] as const) for (let i = 0; i < 150; i++) {
+      const given = generateVeloriaFamily(newborn(origin, `dup-${i}`)).members.map(m => m.name.split(" ")[0]);
+      expect(new Set(given).size, `${origin} dup-${i}: ${given.join(", ")}`).toBe(given.length);
+    }
+  });
   it("refuses newborn starts in noble or adult-only origins", () => {
     expect(generateVeloriaFamily(newborn("former-soldier", "x")).available).toBe(false);
   });

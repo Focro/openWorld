@@ -1,5 +1,5 @@
 import type { GameState, NpcDef, WorldData } from "./types";
-import { shortName } from "./speech";
+import { heroAgeYears, shortName } from "./speech";
 
 export type ClaimKind = "otherworld" | "simulation" | "rebirth" | "divine-cult" | "new-faith" | "ordinary";
 export const initialSocialState = () => ({ suspicion: 0, heresySuspicion: 0, claimCount: 0, cultAttempts: 0, followers: [], movement: "none" as const, legalCase: "none" as const });
@@ -20,8 +20,9 @@ export interface SpeechOutcome { state: GameState; reaction: string; deathCause?
 
 /** Реакция общества, а не объективный диагноз персонажа. */
 export function resolveSpeech(world: WorldData, state: GameState, text: string, witnesses: string[]): SpeechOutcome {
-  const age = state.playerProfile?.age ?? 22;
-  if (age < 5) return { state, reaction: "Вы ещё слишком малы, чтобы произнести связную речь. Жесты и отдельные звуки возможны, но слова не были сказаны." };
+  // С рождения возраст считается по развитию, а длину речи уже проверили правила (rules.ts).
+  const age = heroAgeYears(state) ?? 22;
+  if (age < 5 && !state.development) return { state, reaction: "Вы ещё слишком малы, чтобы произнести связную речь. Жесты и отдельные звуки возможны, но слова не были сказаны." };
   const kind = classifyClaim(text);
   const present = witnesses.map(id => world.npcs[id]).filter((npc): npc is NpcDef => Boolean(npc));
   const prior = state.socialState ?? initialSocialState();

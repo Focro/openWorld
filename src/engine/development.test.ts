@@ -186,3 +186,19 @@ describe("AI proposals are checked against age", () => {
     expect(broken.ok).toBe(false);
   });
 });
+
+describe("прожить период без лишних остановок", () => {
+  it("склоняет дни правильно", async () => {
+    const { pluralDays } = await import("./rules");
+    expect([1, 3, 11, 21, 41, 56, 112, 365].map(n => `${n} ${pluralDays(n)}`)).toEqual(["1 день", "3 дня", "11 дней", "21 день", "41 день", "56 дней", "112 дней", "365 дней"]);
+  });
+  it("год в младенчестве проживается целиком, а вехи перечисляются в итоге", async () => {
+    const { startVeloriaCampaign } = await import("../worlds/veloria/campaign");
+    const ATTRS = { "Сила": 15, "Выносливость": 15, "Ловкость": 14, "Интеллект": 14, "Восприятие": 14, "Харизма": 14, "Воля": 14 };
+    const r = startVeloriaCampaign({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Малыш", age: 0, originId: "tenant-farmer", statusId: "rural-free", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS }, familySeed: "year" } });
+    if (!r.ok) throw new Error(r.errors.join(" "));
+    const lived = livePeriod(r.world, r.state, 365);
+    expect(lived.message).toContain("Проходит 365 дней");
+    expect(lived.message).toContain("Новая веха развития");
+  }, 60_000);
+});
