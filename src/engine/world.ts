@@ -211,3 +211,37 @@ export function npcActivity(world: WorldData, npcId: string, minute: number, npc
   const hour = hourOf(minute);
   return activeSchedule(npc, minute).find((s) => hourInRange(hour, s.from, s.to))?.activity ?? "отдыхает дома";
 }
+
+/** Кратчайший путь по выходам (0.16.1): «убежал на рынок» из дома, где рынок в двух улицах. Возвращает цепочку выходов. */
+export function findRoute(world: WorldData, fromId: string, toId: string, maxHops = 6): Array<{ from: string; to: string; distanceM: number; terrain: import("./types").Exit["terrain"] }> | null {
+  if (fromId === toId) return [];
+  const prev = new Map<string, { from: string; exit: import("./types").Exit }>();
+  let frontier = [fromId];
+  const seen = new Set([fromId]);
+  for (let hop = 0; hop < maxHops && frontier.length; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) for (const exit of world.locations[id]?.exits ?? []) {
+      if (seen.has(exit.to) || !world.locations[exit.to]) continue;
+      seen.add(exit.to); prev.set(exit.to, { from: id, exit }); next.push(exit.to);
+      if (exit.to === toId) {
+        const route: Array<{ from: string; to: string; distanceM: number; terrain: import("./types").Exit["terrain"] }> = [];
+        for (let cur = toId; cur !== fromId;) { const p = prev.get(cur)!; route.unshift({ from: p.from, to: cur, distanceM: p.exit.distanceM, terrain: p.exit.terrain }); cur = p.from; }
+        return route;
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
+/** Места по кольцам: [соседи, через одно место, ...], не дальше maxHops переходов. */
+export function reachablePlaces(world: WorldData, fromId: string, maxHops = 6): string[][] {
+  const out: string[][] = []; const seen = new Set([fromId]); let frontier = [fromId];
+  for (let hop = 0; hop < maxHops && frontier.length; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) for (const exit of world.locations[id]?.exits ?? []) if (!seen.has(exit.to) && world.locations[exit.to]) { seen.add(exit.to); next.push(exit.to); }
+    if (next.length) out.push(next);
+    frontier = next;
+  }
+  return out;
+}

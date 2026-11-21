@@ -112,6 +112,23 @@ const SCENARIOS: Record<VeloriaStartScenario, VeloriaOriginId[]> = {
 };
 const ATTRIBUTES = ["Сила", "Выносливость", "Ловкость", "Интеллект", "Восприятие", "Харизма", "Воля"] as const;
 
+/**
+ * «Новая жизнь» (0.16.1): игрок распределяет 15 очков между пятью задатками по шкале 1–5.
+ * Внутри движок по-прежнему считает по шкале 1–30; восприятие и воля не выбираются и стоят средними.
+ */
+export const NEW_LIFE_ATTRIBUTES = ["Сила", "Выносливость", "Ловкость", "Интеллект", "Харизма"] as const;
+export const NEW_LIFE_POINTS = 15;
+const LEVEL_TO_INTERNAL = [0, 6, 10, 14, 20, 26] as const;
+export const HIDDEN_ATTRIBUTE_VALUE = 14;
+export function newLifeAttributes(levels: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = { "Восприятие": HIDDEN_ATTRIBUTE_VALUE, "Воля": HIDDEN_ATTRIBUTE_VALUE };
+  for (const key of NEW_LIFE_ATTRIBUTES) out[key] = LEVEL_TO_INTERNAL[Math.max(1, Math.min(5, Math.round(levels[key] ?? 3)))]!;
+  return out;
+}
+export function newLifeLevels(attributes: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(NEW_LIFE_ATTRIBUTES.map(key => { const i = LEVEL_TO_INTERNAL.indexOf((attributes[key] ?? 14) as never); return [key, i > 0 ? i : 3]; }));
+}
+
 export function availableStatuses(origin: VeloriaOriginId): VeloriaStatusId[] {
   return [...(ORIGIN_STATUS[origin] ?? [])];
 }
@@ -160,12 +177,16 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
   if ((draft.skills?.length ?? 0) > 500) errors.push("Навыки: максимум 500 символов.");
   if ((draft.familyNotes?.length ?? 0) > 500) errors.push("Сведения о семье: максимум 500 символов.");
   if (draft.faithId !== undefined && draft.faithId !== "none" && !FAITHS.some(f => f.id === draft.faithId)) errors.push("Выбрана неизвестная религиозная традиция.");
-  for (const key of ATTRIBUTES) {
+  if (newLife) {
+    const levels = NEW_LIFE_ATTRIBUTES.map(key => LEVEL_TO_INTERNAL.indexOf(draft.attributes[key] as never));
+    if (levels.some(level => level < 1) || draft.attributes["Восприятие"] !== HIDDEN_ATTRIBUTE_VALUE || draft.attributes["Воля"] !== HIDDEN_ATTRIBUTE_VALUE) errors.push("Задатки: каждый от 1 до 5.");
+    else if (levels.reduce((a, b) => a + b, 0) !== NEW_LIFE_POINTS) errors.push(`Нужно распределить ровно ${NEW_LIFE_POINTS} очков между пятью задатками.`);
+  } else for (const key of ATTRIBUTES) {
     const value = draft.attributes[key];
     if (!Number.isInteger(value) || value < 1 || value > 30) errors.push(`${key}: от 1 до 30.`);
   }
-  if (Object.keys(draft.attributes).length !== 7 ||
-      Object.values(draft.attributes).reduce((a, b) => a + b, 0) !== 100) {
+  if (!newLife && (Object.keys(draft.attributes).length !== 7 ||
+      Object.values(draft.attributes).reduce((a, b) => a + b, 0) !== 100)) {
     errors.push("Нужно распределить ровно 100 очков между семью характеристиками.");
   }
   if (errors.length) return { ok: false, errors };

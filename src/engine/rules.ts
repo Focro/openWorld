@@ -1,4 +1,4 @@
-import { npcActivity, npcLocation as npcLocationForAppearanceEvent, npcsAt } from "./world";
+import { findRoute, npcActivity, npcLocation as npcLocationForAppearanceEvent, npcsAt } from "./world";
 import { applyRelationDelta } from "./relations";
 import { travelMinutes } from "./geography";
 import { pruneRumors, spreadGossip } from "./gossip";
@@ -10,6 +10,7 @@ import { resolveSpeech } from "./social";
 import { applyAppearanceChange, observeAppearance } from "./appearance";
 import { advanceNpcPsychology } from "./personality";
 import { compactNpcMemory } from "./memory";
+import { resolveAttempt, type AttemptOutcome } from "./plausibility";
 import type { Action, ActionResult, GameEvent, GameState, Relation, WorldData } from "./types";
 
 export const MAX_WAIT_MINUTES = 720;
@@ -39,6 +40,10 @@ const info = (state: GameState, message: string): ActionResult =>
   ({ state, ok: true, message, events: [] });
 
 /** Записывает событие в хронику, память игрока и память NPC-свидетелей. */
+/** Итог попытки идёт в начало записи хроники: рассказчик видит его первым и описывает только его. */
+const attemptPrefix = (attempt: AttemptOutcome | null) => attempt ? `[Итог по правилам: ${attempt.rule}] ` : "";
+const attemptRelations = (attempt: AttemptOutcome | null) => attempt?.targetId && attempt.relation ? { relations: { [attempt.targetId]: attempt.relation } } : {};
+
 function commit(
   world: WorldData,
   state: GameState,
@@ -266,22 +271,28 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       });
     }
     case "move": {
-      const exit = here.exits.find((e) => e.to === action.to);
       const target = typeof action.to === "string" ? world.locations[action.to] : undefined;
-      if (!exit || !target)
+      // Соседнее место или путь в несколько переходов («убежал на рынок» через улицу).
+      const route = target ? findRoute(world, state.playerLocation, target.id, 6) : null;
+      if (!target || !route || !route.length)
         return reject(state, "Отсюда нет такого пути. Мир не изменился.");
       const caps = capabilities(state.development, state.minute);
       if (!caps.canWalk) return reject(state, caps.canCrawl
         ? "Вы умеете только ползать: из комнаты вас выносят взрослые, сами вы туда не доберётесь."
         : "Вы ещё не ходите. Вас носят на руках, и куда: решают взрослые.");
-      if (exit.distanceM > caps.maxUnaccompaniedExitM) return reject(state, `Для ребёнка этого возраста путь слишком далёк: одного вас туда не отпустят (${exit.distanceM} м).`);
-      const minutes = travelMinutes(exit.distanceM, exit.terrain, "walk");
-      if (minutes === null) return reject(state, "Пешком здесь не пройти. Мир не изменился.");
+      let minutes = 0;
+      for (const step of route) {
+        if (step.distanceM > caps.maxUnaccompaniedExitM) return reject(state, `Для ребёнка этого возраста путь слишком далёк: одного вас туда не отпустят (${step.distanceM} м).`);
+        const m = travelMinutes(step.distanceM, step.terrain, "walk");
+        if (m === null) return reject(state, "Пешком здесь не пройти. Мир не изменился.");
+        minutes += m;
+      }
+      const via = route.slice(0, -1).map(step => world.locations[step.to]!.name);
       const minute = state.minute + minutes;
       return commit(world, state, { minute, playerLocation: target.id }, {
         locationId: target.id,
-        text: `${state.playerName} приходит в локацию «${target.name}».`,
-        playerText: `Вы идёте ${minutes} мин и приходите: ${target.name}. Сейчас ${formatClock(minute)}.`
+        text: `${state.playerName} приходит в локацию «${target.name}»${via.length ? ` через ${via.join(", ")}` : ""}.`,
+        playerText: `Вы идёте ${minutes} мин${via.length ? ` через ${via.join(", ")}` : ""} и приходите: ${target.name}. Сейчас ${formatClock(minute)}.`
       });
     }
     case "gesture": {
@@ -292,10 +303,12 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       const reaction = speechless
         ? "Вы выражаете намерение жестом, звуком или движением, не словами. Взрослые могут попытаться понять вас, но не обязаны верно истолковать." 
         : "Вы используете жест или мимику. Окружающие видят действие, но не читают ваши мысли.";
+      const attempt = resolveAttempt(world, { ...state, minute }, action.text.trim(), npcsAt(world, minute, here.id, state.npcDeaths));
       return commit(world, state, { minute }, {
         locationId: here.id,
-        text: `${state.playerName} действует невербально: «${action.text.trim()}».`,
-        playerText: `${reaction} Сейчас ${formatClock(minute)}.`
+        text: `${attemptPrefix(attempt)}${state.playerName} действует невербально: «${action.text.trim()}».`,
+        playerText: `${attempt ? attempt.playerNote : reaction} Сейчас ${formatClock(minute)}.`,
+        ...attemptRelations(attempt)
       });
     }
     case "say": {
@@ -311,10 +324,12 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       const speakingMinute = state.minute + 1;
       const witnesses = npcsAt(world, speakingMinute, here.id, state.npcDeaths);
       const speech = resolveSpeech(world, { ...state, minute: speakingMinute }, action.text.trim(), witnesses);
+      const attempt = resolveAttempt(world, { ...state, minute: speakingMinute }, action.text.trim(), witnesses);
       const result = commit(world, state, { minute: speakingMinute, socialState: speech.state.socialState }, {
         locationId: here.id,
-        text: `${state.playerName} говорит: «${action.text.trim()}»`,
-        playerText: `Вы говорите: «${action.text.trim()}». ${speech.reaction}`
+        text: `${attemptPrefix(attempt)}${state.playerName} говорит: «${action.text.trim()}»`,
+        playerText: `Вы говорите: «${action.text.trim()}». ${attempt ? attempt.playerNote : speech.reaction}`,
+        ...attemptRelations(attempt)
       });
       if (!result.ok || !speech.deathCause) return result;
       const dead = finalizeDeath(world, result.state, {
