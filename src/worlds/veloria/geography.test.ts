@@ -33,10 +33,11 @@ describe("география по Библии мира", () => {
     expect(findVeloriaRoute("roven", "koronholm")!.totalDays).toBeLessThan(findVeloriaRoute("roven", "northwatch")!.totalDays);
     expect(findVeloriaRoute("roven", "har-kadar")!.totalDays).toBeGreaterThan(findVeloriaRoute("roven", "qadira")!.totalDays);
   });
-  it("места из Библии помечены каноном, остальное проектное", () => {
+  it("каноном помечены места из Библии, аудита канона и реестра домов, остальное проектное", () => {
     const canon = MAP_NODES.filter(n => n.canon).map(n => n.id).sort();
-    expect(canon).toEqual(["azrakar", "dravorn", "har-kadar", "koronholm", "lethariel", "miraj", "qadira", "roven", "varentport"]);
-    expect(REGIONS.filter(r => r.canon).map(r => r.name).sort()).toEqual(["Северные холмы", "Южная долина"]);
+    // Библия: 9 городов. Аудит канона: Меровар, Нортвотч, Железный Перевал. Реестр домов: Сафра, Синяя Гавань, Ивовый Предел, Намар.
+    expect(canon).toEqual(["azrakar", "bluehaven", "dravorn", "har-kadar", "ironpass", "koronholm", "lethariel", "merovar", "miraj", "namar", "northwatch", "qadira", "roven", "safra", "varentport", "willowmere"]);
+    expect(REGIONS.filter(r => r.canon).map(r => r.name).sort()).toEqual(["Медное побережье", "Северные холмы", "Южная долина"]);
     expect(ROUTES.find(r => r.name === "Западный тракт")).toBeDefined();
   });
   it("где можно обойти по суше, есть и сухопутный путь", () => {
