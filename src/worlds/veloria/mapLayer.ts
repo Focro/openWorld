@@ -6,12 +6,12 @@
  * достаточно указать путь к файлу в MAP_IMAGE и, если надо, поправить x и y мест в atlas.ts.
  * Тап по карте показывает ближайшее место: поселение, край (горы, леса, дельта) или державу.
  */
-import { COUNTRIES, COUNTRY_SHAPES, MAP_NODES, REGIONS } from "./atlas";
+import { COUNTRIES, COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, REGIONS } from "./atlas";
 
 /** Картинка карты в public/ (путь относительно сайта) или null, пока её нет. */
 export const MAP_IMAGE: { src: string; width: number; height: number } | null = null;
 
-export type MapHitKind = "settlement" | "region" | "country";
+export type MapHitKind = "settlement" | "region" | "country" | "water";
 export interface MapHit { kind: MapHitKind; id: string; name: string; detail: string; x: number; y: number }
 
 const KIND_WORD: Record<string, string> = { capital: "столица", city: "город", town: "городок", village: "деревня", fort: "крепость", port: "порт", oasis: "оазис" };
@@ -23,6 +23,12 @@ export const REGION_ANCHORS: Array<{ id: string; name: string; terrain: string; 
   return [{ id: region.id, name: region.name, terrain: region.terrain, x: nodes.reduce((s, n) => s + n.x, 0) / nodes.length, y: nodes.reduce((s, n) => s + n.y, 0) / nodes.length }];
 });
 
+const capitalize = (t: string) => t.charAt(0).toLocaleUpperCase("ru") + t.slice(1);
+function distToSegment(x: number, y: number, [ax, ay]: [number, number], [bx, by]: [number, number]): number {
+  const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
+  const t = len ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len)) : 0;
+  return Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+}
 function insidePolygon(x: number, y: number, points: Array<[number, number]> | number[][]): boolean {
   let inside = false;
   for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
@@ -39,6 +45,11 @@ export function mapHitAt(x: number, y: number, settlementRadius = 4, regionRadiu
   if (node && dist(node) <= settlementRadius) {
     const country = COUNTRIES.find(c => c.id === node.countryId)?.name ?? node.countryId;
     return { kind: "settlement", id: node.id, name: node.name, detail: `${KIND_WORD[node.kind] ?? node.kind}, ${country}`, x: node.x, y: node.y };
+  }
+  // Река: близко к её линии. Море: внутри очертания.
+  for (const w of MAP_WATERS) {
+    if (w.kind === "river" && w.points.some((p, i) => i > 0 && distToSegment(x, y, w.points[i - 1]!, p) <= 1.5)) return { kind: "water", id: w.id, name: capitalize(w.name), detail: "река", x, y };
+    if (w.kind === "sea" && insidePolygon(x, y, w.points)) return { kind: "water", id: w.id, name: capitalize(w.name), detail: w.id === "liar" ? "внутреннее море, вокруг него лежит Велория" : "за ним на западе лежат малоизвестные земли", x, y };
   }
   const shape = COUNTRY_SHAPES.find(s => insidePolygon(x, y, s.points));
   const region = [...REGION_ANCHORS].filter(r => !shape || REGIONS.find(g => g.id === r.id)?.countryId === shape.countryId).sort((a, b) => dist(a) - dist(b))[0];

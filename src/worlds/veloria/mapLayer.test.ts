@@ -33,4 +33,8 @@ describe("интерактивная карта", () => {
     const unknown = MAP_NODES.find(n => !known.has(n.id))!;
     expect(mapHitAt(unknown.x, unknown.y, 0.5, 0.1, known)?.id).not.toBe(unknown.id);
   });
+  it("море Лиар и река Лир отвечают на нажатие", () => {
+    expect(mapHitAt(58, 55, 0.1)?.name).toBe("Море Лиар");
+    expect(mapHitAt(28, 41.3, 0.1)?.name).toBe("Река Лир");
+  });
 });

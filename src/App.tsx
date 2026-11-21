@@ -39,7 +39,7 @@ import { generateVeloriaFamily } from "./worlds/veloria/familyGeneration";
 import { getChildAppearanceOptions, validateChildAppearance } from "./worlds/veloria/heritage";
 import { FAITHS } from "./worlds/veloria/faiths";
 import { WORLD_DIFFICULTIES, type WorldDifficultyId } from "./worlds/veloria/difficulty";
-import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES } from "./worlds/veloria/atlas";
+import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES, MAP_WATERS } from "./worlds/veloria/atlas";
 import { MAP_IMAGE, knownSettlementIds, mapHitAt, type MapHit } from "./worlds/veloria/mapLayer";
 import { knownPeople, ageText } from "./engine/acquaintances";
 import { DEATH_IS_FINAL_MESSAGE, buryIfDead, loadBlockedByDeath, loadGraveyard, mergeGraveyards, newLifeId, saveGraveyard, type GraveRecord } from "./engine/permadeath";
@@ -74,7 +74,7 @@ function createFamilySeed(): string {
   return `family-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function ArdanMap({ current, destination, route, known, onGo }: { current: string; destination: string; route: Array<{from:string;to:string}>; known: Set<string>; onGo?: (id: string) => void }) {
+function ArdanMap({ current, destination, route, known }: { current: string; destination: string; route: Array<{from:string;to:string}>; known: Set<string> }) {
   // Тап по карте: название места, края или державы. Метка «вы здесь» над текущим поселением.
   const [hit, setHit] = useState<MapHit | null>(null);
   const here = MAP_NODES.find(n => n.id === current);
@@ -89,6 +89,9 @@ function ArdanMap({ current, destination, route, known, onGo }: { current: strin
         const country=COUNTRIES.find(item=>item.id===shape.countryId);
         return <polygon key={shape.countryId} points={shape.points.map(point=>point.join(",")).join(" ")} className={`country-shape country-${shape.countryId}`}><title>{country?.name ?? shape.countryId}</title></polygon>;
       })}
+      {!MAP_IMAGE && MAP_WATERS.map(w => w.kind === "sea" ? <polygon key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-sea"/> : <polyline key={w.id} points={w.points.map(p=>p.join(",")).join(" ")} className="map-river"/>)}
+      {!MAP_IMAGE && <text x="57" y="56" className="map-water-label">море Лиар</text>}
+      <g className="map-compass" transform="translate(94 8)"><path d="M0 -5 L1.6 0 L0 -1 L-1.6 0 Z"/><text x="0" y="3.8">С</text></g>
       {ROUTES.map((edge,i)=>{
         const from=MAP_NODES.find(n=>n.id===edge.from), to=MAP_NODES.find(n=>n.id===edge.to);
         if(!from||!to||!known.has(from.id)||!known.has(to.id)) return null;
@@ -97,12 +100,12 @@ function ArdanMap({ current, destination, route, known, onGo }: { current: strin
       })}
       {MAP_NODES.filter(node => known.has(node.id)).map(node=><g key={node.id} className="map-node">
         <circle cx={node.x} cy={node.y} r={node.id===current?2.5:node.id===destination?2.1:1.4} className={node.id===current?"current":node.id===destination?"destination":""}/>
-        {(node.kind === "capital" || node.id===current || node.id===destination) && <text x={node.x+2} y={node.y-1.5} className="map-label">{node.name}</text>}
+        {(node.kind === "capital" || node.id===current || node.id===destination) && <text x={node.x > 78 ? node.x-2 : node.x+2} y={node.y-1.5} textAnchor={node.x > 78 ? "end" : "start"} className="map-label">{node.name}</text>}
       </g>)}
       {here && <g className="map-pin" transform={`translate(${here.x} ${here.y})`}><path d="M0 0 L-2.2 -4.2 A2.6 2.6 0 1 1 2.2 -4.2 Z" /><circle cx="0" cy="-5.6" r="1" /></g>}
       {hit && <circle cx={hit.x} cy={hit.y} r="3.2" className="map-hit" />}
     </svg>
-    {hit ? <div className="map-card" role="status"><b>{hit.name}</b><span>{hit.detail}</span>{hit.id === current && <em>Вы здесь</em>}{hit.kind === "settlement" && hit.id !== current && (() => { const r = findVeloriaRoute(current, hit.id); return r ? <><span>Путь: {r.totalDays} {r.totalDays === 1 ? "день" : r.totalDays < 5 ? "дня" : "дней"}</span>{onGo && <button className="map-go" onClick={() => onGo(hit.id)}>ОТПРАВИТЬСЯ СЮДА</button>}</> : <span>Пути отсюда нет.</span>; })()}<button aria-label="Закрыть" onClick={() => setHit(null)}>×</button></div>
+    {hit ? <div className="map-card" role="status"><b>{hit.name}</b><span>{hit.detail}</span>{hit.id === current && <em>Вы здесь</em>}{hit.kind === "settlement" && hit.id !== current && (() => { const r = findVeloriaRoute(current, hit.id); if (!r) return <span>Отсюда туда дороги нет.</span>; const how = [...new Set(r.segments.map(s => s.mode === "sea" ? "морем" : s.mode === "river" ? "по реке" : s.mode === "mountain-pass" ? "горным перевалом" : "по дороге"))].join(", "); return <span>Путь от вас: около {r.totalDays} {r.totalDays % 10 === 1 && r.totalDays % 100 !== 11 ? "дня" : "дней"} ({how}).</span>; })()}<button aria-label="Закрыть" onClick={() => setHit(null)}>×</button></div>
       : <p className="map-tip">Нажмите на карту, чтобы узнать, что это за место.</p>}
     <div className="map-legend"><span><i className="legend-current"/>Вы здесь</span><span><i className="legend-destination"/>Цель</span><span><i className="legend-route"/>Выбранный путь</span></div>
   </div>;
@@ -523,7 +526,7 @@ export default function App() {
 
     {tab === "ДОРОГА" && <section className="panel"><div className="eyebrow">ГЛОБАЛЬНАЯ КАРТА</div><h2>Путешествие по Ардану</h2>
       <div className="location">Сейчас: {currentSettlement?.name ?? currentSettlementId}{game.journey ? " · в пути" : ""}</div>
-      <ArdanMap current={currentSettlementId} destination={game.journey?.destinationId ?? destinationId} route={game.journey?.route ?? selectedRoute?.segments ?? []} known={knownPlaces} onGo={game.journey ? undefined : id => setDestinationId(id)}/>
+      <ArdanMap current={currentSettlementId} destination={game.journey?.destinationId ?? destinationId} route={game.journey?.route ?? selectedRoute?.segments ?? []} known={knownPlaces}/>
       {game.journey ? <div className="journey-card"><b>Маршрут до {MAP_NODES.find(n=>n.id===game.journey!.destinationId)?.name ?? game.journey.destinationId}</b><p>Сейчас: {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.from)?.name ?? game.journey.route[game.journey.segmentIndex]?.from} → {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.to)?.name ?? game.journey.route[game.journey.segmentIndex]?.to}</p><p>Участок {game.journey.segmentIndex+1} из {game.journey.route.length}. Осталось дней на участке: <strong>{game.journey.daysRemaining}</strong>. В пути: {game.journey.elapsedDays} дн.</p><p className="hint">Время продвигается по одному дню за действие. При достижении промежуточного пункта обновляется положение героя.</p><button className="primary" onClick={advanceJourney}>ПРОДВИНУТЬСЯ НА ОДИН ДЕНЬ</button></div> : <>
         <label>Куда отправиться<select value={destinationId} onChange={e=>setDestinationId(e.target.value)}>{MAP_NODES.filter(node=>node.id!==currentSettlementId&&knownPlaces.has(node.id)).map(node=><option key={node.id} value={node.id}>{node.name}, {COUNTRIES.find(c=>c.id===node.countryId)?.name}</option>)}</select></label>
         {selectedRoute ? <div className="start-preview"><b>Маршрут: {selectedRoute.totalDays} игровых дней</b><p>{selectedRoute.segments.map(segment=>`${MAP_NODES.find(n=>n.id===segment.from)?.name ?? segment.from} → ${MAP_NODES.find(n=>n.id===segment.to)?.name ?? segment.to} (${segment.days} дн., ${segment.mode === "road" ? "дорога" : segment.mode === "river" ? "река" : segment.mode === "sea" ? "море" : "горный перевал"}, опасность: ${segment.danger === "low" ? "низкая" : segment.danger === "moderate" ? "умеренная" : "высокая"})`).join("; ")}</p><small>Погодные закрытия и сезонные ограничения пока показываются как справочные данные и будут подключены к календарю.</small></div> : <div className="warning">Маршрут между этими точками не найден.</div>}

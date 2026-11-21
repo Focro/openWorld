@@ -8,7 +8,9 @@ const WORLD = createVeloriaWorld();
 describe("Veloria overland travel", () => {
   it("finds a route between Roven and Varentport", () => {
     const route = findVeloriaRoute("roven", "varentport");
-    expect(route?.totalDays).toBe(8);
+    // Вниз по Лиру и через море Лиар: дни считаются из расстояния на карте.
+    expect(route?.totalDays).toBeGreaterThan(1);
+    expect(route?.segments[0]?.mode).toBe("sea");
     expect(route?.segments[0]?.from).toBe("roven");
   });
   it("requires the player to physically reach the Roven gate first", () => {
@@ -40,8 +42,10 @@ describe("Veloria overland travel", () => {
     expect(started.ok).toBe(true);
     expect(started.state.settlementId).toBe("roven");
     let state = started.state;
+    const days = findVeloriaRoute("roven", "varentport")!.totalDays;
     let result = advanceVeloriaJourney(state);
-    for (let i = 0; i < 7; i++) result = advanceVeloriaJourney(result.state);
+    for (let i = 0; i < days - 2; i++) { result = advanceVeloriaJourney(result.state); expect(result.arrived).toBe(false); }
+    result = advanceVeloriaJourney(result.state);
     expect(result.arrived).toBe(true);
     expect(result.state.settlementId).toBe("varentport");
     expect(result.state.playerLocation).toBe("atlas:varentport:gate");
@@ -70,8 +74,9 @@ it("ages the character for every elapsed travel day, including partial route seg
   };
   const started = beginVeloriaJourney(initial, "varentport");
   let state = started.state;
-  for (let i = 0; i < 8; i++) state = advanceVeloriaJourney(state).state;
-  expect(state.playerProfile?.ageProgressMinutes).toBe(8 * 1440);
+  const days = findVeloriaRoute("roven", "varentport")!.totalDays;
+  for (let i = 0; i < days; i++) state = advanceVeloriaJourney(state).state;
+  expect(state.playerProfile?.ageProgressMinutes).toBe(days * 1440);
 });
 
 
@@ -80,4 +85,21 @@ it("requires the player to reach the local gate before leaving another settlemen
   const result = beginVeloriaJourney(abroad, "roven");
   expect(result.ok).toBe(false);
   expect(result.state).toBe(abroad);
+});
+
+it("не отпускает ребёнка одного и не везёт без денег", () => {
+  const base = { ...createInitialState(WORLD), playerLocation: "south-gate" };
+  const child = { ...base, playerProfile: { age: 7, originId: "commoner", statusId: "free", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: {}, difficultyId: "balanced" as const } };
+  const r1 = beginVeloriaJourney(child, "koronholm");
+  expect(r1.ok).toBe(false);
+  expect(r1.message).toMatch(/ребёнка/);
+  const poor = { ...base, money: 0 };
+  const r2 = beginVeloriaJourney(poor, "varentport");
+  expect(r2.ok).toBe(false);
+  expect(r2.message).toMatch(/монет/);
+  // Пешком по дороге платить не нужно.
+  expect(beginVeloriaJourney(poor, "koronholm").ok).toBe(true);
+  const paid = beginVeloriaJourney({ ...base, money: 100 }, "varentport");
+  expect(paid.ok).toBe(true);
+  expect(paid.state.money).toBeLessThan(100);
 });

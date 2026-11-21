@@ -4,6 +4,13 @@ import { dayOfYear } from "../../engine/time";
 import { MAP_NODES, ROUTES } from "./atlas";
 import type { Route } from "./atlas";
 import { settlementGateLocationId } from "./settlementMaps";
+import { heroAgeYears } from "../../engine/speech";
+
+/** Младше этого возраста одного в дальнюю дорогу не отпустят и никто не возьмёт. */
+export const MIN_SOLO_TRAVEL_AGE = 14;
+/** Плата за место на судне в день пути (монеты). Пешком по дороге платить не нужно. */
+export const FARE_PER_DAY: Record<Route["mode"], number> = { road: 0, "mountain-pass": 0, river: 2, sea: 4 };
+export const routeFare = (segments: Route[]) => segments.reduce((sum, seg) => sum + FARE_PER_DAY[seg.mode] * seg.days, 0);
 
 export interface RoutePlan {
   from: string;
@@ -99,9 +106,14 @@ export function beginVeloriaJourney(state: GameState, destinationId: string): { 
   }
   const plan = findVeloriaRoute(from, destinationId, state.minute);
   if (!plan || !plan.segments.length) return { state, ok: false, message: "Маршрут не найден или вы уже находитесь в этом поселении." };
+  // Правдоподобие: ребёнок один в путь не уйдёт, а корабль и речная лодка стоят денег.
+  const age = heroAgeYears(state);
+  if (age !== undefined && age < MIN_SOLO_TRAVEL_AGE) return { state, ok: false, message: `Вам ${age < 1 ? "меньше года" : `${age}`}${age >= 1 ? (age % 10 === 1 && age % 100 !== 11 ? " год" : [2, 3, 4].includes(age % 10) && ![12, 13, 14].includes(age % 100) ? " года" : " лет") : ""}. Одного ребёнка в дальнюю дорогу не отпустят, и ни возчик, ни корабельщик его не возьмут.` };
+  const fare = routeFare(plan.segments);
+  if (fare > state.money) return { state, ok: false, message: `Место на судне на весь путь стоит около ${fare} монет, а у вас ${state.money}. Пешком туда не дойти.` };
   const first = plan.segments[0]!;
-  const next: GameState = { ...state, journey: { destinationId, route: plan.segments, segmentIndex: 0, daysRemaining: first.days, elapsedDays: 0 } };
-  const message = `Вы отправляетесь из ${MAP_NODES.find(n => n.id === from)?.name ?? from}. Путь займёт около ${plan.totalDays} дней; опасность маршрута: ${plan.danger === "low" ? "низкая" : plan.danger === "moderate" ? "умеренная" : "высокая"}.`;
+  const next: GameState = { ...state, money: state.money - fare, journey: { destinationId, route: plan.segments, segmentIndex: 0, daysRemaining: first.days, elapsedDays: 0 } };
+  const message = `Вы отправляетесь из ${MAP_NODES.find(n => n.id === from)?.name ?? from}.${fare ? ` За место на судне отдано ${fare} монет.` : ""} Путь займёт около ${plan.totalDays} дней; опасность маршрута: ${plan.danger === "low" ? "низкая" : plan.danger === "moderate" ? "умеренная" : "высокая"}.`;
   return { state: recordTravel(next, state.minute, message, `route:${first.from}->${first.to}`), ok: true, message };
 }
 
