@@ -268,8 +268,8 @@ export function coerceProposal(raw: unknown): Action | null {
         : null;
     case "live": return isInt(r.days) ? { type: "live", days: r.days } : null;
     case "infant": return typeof r.act === "string" && r.act in INFANT_ACT_LABELS ? { type: "infant", act: r.act as InfantActId } : null;
-    case "say": return typeof r.text === "string" && r.text.trim() && r.text.length <= 1000 ? { type: "say", text: r.text } : null;
-    case "gesture": return typeof r.text === "string" && r.text.trim() && r.text.length <= 500 ? { type: "gesture", text: r.text } : null;
+    case "say": return typeof r.text === "string" && r.text.trim() && r.text.length <= 4000 ? { type: "say", text: r.text } : null;
+    case "gesture": return typeof r.text === "string" && r.text.trim() && r.text.length <= 4000 ? { type: "gesture", text: r.text } : null;
     default: return null;
   }
 }

@@ -33,8 +33,9 @@ export const config = {
   effort: process.env.AI_EFFORT ?? "low",
   // Ответ — короткий JSON действия; большой лимит только тратит деньги игрока.
   maxTokens: Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 200),
-  // Живая сцена: 1-2 реплики NPC и короткая ремарка. Длиннее не нужно, иначе ответы раздуваются.
-  sceneMaxTokens: Number(process.env.AI_MAX_SCENE_TOKENS ?? 400),
+  // Живая сцена: литературное повествование и реплики людей. Игроки любят длинный текст,
+  // поэтому лимит щедрый; экономия идёт за счёт короткого контекста, а не урезанного ответа.
+  sceneMaxTokens: Number(process.env.AI_MAX_SCENE_TOKENS ?? 2000),
   maxBodyBytes: 64 * 1024,
   perMinute: Number(process.env.AI_MAX_REQUESTS_PER_MINUTE ?? 6),
   perDay: Number(process.env.AI_MAX_REQUESTS_PER_DAY ?? 300),
@@ -90,7 +91,7 @@ export function validateEnvelope(body) {
   if (!body || typeof body !== "object") return "Пустой запрос.";
   const env = body.envelope;
   if (!env || !["openworld-ai-context-v1", "openworld-intent-v1", SCENE_PROTOCOL].includes(env.protocol)) return "Неизвестный протокол контекста.";
-  if (typeof env.playerText !== "string" || !env.playerText.trim() || env.playerText.length > 1000) return "Текст игрока: от 1 до 1000 символов.";
+  if (typeof env.playerText !== "string" || !env.playerText.trim() || env.playerText.length > 4000) return "Текст игрока: от 1 до 4000 символов.";
   if (!Array.isArray(env.systemInstructions) || !env.context || !env.outputContract) return "Неполный контекст.";
   if (env.protocol === SCENE_PROTOCOL) return Array.isArray(env.outputContract.speakers) ? null : "Не указан список говорящих.";
   if (!Array.isArray(env.outputContract.allowedActions)) return "Не указан список допустимых действий.";

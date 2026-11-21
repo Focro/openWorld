@@ -8,7 +8,7 @@ import { UnlockedKeySession } from "./ai/keyVault";
 import { ProxyActionProposer, isAiProviderId, type AiProviderId } from "./ai/proxyClient";
 import { AiSettings } from "./ui/AiSettings";
 import { understandFreeText } from "./engine/intent";
-import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, hasListeners, isGameLanguage, type GameLanguage } from "./engine/speech";
+import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, hasListeners, isGameLanguage, type GameLanguage, type SceneEvent } from "./engine/speech";
 import { CachingProposer } from "./ai/intentCache";
 import { loadUsage, recordUsage } from "./ai/usage";
 import { createInitialState } from "./engine/world";
@@ -168,10 +168,12 @@ export default function App() {
   const aiLimitReached = () => aiLimit() > 0 && loadUsage().requests >= aiLimit();
   const makeProxy = () => new ProxyActionProposer(aiEndpoint, keySession, { provider: aiProvider, model: aiModel, onUsage: usage => recordUsage({ requests: 1, inputTokens: usage.input, outputTokens: usage.output }) });
   /** После реплики, жеста или детского действия люди рядом отвечают живыми словами, написанными ИИ. */
-  function liveScene(after: GameState, playerText: string) {
-    if (!hasListeners(world, after)) return;
+  function liveScene(after: GameState, playerText: string, event: SceneEvent) {
+    // Осмотр и приход описываются литературно даже в пустом месте; разговор нужен только при слушателях.
+    const descriptive = event === "look" || event === "arrival";
+    if (!descriptive && !hasListeners(world, after)) return;
     if (!aiEnabled || aiLimitReached()) {
-      if (!sceneHintShown.current) {
+      if (!descriptive && !sceneHintShown.current) {
         sceneHintShown.current = true;
         setLog(l => [...l, aiEnabled
           ? `Дневной лимит запросов к ИИ (${aiLimit()}) исчерпан, поэтому люди рядом пока молчат. Лимит меняется во вкладке «Система».`
@@ -179,22 +181,25 @@ export default function App() {
       }
       return;
     }
-    const envelope = buildSceneEnvelope(buildSceneContext(world, after, playerText, lang), playerText);
+    const envelope = buildSceneEnvelope(buildSceneContext(world, after, playerText, lang, event), playerText);
     setAiBusy(true);
     makeProxy().writeScene(envelope).then(raw => {
-      const scene = coerceScene(raw, envelope.outputContract.speakers);
+      const scene = coerceScene(raw, envelope.outputContract.speakers, after.playerName);
       if (!scene) return;
       const applied = applyScene(world, after, scene);
       setGame(current => current === after ? applied.state : current);
       setLog(l => [...l, ...applied.lines]);
-    }).catch(() => setLog(l => [...l, "ИИ сейчас недоступен, ответы людей не пришли. Мир не изменился."]))
+    }).catch(() => setLog(l => [...l, "ИИ сейчас недоступен, ответ мира не пришёл. Мир не изменился."]))
       .finally(() => setAiBusy(false));
   }
   const SOCIAL_INFANT_ACTS: InfantActId[] = ["cry", "smile", "babble", "reach", "cling", "play"];
   function sceneFor(next: import("./engine/types").ActionResult, performed: import("./engine/types").Action, text: string) {
     if (!next.ok || next.state.lifeStatus === "dead") return;
-    if (performed.type === "say" || performed.type === "gesture") liveScene(next.state, text);
-    else if (performed.type === "infant" && SOCIAL_INFANT_ACTS.includes(performed.act)) liveScene(next.state, `(${INFANT_ACT_LABELS[performed.act]})`);
+    if (performed.type === "say") liveScene(next.state, text, "speech");
+    else if (performed.type === "gesture") liveScene(next.state, text, "gesture");
+    else if (performed.type === "look") liveScene(next.state, text || "осмотреться", "look");
+    else if (performed.type === "move") liveScene(next.state, text || "иду дальше", "arrival");
+    else if (performed.type === "infant" && SOCIAL_INFANT_ACTS.includes(performed.act)) liveScene(next.state, `(${INFANT_ACT_LABELS[performed.act]})`, "infant");
   }
   function run(text: string) {
     if (game.journey) { setLog(l => [...l, "Во время путешествия нельзя выполнять городские действия. Продолжите путь на вкладке «Дорога»."]); return; }
@@ -402,6 +407,6 @@ export default function App() {
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен: единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>✓ Живые ответы NPC через нейросеть: свой голос по возрасту, характеру, сословию и краю, память о разговоре</li><li>○ Правосудие и самостоятельные действия NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.15.0 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.15.1 · локальная альфа</span></footer>
   </main>;
 }
