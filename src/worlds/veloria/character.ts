@@ -1,6 +1,8 @@
 import type { WorldData } from "../../engine/types";
 import { createVeloriaWorld } from "./world";
 import { attachStartEntourage } from "./upperSociety";
+import { NEWBORN_ORIGINS, NEWBORN_ORIGIN_LABELS } from "./birthFamily";
+import { generateVeloriaFamily } from "./familyGeneration";
 import { buildReynarCourt, SECOND_PRINCE_START_YEAR } from "./reynarCourt";
 import { VELORIA_ORIGIN_LABELS } from "./lore";
 import { FAITHS } from "./faiths";
@@ -127,6 +129,10 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
   if (draft.dynasticRole !== "second-prince" && (!STATUS_PROFESSIONS[draft.statusId]?.includes(draft.professionId) ||
       !PROFESSION_ORIGINS[draft.professionId]?.includes(draft.originId))) errors.push("Профессия несовместима с происхождением или статусом.");
   if (draft.dynasticRole !== "second-prince" && !SCENARIOS[draft.startScenarioId]?.includes(draft.originId)) errors.push("Стартовая ситуация несовместима с биографией.");
+  if (draft.age === 0 && draft.dynasticRole !== "second-prince") {
+    if (!NEWBORN_ORIGINS.includes(draft.originId)) errors.push("С рождения можно начать только в обычной семье: арендаторы, земледельцы, ремесленники, торговцы, возчики или подкидыш у храма.");
+    if (draft.startScenarioId !== "ordinary") errors.push("Старт с рождения возможен только в обычной ситуации.");
+  }
   if (draft.biography.length > 2000) errors.push("Биография: максимум 2000 символов.");
   if (draft.heightCm !== undefined && (!Number.isInteger(draft.heightCm) || draft.heightCm < (draft.age < 5 ? 40 : draft.age < 12 ? 70 : draft.age < 16 ? 110 : 140) || draft.heightCm > (draft.age < 5 ? 125 : draft.age < 12 ? 165 : draft.age < 16 ? 200 : 205))) errors.push("Рост не соответствует допустимому диапазону для выбранного возраста.");
   if (draft.weightKg !== undefined && (!Number.isFinite(draft.weightKg) || draft.weightKg < (draft.age < 5 ? 2 : draft.age < 12 ? 8 : draft.age < 16 ? 25 : 40) || draft.weightKg > (draft.age < 5 ? 30 : draft.age < 12 ? 70 : draft.age < 16 ? 110 : 140))) errors.push("Вес не соответствует допустимому диапазону для выбранного возраста.");
@@ -161,6 +167,11 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
       ? ["Ты родился в 723 КЛ во дворце Коронхольма как второй сын Гарена Вальда от женщины из далёкой восточной земли. Гарен признал тебя, хотя родители не состояли в браке.", "Элиана — жена Гарена, но не твоя мать. Её личная неприязнь к тебе вызвана изменой супруга; публично она соблюдает королевский протокол. Кронпринц Альдрен остаётся первым в линии наследования.", "Кампания начинается в день твоего рождения. Характеристики анкеты отражают задатки, а не навыки новорождённого."]
       : [...base.notes]
   };
+  if (draft.age === 0 && draft.dynasticRole !== "second-prince") {
+    const household = generateVeloriaFamily(draft).household;
+    start.locationId = household?.homeId ?? "temple"; start.money = 0; start.inventory = { swaddling_cloth: 1 };
+    start.notes = [`Ты рождаешься в 742 КЛ в Ровене: ${NEWBORN_ORIGIN_LABELS[draft.originId] ?? "обычная семья"}.`];
+  }
   if (draft.startScenarioId === "journey") {
     start.locationId = "south-gate"; start.money = Math.max(1, start.money - 4);
     start.notes.push("Персонаж прибыл в Ровен после дороги; часть средств ушла на путь.");
@@ -200,7 +211,8 @@ export function createVeloriaWorldForCharacter(draft: VeloriaCharacterDraft): Wo
     };
   } else {
     world = { ...world, startYearKL, npcs: { ...world.npcs, ...court.npcs }, locations: { ...world.locations, ...court.locations } };
-    world = attachStartEntourage(world, draft.originId);
+    if (draft.age > 0) world = attachStartEntourage(world, draft.originId);
+    else world = { ...world, items: { ...world.items, swaddling_cloth: { id: "swaddling_cloth", name: "Пелёнка" } } };
     world.startLocationId = result.start.locationId;
     world.startMoney = result.start.money;
     world.startInventory = { ...result.start.inventory };

@@ -1,10 +1,15 @@
-/** Канонический реестр 30 влиятельных домов Ардана. Не все дома открыты персонажу. */
+/** Реестр домов Ардана: 30 канонических и дополнительные дома-предложения (proposedHouses.ts). Не все дома открыты персонажу. */
+import { PROPOSED_RAW_HOUSES } from "./proposedHouses";
 export type HouseStatus = "alive" | "dead" | "missing" | "unknown";
 export interface GenealogyMember {
   id:string; name:string; birthYear:number; deathYear?:number; status:HouseStatus;
   role:string; parentIds:string[]; ancestorIds:string[]; spouseIds:string[]; legitimacy:"legitimate"|"acknowledged"|"unrecognized"|"adopted";
   notes:string;
+  /** Страна происхождения, если человек родом не из страны своего дома (брак, служба, торговля). */
+  originStateId?:string;
 }
+/** Структурное правило наследования; текст inheritanceLaw остаётся главным описанием. */
+export type SuccessionRule = "male-preference" | "absolute-primogeniture" | "elective" | "council" | "testament" | "appointment";
 export interface DynasticHouse {
   id:string; name:string; stateId:string; countryId:string; seat:string; title:string; foundedYear:number;
   founder:string; originOfPower:string; inheritanceLaw:string; motto:string;
@@ -13,6 +18,11 @@ export interface DynasticHouse {
   /** Односторонние связи с точки зрения этого дома; не считаются взаимным договором без отдельного подтверждения. */
   allies:string[]; rivals:string[];
   obligations:string[]; secrets:string[];
+  /** canon — канон 1.0; proposal — предложение проекта, которое автор может изменить. По умолчанию canon. */
+  canonStatus?: "canon" | "proposal";
+  successionRule?: SuccessionRule;
+  /** Действующий глава дома (для расчёта наследников). */
+  headId?: string;
 }
 const m=(id:string,name:string,birthYear:number,role:string,parentIds:string[]=[],spouseIds:string[]=[],notes=""):GenealogyMember=>({id,name,birthYear,status:"alive",role,parentIds,ancestorIds:[],spouseIds,legitimacy:"legitimate",notes});
 const house=(x:Omit<DynasticHouse,"members"|"countryId"> & {members:GenealogyMember[]}):DynasticHouse=>({...x,countryId:x.stateId});
@@ -20,7 +30,7 @@ const acknowledged=(id:string,name:string,birthYear:number,role:string,parentIds
 const deceased=(id:string,name:string,birthYear:number,deathYear:number,role:string,parentIds:string[]=[],notes=""):GenealogyMember=>({
   ...m(id,name,birthYear,role,parentIds,[],notes), status:"dead", deathYear
 });
-const RAW_NOBLE_HOUSES: DynasticHouse[] = [
+const CANON_RAW_HOUSES: DynasticHouse[] = [
 // ESTRAN — корона и вассальные дома
 house({id:"reynar",name:"Дом Рейнар",stateId:"estran",seat:"Королевский двор Коронхольма",title:"королевская династия",foundedYear:411,founder:"Альдрик Рейнар",originOfPower:"Королевская ветвь, объединившая западные долины после войны мостов.",inheritanceLaw:"Кронпринц занимает первое место. Второй принц, признанный Гареном Вальдом, включён в линию отдельной королевской грамотой после кронпринца; его положение может оспариваться в Королевском суде и совете короны. Формальное место в линии не гарантирует личного расположения королевы.",motto:"Корона служит земле",wealth:"great",publicStanding:"Правящая династия Эстрана; родословная публична, семейные споры частично закрыты.",members:[m("rey-aldric","Альдрик I Рейнар",390,"основатель династии",[],[],"Объединил западные долины"),m("rey-elin","Элиана III Рейнар",704,"королева",["rey-aldric"],["rey-consort"],"Нынешняя правительница с 735 КЛ. В 723 КЛ ещё принцесса и супруга Гарена; после раскрытия его измены испытывает глубокую личную неприязнь к ребёнку, рождённому от этой связи. Формальная королевская обязанность не означает материнской привязанности."),m("rey-consort","Гарен Вальд",699,"королевский супруг",[],["rey-elin"],"Во время брака с Элианой вступил в тайную связь с куртизанкой из далёкой восточной земли. От этой связи родился второй принц. Гарен признал сына, но долго недооценивал, насколько глубоко измена ранила Элиану."),m("rey-first-prince","Альдрен Рейнар",722,"кронпринц; первый в линии наследования",["rey-elin","rey-consort"],[],"Старший законный сын Элианы III и Гарена Вальда. Его положение подтверждено королевским двором. В 723 КЛ ему около года; он ещё младенец и не осознаёт династического конфликта."),deceased("rey-second-prince-mother","Имя не установлено",701,725,"биологическая мать второго принца; куртизанка из далёкой восточной земли",[],"Её имя, точное происхождение и прежняя жизнь неизвестны двору. Она родила сына Гарена Вальда во время его брака с Элианой. Умерла в 725 КЛ, когда ребёнку было около двух лет; точная причина смерти не установлена."),acknowledged("rey-second-prince","Второй принц Рейнар",723,"второй принц; признанный сын Гарена Вальда, второй в линии по отдельной королевской грамоте",["rey-consort","rey-second-prince-mother"],[],"Биологический сын Гарена Вальда и куртизанки из далёкой восточной земли. Рождён в 723 КЛ во время брака Гарена с Элианой. Гарен признал отцовство. Элиана формально допустила ребёнка в королевский дом под давлением закона и двора, но лично не приняла его: измена мужа стала для неё унижением, а ребёнок — постоянным напоминанием о ней. Её неприязнь к нему известна лишь по частным поступкам и холодному обращению; публично она сохраняет королевское достоинство. Внешность фиксирована: светлая кожа, светло-русые волосы, тёмно-карие почти чёрные глаза и выраженные восточноазиатские черты лица."),m("rey-maren","Марен Рейнар",724,"третья принцесса",["rey-elin","rey-consort"]),m("rey-fourth-princess","Элиза Рейнар",726,"четвёртая принцесса",["rey-elin","rey-consort"],[],"Имя и подробная биография зафиксированы для династического состава; характер будет расширен отдельно."),m("rey-oren","Орен Рейнар",727,"пятый принц",["rey-elin","rey-consort"]),m("rey-cousin","Лисетта Рейнар",716,"двоюродная ветвь",["rey-aldric"])],cadetBranches:["Вальд-Рейнарская линия","Северная ветвь Рейнаров"],allies:["valecourt","dalen"],rivals:["morholt"],obligations:["защита королевства","соблюдение хартий","содержание двора"],secrets:["В королевском архиве хранится спорная грамота о старшинстве одной из боковых ветвей."]}),
 house({id:"valecourt",name:"Дом Валекур",stateId:"estran",seat:"Поместье Валекур у Лира",title:"графы",foundedYear:596,founder:"Неизвестный ранний представитель дома Валекур",originOfPower:"Земли пожалованы за поддержку короны в войне за переправы; позднее закреплены браком с речной знатью.",inheritanceLaw:"Старший законный ребёнок независимо от пола при подтверждении коронной грамотой.",motto:"Держать мост открытым",wealth:"great",publicStanding:"Богатый мостовой и зерновой дом, влиятельный в королевском совете.",members:[m("val-edmund","Эдмунд Валекур",676,"граф",[],["val-mira"]),m("val-mira","Мира из дома Тален",680,"графиня",[],["val-edmund"]),m("val-adrien","Адриен Валекур",708,"наследник",["val-edmund","val-mira"]),m("val-lucia","Люция Валекур",711,"дочь",["val-edmund","val-mira"]),m("val-joren","Йорен Валекур",682,"младший брат графа",[],[],"Ветвь живёт в Ровене"),m("val-joren-son","Терен Валекур",710,"племянник графа",["val-joren"])],cadetBranches:["Ровенская ветвь Йорена"],allies:["reynar","dalen"],rivals:["morholt"],obligations:["содержать мостовую стражу","выставлять конницу по вызову"],secrets:["Граф тайно финансирует фракцию городского совета."]}),
@@ -64,6 +74,10 @@ house({id:"linhai",name:"Дом Линхай",stateId:"kharum",seat:"Южные 
  * - отсутствие подтверждённой даты смерти у человека старше 100 лет не доказывает, что он жив.
  *   Такой статус становится unknown, не dead.
  */
+const RAW_NOBLE_HOUSES: DynasticHouse[] = [
+  ...CANON_RAW_HOUSES.map(h => ({ ...h, canonStatus: "canon" as const })),
+  ...PROPOSED_RAW_HOUSES.map(h => ({ ...h, countryId: h.stateId }))
+];
 const CURRENT_CANON_YEAR = 742;
 const birthYears = new Map(RAW_NOBLE_HOUSES.flatMap(h => h.members.map(m => [m.id, m.birthYear] as const)));
 export const NOBLE_HOUSES: DynasticHouse[] = RAW_NOBLE_HOUSES.map(h => ({
@@ -87,3 +101,34 @@ export function houseById(id:string):DynasticHouse|undefined{return NOBLE_HOUSES
 export function housesInState(stateId:string):DynasticHouse[]{return NOBLE_HOUSES.filter(h=>h.stateId===stateId)}
 export function visibleGenealogy(houseId:string,knownMemberIds:string[]):GenealogyMember[]{const h=houseById(houseId);if(!h)return[];const known=new Set(knownMemberIds);return h.members.filter(x=>known.has(x.id)).map(x=>({...x,parentIds:x.parentIds.filter(p=>known.has(p)),ancestorIds:x.ancestorIds.filter(p=>known.has(p)),spouseIds:x.spouseIds.filter(p=>known.has(p))}))}
 export function validateGenealogies():string[]{const errors:string[]=[];for(const h of NOBLE_HOUSES){const ids=new Set(h.members.map(x=>x.id));for(const person of h.members){for(const p of person.parentIds)if(!ids.has(p))errors.push(`${h.id}: unknown parent ${p} for ${person.id}`);for(const a of person.ancestorIds)if(!ids.has(a))errors.push(`${h.id}: unknown ancestor ${a} for ${person.id}`);for(const s of person.spouseIds)if(!ids.has(s))errors.push(`${h.id}: unknown spouse ${s} for ${person.id}`);if(person.parentIds.includes(person.id))errors.push(`${h.id}: self-parent ${person.id}`)}}return errors}
+
+export const CANON_HOUSES = (): DynasticHouse[] => NOBLE_HOUSES.filter(h => h.canonStatus !== "proposal");
+
+export interface HeirCandidate { id: string; name: string; basis: string }
+/**
+ * Кто может унаследовать главенство в доме по его правилу и нынешнему составу семьи.
+ * Для выборных и назначаемых правил это круг кандидатов, а не решённый итог.
+ */
+export function heirCandidates(houseId: string): { rule?: SuccessionRule; decided: boolean; candidates: HeirCandidate[] } {
+  const h = houseById(houseId);
+  if (!h?.successionRule || !h.headId) return { rule: h?.successionRule, decided: false, candidates: [] };
+  const alive = h.members.filter(x => x.status === "alive" && x.id !== h.headId);
+  const children = alive.filter(x => x.parentIds.includes(h.headId!)).sort((a, b) => a.birthYear - b.birthYear);
+  const lawful = children.filter(x => x.legitimacy === "legitimate" || x.legitimacy === "adopted");
+  const isMale = (x: GenealogyMember) => /сын|наследник(?!ца)|брат|муж|супруг(?!а)/.test(x.role);
+  const rest = alive.filter(x => !children.includes(x) && !x.spouseIds.includes(h.headId!));
+  const toCandidate = (x: GenealogyMember, basis: string): HeirCandidate => ({ id: x.id, name: x.name, basis });
+  switch (h.successionRule) {
+    case "absolute-primogeniture":
+      return { rule: h.successionRule, decided: lawful.length > 0, candidates: (lawful.length ? lawful : rest).slice(0, 1).map(x => toCandidate(x, lawful.length ? "старший законный ребёнок" : "ближайший родственник при отсутствии детей")) };
+    case "male-preference": {
+      const sons = lawful.filter(isMale), daughters = lawful.filter(x => !isMale(x));
+      const first = sons[0] ?? daughters[0] ?? rest[0];
+      return { rule: h.successionRule, decided: Boolean(sons[0] ?? daughters[0]), candidates: first ? [toCandidate(first, sons[0] ? "старший законный сын" : daughters[0] ? "старшая дочь при отсутствии сыновей" : "родственник при отсутствии детей")] : [] };
+    }
+    case "testament":
+      return { rule: h.successionRule, decided: false, candidates: lawful.map(x => toCandidate(x, "может быть назван в завещании")) };
+    case "elective": case "council": case "appointment":
+      return { rule: h.successionRule, decided: false, candidates: [...lawful, ...rest.filter(x => x.legitimacy !== "unrecognized")].map(x => toCandidate(x, h.successionRule === "appointment" ? "может быть назначен" : "может быть избран")) };
+  }
+}

@@ -7,10 +7,14 @@ import { resolveWithAi } from "./engine/ai";
 import { UnlockedKeySession } from "./ai/keyVault";
 import { ProxyActionProposer, isAiProviderId, type AiProviderId } from "./ai/proxyClient";
 import { AiSettings } from "./ui/AiSettings";
+import { understandFreeText } from "./engine/intent";
+import { CachingProposer } from "./ai/intentCache";
+import { loadUsage, recordUsage } from "./ai/usage";
 import { createInitialState } from "./engine/world";
 import { importGamePayload } from "./engine/save";
 import { DEFAULT_WORLD_ID, WORLDS, getWorldEntry, migrateStateForWorld, resolveWorldForState } from "./worlds/registry";
 import { startVeloriaCampaign } from "./worlds/veloria/campaign";
+import { NEWBORN_ORIGINS, NEWBORN_ORIGIN_LABELS } from "./worlds/veloria/birthFamily";
 import { LifePanel, BirthSetup } from "./ui/LifePanel";
 import { capabilities, formatAge, INFANT_ACT_LABELS, NEUTRAL_TEMPERAMENT, type InfantActId } from "./engine/development";
 import { dayOfYear, formatClock, yearKLOf } from "./engine/time";
@@ -31,6 +35,16 @@ import { WORLD_DIFFICULTIES, type WorldDifficultyId } from "./worlds/veloria/dif
 import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES } from "./worlds/veloria/atlas";
 import { advanceVeloriaJourney, beginVeloriaJourney, findVeloriaRoute } from "./worlds/veloria/travel";
 import "./styles.css";
+
+function familyMemberLabel(member: import("./engine/types").NpcDef): string {
+  if (member.id.endsWith("-grandmother")) return "бабушка";
+  if (member.id.endsWith("-wet-nurse")) return "кормилица";
+  if (member.id.endsWith("-sister")) return "храмовая сестра, опекун";
+  if (member.id.includes("-sibling-")) return "старший брат или сестра";
+  if (member.caregiving?.role === "mother") return "мать";
+  if (member.caregiving?.role === "father") return "отец";
+  return member.familyRole === "guardian" ? "опекун" : "биологический родитель";
+}
 
 function readPref(key: string, fallback: string): string { try { return globalThis.localStorage?.getItem(key) ?? fallback; } catch { return fallback; } }
 function writePref(key: string, value: string): void { try { globalThis.localStorage?.setItem(key, value); } catch { /* хранилище недоступно */ } }
@@ -135,7 +149,7 @@ export default function App() {
   const dynasticHeirOptions = useMemo(() => documentedDynasticOptions("heir"), []);
   const acknowledgedBastards = useMemo(() => documentedAcknowledgedBastards(), []);
   /** Старт с рождения: взрослые поля анкеты (рост, профессия, навыки) не показываются. */
-  const isBirthStart = draft.dynasticRole === "second-prince";
+  const isBirthStart = draft.dynasticRole === "second-prince" || draft.age === 0;
   const total = Object.values(draft.attributes).reduce((sum, n) => sum + n, 0);
   const found = useMemo(() => searchChronicle(game, { text: query }), [game, query]);
   const quick = useMemo(() => {
@@ -151,11 +165,21 @@ export default function App() {
     if (game.journey) { setLog(l => [...l, "Во время путешествия нельзя выполнять городские действия. Продолжите путь на вкладке «Дорога»."]); return; }
     const parsed = parseAction(world, text);
     if (!parsed.ok) {
+      // Сначала пробуем понять обычную речь без ИИ: это бесплатно и мгновенно.
+      const local = understandFreeText(world, game, text);
+      if (local?.ok) {
+        if (aiEnabled) recordUsage({ understoodLocally: 1 });
+        const result = applyAction(world, game, local.action);
+        setGame(result.state); setLog(l => [...l, ...result.message.split("\n")]);
+        return;
+      }
       if (!aiEnabled || aiBusy) { setLog(l => [...l, parsed.reason]); return; }
+      const limit = Number(readPref("openworld.ai.daily-limit", "50"));
+      if (limit > 0 && loadUsage().requests >= limit) { setLog(l => [...l, `Дневной лимит запросов к ИИ (${limit}) исчерпан. Команды без ИИ работают как обычно; лимит меняется в «Системе».`]); return; }
       // Свободный текст: ИИ только предлагает действие, движок проверяет его по правилам и возрасту.
       setAiBusy(true); setLog(l => [...l, `> ${text}`, "ИИ разбирает намерение…"]);
       const snapshot = game;
-      void resolveWithAi(world, snapshot, text, new ProxyActionProposer(aiEndpoint, keySession, { provider: aiProvider, model: aiModel })).then(result => {
+      void resolveWithAi(world, snapshot, text, new CachingProposer(new ProxyActionProposer(aiEndpoint, keySession, { provider: aiProvider, model: aiModel, onUsage: usage => recordUsage({ requests: 1, inputTokens: usage.input, outputTokens: usage.output }) }), () => recordUsage({ cacheHits: 1 }))).then(result => {
         setGame(current => current === snapshot ? result.state : current);
         setLog(l => [...l, ...result.message.split("\n")]);
       }).finally(() => setAiBusy(false));
@@ -241,16 +265,20 @@ export default function App() {
     {tab === "ПЕРСОНАЖ" && <section className="panel">
       <div className="section-head"><div><div className="eyebrow">СБОРКА ГЕРОЯ</div><h2>Кем ты войдёшь в Велорию?</h2></div><div className={total === 100 ? "total good" : "total"}>{total} / 100 очков</div></div>
       <h3 className="sub">1. Особая династическая история</h3>
-      <label>Стартовая роль<select value={draft.dynasticRole ?? "ordinary"} onChange={e=>{
+      <label>Стартовая роль<select value={draft.dynasticRole ?? (draft.age === 0 ? "ordinary-birth" : "ordinary")} onChange={e=>{
+        if (e.target.value === "ordinary-birth") {
+          setDraft(d=>({...d,dynasticRole:undefined,name:d.dynasticRole ? "Новорождённый" : d.name,age:0,originId:NEWBORN_ORIGINS.includes(d.originId)?d.originId:"tenant-farmer",statusId:availableStatuses(NEWBORN_ORIGINS.includes(d.originId)?d.originId:"tenant-farmer")[0]!,professionId:"none",familyState:"together",startScenarioId:"ordinary",heightCm:undefined,weightKg:undefined,skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined}));
+          setSaved(false); return;
+        }
         const role=e.target.value === "second-prince" ? "second-prince" : undefined;
         setDraft(d=>role ? ({...d,dynasticRole:role,name:"Второй принц Рейнар",age:0,originId:"acknowledged-bastard",statusId:"noble",professionId:"none",familyState:"together",startScenarioId:"ordinary",parentalUnionStatus:"unmarried",heightCm:50,weightKg:3.5,build:"Среднее",hairColor:"light-blond",hairTexture:"straight",eyeColor:"dark-brown",facialFeatures:"east-asian",skinTone:3,hairstyle:"мягкие короткие волосы младенца",biography:"Рождён в 723 КЛ от Гарена Вальда и женщины из далёкой восточной земли. Отец признал сына. Принцесса Элиана (королевой станет в 735 КЛ) — жена отца, не мать ребёнка; её личная неприязнь связана с изменой супруга.",familyNotes:"Мать умерла в 725 КЛ; точная причина не установлена. Королевская кормилица Мейра назначена опекуном."}) : ({...d,dynasticRole:undefined,originId:"wanderer",statusId:"marginal",professionId:"none",familyState:"together",parentalUnionStatus:"unknown",age:22,heightCm:170,weightKg:68,build:"Среднее",hairstyle:"",skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined,biography:"",familyNotes:""})); setSaved(false);
-      }}><option value="ordinary">Обычный персонаж</option><option value="second-prince">Второй принц дома Рейнар — начать с рождения</option></select></label>
+      }}><option value="ordinary">Обычный персонаж</option><option value="ordinary-birth">Обычная семья — начать с рождения</option><option value="second-prince">Второй принц дома Рейнар — начать с рождения</option></select></label>
       {draft.dynasticRole === "second-prince" && <div className="start-preview"><b>Канонический сценарий · 723 КЛ</b><p>Ты начинаешь жизнь новорождённым во дворце Коронхольма. Гарен Вальд — твой биологический отец; мать — куртизанка из далёкой восточной земли. Элиана III — жена отца, не твоя мать. Она ненавидит напоминание об измене и обращается с тобой холодно, хотя обязана соблюдать королевский протокол.</p><p>Кронпринц Альдрен уже родился и остаётся первым наследником. Третья принцесса Марен родится в 724 КЛ, Элиза — в 726 КЛ, Орен — в 727 КЛ.</p><p><b>Твоя внешность фиксирована:</b> светлая кожа, светло-русые волосы, почти чёрные карие глаза и выраженные восточноазиатские черты лица. Интеллект, задатки, темперамент, телосложение и дальнейшее развитие задаются анкетой.</p></div>}
       <h3 className="sub">2. Социальная роль и происхождение</h3>
       <div className="form-grid">
         <label>Имя персонажа<input maxLength={40} value={draft.name} onChange={e => patchDraft("name", e.target.value)}/></label>
         <label>Возраст (0–80)<input type="number" min={0} max={80} value={draft.age} disabled={draft.dynasticRole === "second-prince"} onChange={e => { const age=Number(e.target.value); setDraft(d=>({...d,age,skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined,professionId:age<16?"none":d.professionId,heightCm:age<5?Math.round(50+age*12):age<12?Math.round(105+(age-5)*7):age<16?Math.round(154+(age-12)*7):d.heightCm,weightKg:age<5?Math.round((3.5+age*3)*10)/10:age<12?Math.round((20+(age-5)*4)*10)/10:age<16?Math.round(48+(age-12)*8):d.weightKg})); setSaved(false); }}/></label>
-        <label>Происхождение<select value={draft.originId} disabled={draft.dynasticRole === "second-prince"} onChange={e => { const originId=e.target.value as VeloriaOriginId; const nextStatus=availableStatuses(originId)[0]; const nextProf=nextStatus ? availableProfessions(originId,nextStatus)[0] : "none"; const nextScenario=availableScenarios(originId)[0] ?? "ordinary"; setDraft(d=>({...d,originId,statusId:nextStatus,professionId:nextProf,startScenarioId:nextScenario,familyState:originId==="temple-orphan" && !["unknown","chosen-family"].includes(d.familyState) ? "unknown" : d.familyState,parentalUnionStatus:originId==="temple-orphan" ? "unknown" : d.parentalUnionStatus,skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined})); setSaved(false); }}>{ORIGINS.map(id=>{const blocked=["minor-heir","noble-younger","acknowledged-bastard","impoverished-noble"].includes(id) && !(draft.dynasticRole === "second-prince" && id === "acknowledged-bastard");return <option key={id} value={id} disabled={blocked}>{VELORIA_ORIGIN_LABELS[id]}{blocked?" — пока недоступно":""}</option>;})}</select></label>
+        <label>Происхождение<select value={draft.originId} disabled={draft.dynasticRole === "second-prince"} onChange={e => { const originId=e.target.value as VeloriaOriginId; const nextStatus=availableStatuses(originId)[0]; const nextProf=nextStatus ? availableProfessions(originId,nextStatus)[0] : "none"; const nextScenario=availableScenarios(originId)[0] ?? "ordinary"; setDraft(d=>({...d,originId,statusId:nextStatus,professionId:nextProf,startScenarioId:nextScenario,familyState:originId==="temple-orphan" && !["unknown","chosen-family"].includes(d.familyState) ? "unknown" : d.familyState,parentalUnionStatus:originId==="temple-orphan" ? "unknown" : d.parentalUnionStatus,skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined})); setSaved(false); }}>{ORIGINS.map(id=>{const newborn = draft.age === 0 && draft.dynasticRole !== "second-prince";const blocked=(["minor-heir","noble-younger","acknowledged-bastard","impoverished-noble"].includes(id) && !(draft.dynasticRole === "second-prince" && id === "acknowledged-bastard")) || (newborn && !NEWBORN_ORIGINS.includes(id));return <option key={id} value={id} disabled={blocked}>{newborn ? NEWBORN_ORIGIN_LABELS[id] ?? VELORIA_ORIGIN_LABELS[id] : VELORIA_ORIGIN_LABELS[id]}{blocked?" — пока недоступно":""}</option>;})}</select></label>
         <label>Общественное положение<select value={draft.statusId} disabled={draft.dynasticRole === "second-prince"} onChange={e => { const statusId=e.target.value as VeloriaStatusId; const nextProf=availableProfessions(draft.originId,statusId)[0] ?? "none"; patchDraft("statusId",statusId); setDraft(d=>({...d,statusId,professionId:nextProf})); }}>{statuses.map(id=><option key={id} value={id}>{STATUS_LABELS[id]}</option>)}</select></label>
 {!isBirthStart &&         <label>Профессия<select value={draft.professionId} disabled={draft.dynasticRole === "second-prince"} onChange={e => patchDraft("professionId",e.target.value as VeloriaProfessionId)}>{(draft.age<16?["none"]:professions).map(id=><option key={id} value={id}>{draft.age<16?"Ребёнок / без взрослой профессии":PROFESSION_LABELS[id as VeloriaProfessionId]}</option>)}</select></label>}
         <label>Семья<select value={draft.familyState} disabled={draft.dynasticRole === "second-prince"} onChange={e => { const familyState=e.target.value as VeloriaFamilyState; setDraft(d=>({...d,familyState,parentalUnionStatus:["together","distant","lost"].includes(familyState)?d.parentalUnionStatus:"unknown",skinTone:undefined,hairColor:undefined,hairTexture:undefined,eyeColor:undefined,facialFeatures:undefined})); setSaved(false); }}>{Object.entries(FAMILY_LABELS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
@@ -264,7 +292,8 @@ export default function App() {
         <b>Семья, назначенная миром</b>
         {familyAssignment.available ? <>
           <p>{familyAssignment.summary}</p>
-          {familyAssignment.members.length > 0 && <ul>{familyAssignment.members.map(member=><li key={member.id}><b>{member.name}</b> · {member.age} лет · {member.familyRole === "guardian" ? "опекун" : "биологический родитель"}{member.lifeStatus === "missing" ? " · пропал(а), судьба неизвестна" : ""}{member.appearance && <small className="muted">{describeAppearance(member.appearance)}</small>}</li>)}</ul>}
+          {familyAssignment.household && <div className="save-row"><button type="button" onClick={()=>{ setDraft(d=>({...d,familySeed:createFamilySeed()})); setSaved(false); }}>ДРУГАЯ СЕМЬЯ</button></div>}
+          {familyAssignment.members.length > 0 && <ul>{familyAssignment.members.map(member=><li key={member.id}><b>{member.name}</b> · {member.age} лет · {familyMemberLabel(member)}{member.lifeStatus === "missing" ? " · пропал(а), судьба неизвестна" : member.lifeStatus === "dead" ? " · умер(ла)" : ""}{member.appearance && <small className="muted">{describeAppearance(member.appearance)}</small>}</li>)}</ul>}
           {draft.dynasticRole === "second-prince" ? <p>Гарен признал отцовство. Королевская грамота включает тебя вторым после кронпринца; юридическое основание записано отдельно от личного отношения королевы.</p> : familyAssignment.biologicalParents.length === 2 ? <p>Юридическое родительство и признание не предполагаются автоматически. Право наследования остаётся неопределённым, пока закон и документы не установлены.</p> : <p>Опекуны не считаются биологическими или юридическими родителями без отдельной записи; усыновление не предполагается автоматически.</p>}
         </> : <p>{familyAssignment.reason}</p>}
         {(draft.originId === "minor-heir" || draft.originId === "noble-younger" || draft.originId === "impoverished-noble") && <p><b>Справка по канону:</b> {dynasticHeirOptions.slice(0, 8).map(item => item.houseName).join(" · ")}. Это существующие династии, а не список родителей для выбора.</p>}
@@ -333,6 +362,6 @@ export default function App() {
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен — единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>○ Система диалогов, правосудия и самостоятельных действий NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.13.0 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.14.0 · локальная альфа</span></footer>
   </main>;
 }

@@ -1,3 +1,6 @@
+import { nobleAppearance } from "./nobleAppearance";
+import type { AppearanceProfile } from "./heritage";
+import { createAppearanceState } from "../../engine/appearance";
 import type { NpcDef, NpcPersonality, PersonalityTraits, WorldData } from "../../engine/types";
 import { NOBLE_HOUSES, type DynasticHouse, type GenealogyMember } from "./nobleHouses";
 import type { VeloriaOriginId } from "./character";
@@ -94,6 +97,8 @@ export interface UpperSocietyCharacter {
   seat: string; birthYear: number; age: number; status: GenealogyMember["status"];
   role: string; parentIds: string[]; spouseIds: string[]; legitimacy: GenealogyMember["legitimacy"];
   publicContext: string; personality?: NpcPersonality; availability: "active-canon" | "status-unconfirmed";
+  /** Устойчивая внешность: облик страны дома и наследование от родителей (nobleAppearance.ts). */
+  appearance?: AppearanceProfile;
 }
 
 /** Every named member in all 30 houses is represented; unknown-status people are not assumed alive. */
@@ -103,7 +108,8 @@ export const UPPER_SOCIETY_ROSTER: UpperSocietyCharacter[] = NOBLE_HOUSES.flatMa
   status: member.status, role: member.role, parentIds: [...member.parentIds], spouseIds: [...member.spouseIds],
   legitimacy: member.legitimacy, publicContext: `${house.publicStanding} ${house.originOfPower}`,
   ...(member.status === "alive" ? { personality: personalityFor(member, house) } : {}),
-  availability: member.status === "alive" ? "active-canon" as const : "status-unconfirmed" as const
+  availability: member.status === "alive" ? "active-canon" as const : "status-unconfirmed" as const,
+  appearance: nobleAppearance(member.id)
 })));
 
 export const upperSocietyById = (id: string): UpperSocietyCharacter | undefined => UPPER_SOCIETY_ROSTER.find(person => person.id === id);
@@ -117,7 +123,11 @@ export function instantiateUpperSocietyNpc(
   if (!person || person.availability !== "active-canon" || !person.personality) return null;
   return {
     id: person.id, name: person.name, homeId: locationId, age: person.age, birthYear: person.birthYear, lifeStatus: "alive", roleTags: ["noble"], goals: [],
-    personality: structuredClone(person.personality), schedule: structuredClone(schedule)
+    personality: structuredClone(person.personality), schedule: structuredClone(schedule),
+    ...(person.appearance ? { appearance: createAppearanceState({
+      skinTone: person.appearance.skinTone, naturalHairColor: person.appearance.hairColor, hairTexture: person.appearance.hairTexture,
+      eyeColor: person.appearance.eyeColor, facialFeatures: person.appearance.facialFeatures
+    }, { hairstyle: "ухоженная причёска по обычаю двора", clothing: "одежда по положению при дворе" }) } : {})
   };
 }
 

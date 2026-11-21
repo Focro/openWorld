@@ -225,7 +225,8 @@ export function documentedDynasticOptions(kind: "heir" | "noble"): Array<{ house
 /** Удобная проверка: наличие записи о признанном бастарде не выводится из титула или слуха. */
 export function documentedAcknowledgedBastards(): CanonicalKinshipSummary[] {
   const result: CanonicalKinshipSummary[] = [];
-  for (const house of NOBLE_HOUSES) {
+  // Только канон: дома-предложения не считаются документированными записями.
+  for (const house of NOBLE_HOUSES.filter(h => h.canonStatus !== "proposal")) {
     for (const member of house.members) {
       if (member.legitimacy !== "acknowledged") continue;
       const summary = getCanonicalKinshipSummary(house.id, member.id);

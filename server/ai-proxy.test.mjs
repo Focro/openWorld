@@ -37,8 +37,8 @@ test("provider resolution: server key, player key, model override only with own 
 test("openai-compatible providers: request shape and response parsing", async () => {
   const target = { providerId: "openai", provider: PROVIDERS.openai, apiKey: "k", model: "m" };
   const body = buildChatCompletionsRequest(target, envelope);
-  assert.equal(body.max_completion_tokens, 2048); assert.equal(body.messages[0].role, "system");
-  assert.equal(buildChatCompletionsRequest({ ...target, provider: PROVIDERS.deepseek }, envelope).max_tokens, 2048);
+  assert.equal(body.max_completion_tokens, 200); assert.equal(body.messages[0].role, "system");
+  assert.equal(buildChatCompletionsRequest({ ...target, provider: PROVIDERS.deepseek }, envelope).max_tokens, 200);
   let seen;
   const ok = await callProvider({ ...target, provider: PROVIDERS.deepseek }, envelope, async (url, init) => {
     seen = { url, auth: init.headers.Authorization };
@@ -51,4 +51,11 @@ test("openai-compatible providers: request shape and response parsing", async ()
   assert.equal((await callProvider(target, envelope, async () => { throw new Error("net"); })).status, 502);
   const filtered = await callProvider(target, envelope, async () => new Response(JSON.stringify({ choices: [{ message: { content: "" }, finish_reason: "content_filter" }] }), { status: 200 }));
   assert.equal(filtered.refused, true);
+});
+
+test("accepts the compact intent protocol and keeps the system prompt short", async () => {
+  const { buildSystemPrompt } = await import("./ai-proxy.mjs");
+  const intent = { protocol: "openworld-intent-v1", playerText: "иду на рынок", systemInstructions: ["коротко"], context: { acts: ["move"] }, outputContract: { allowedActions: ["move"] } };
+  assert.equal(validateEnvelope({ envelope: intent }), null);
+  assert.ok(buildSystemPrompt(intent).length < 300);
 });
