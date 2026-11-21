@@ -1,0 +1,38 @@
+name: Release
+
+# Когда в main приходит новая версия (поле version в package.json),
+# автоматически создаёт тег vX.Y.Z и релиз с описанием из CHANGELOG.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Создать релиз для новой версии
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Релиз $TAG уже есть, пропускаю."
+            exit 0
+          fi
+          awk -v v="$VERSION" '
+            $0 ~ "^## " v "( |$)" { f=1; next }
+            /^## / { if (f) exit }
+            f
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "Подробности в CHANGELOG.md." > notes.md
+          fi
+          gh release create "$TAG" --target "$GITHUB_SHA" \
+            --title "OpenWorld $VERSION (альфа)" \
+            --notes-file notes.md --prerelease
