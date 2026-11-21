@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { getCloudSave, listCloudSaves, putCloudSave, signInWithGoogle, signOut, type Cloud, type CloudSaveInfo, AUTO_SLOT, GRAVEYARD_WORLD } from "../cloud/account";
+import { deleteCloudSave, getCloudSave, listCloudSaves, putCloudSave, signInWithGoogle, signOut, type Cloud, type CloudSaveInfo, AUTO_SLOT, GRAVEYARD_WORLD } from "../cloud/account";
 
 /** Вход через Google. Используется и в настройках, и на первом экране. */
 export function SignInForm({ cloud, compact = false }: { cloud: Cloud; compact?: boolean }) {
@@ -14,7 +14,9 @@ export function SignInForm({ cloud, compact = false }: { cloud: Cloud; compact?:
   return <div className="account-signin">
     {!compact && <p className="hint">С аккаунтом игра хранит сохранения в облаке и продолжается на любом устройстве. Ключ ИИ хранится там же, но только зашифрованным вашим паролем.</p>}
     <div className="save-row"><button className="primary" disabled={busy} onClick={google}>ВОЙТИ ЧЕРЕЗ GOOGLE</button></div>
+    <p className="hint legal-note">Продолжая, вы принимаете <a href="./terms.html" target="_blank" rel="noopener">Условия</a> и <a href="./privacy.html" target="_blank" rel="noopener">Политику конфиденциальности</a>.</p>
     {message && <p className="hint" role="status">{message}</p>}
+    <p className="hint legal-note">Удалить аккаунт целиком можно по запросу, адрес в <a href="./privacy.html" target="_blank" rel="noopener">Политике конфиденциальности</a>.</p>
   </div>;
 }
 
@@ -62,11 +64,21 @@ export function AccountPanel({ cloud, session, cloudSavedAt, worldId, currentSav
     setBusy(false);
   }
 
+  async function remove(info: CloudSaveInfo) {
+    if (!cloud) return;
+    if (!globalThis.confirm?.("Удалить это сохранение из облака? Вернуть его будет нельзя.")) return;
+    setBusy(true);
+    try { await deleteCloudSave(cloud, info.worldId, info.slot); setMessage("Сохранение удалено из облака."); await refresh(); }
+    catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
+    setBusy(false);
+  }
+
   return <div className="ai-settings">
     <h3 className="sub">Аккаунт</h3>
     <p className="hint">Вы вошли как {session.user.email ?? "игрок"}. {cloudSavedAt ? `Автосохранение в облаке: ${when(cloudSavedAt)}.` : "Автосохранение уйдёт в облако после следующего хода."}</p>
     <div className="save-row"><button disabled={busy} onClick={saveNow}>СОХРАНИТЬ В ОБЛАКО</button><button disabled={busy} onClick={() => void signOut(cloud)}>ВЫЙТИ</button></div>
-    {saves.length > 0 && <><h3 className="sub">Сохранения в облаке</h3><ul className="cloud-saves">{saves.map(s => <li key={`${s.worldId}/${s.slot}`}><span><b>{SLOT_LABEL(s.slot, s.worldId)}</b> · {when(s.updatedAt)}</span><button disabled={busy} onClick={() => load(s)}>ЗАГРУЗИТЬ</button></li>)}</ul></>}
+    {saves.length > 0 && <><h3 className="sub">Сохранения в облаке</h3><ul className="cloud-saves">{saves.map(s => <li key={`${s.worldId}/${s.slot}`}><span><b>{SLOT_LABEL(s.slot, s.worldId)}</b> · {when(s.updatedAt)}</span><button disabled={busy} onClick={() => load(s)}>ЗАГРУЗИТЬ</button><button disabled={busy} onClick={() => remove(s)}>УДАЛИТЬ</button></li>)}</ul></>}
     {message && <p className="hint" role="status">{message}</p>}
+    <p className="hint legal-note">Удалить аккаунт целиком можно по запросу, адрес в <a href="./privacy.html" target="_blank" rel="noopener">Политике конфиденциальности</a>.</p>
   </div>;
 }

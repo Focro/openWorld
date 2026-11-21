@@ -103,6 +103,11 @@ export async function getCloudSave(cloud: Cloud, worldId: string, slot: string):
   return data ? JSON.stringify((data as { data: unknown }).data) : null;
 }
 
+export async function deleteCloudSave(cloud: Cloud, worldId: string, slot: string): Promise<void> {
+  const { error } = await cloud.from("saves").delete().eq("world_id", worldId).eq("slot", slot);
+  if (error) fail(error);
+}
+
 // ===== ключ ИИ (только шифротекст) =====
 export async function putCloudKey(cloud: Cloud, record: EncryptedKeyRecord): Promise<void> {
   const { error } = await cloud.from("api_keys").upsert({ provider: record.provider, version: record.version, salt: record.salt, iv: record.iv, ciphertext: record.ciphertext, iterations: record.iterations }, { onConflict: "user_id,provider" });
