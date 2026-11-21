@@ -107,6 +107,8 @@ export function speechProfile(world: WorldData, state: GameState, npcId: string)
   if (role && (age === undefined || age >= 12)) parts.push(ROLE_MANNER[role]);
   const region = npc.originStateId ? REGION_MANNER[npc.originStateId] : undefined;
   if (region && (age === undefined || age >= 3)) parts.push(region);
+  // Авторский паспорт речи точнее общих правил: возраст, затем он сам и край, без общих черт характера.
+  if (npc.speechNote) return stripDashes([ageManner(age), npc.speechNote, age === undefined || age >= 3 ? region : undefined].filter(Boolean).join("; "));
   return stripDashes(parts.filter(Boolean).join("; "));
 }
 

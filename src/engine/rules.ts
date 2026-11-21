@@ -276,6 +276,8 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       const route = target ? findRoute(world, state.playerLocation, target.id, 6) : null;
       if (!target || !route || !route.length)
         return reject(state, "Отсюда нет такого пути. Мир не изменился.");
+      const closed = route.map(step => world.locations[step.to]).find(loc => loc?.restricted);
+      if (closed) return reject(state, `Туда посторонних не пускают: ${closed.restricted}. Мир не изменился.`);
       const caps = capabilities(state.development, state.minute);
       if (!caps.canWalk) return reject(state, caps.canCrawl
         ? "Вы умеете только ползать: из комнаты вас выносят взрослые, сами вы туда не доберётесь."
