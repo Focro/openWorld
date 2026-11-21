@@ -213,6 +213,10 @@ export interface GameState {
     segmentIndex: number;
     daysRemaining: number;
     elapsedDays: number;
+    /** Ребёнок в пути без взрослых (0.18.0): дорога для него опаснее. */
+    alone?: boolean;
+    /** Сбежал от семьи: дома его ищут. Откуда сбежал. */
+    runawayFrom?: string;
   };
   playerProfile?: {
     age: number; originId: string; statusId: string; professionId: string; dynasticRole?: string; birthYearKL?: number;

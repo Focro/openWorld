@@ -416,10 +416,12 @@ export default function App() {
   }
   function startJourney() {
     if (worldId !== "veloria") { setNotice("Глобальная карта путешествий доступна только в кампании Велории."); return; }
-    const result = beginVeloriaJourney(game, destinationId);
-    if (result.ok) setGame(result.state);
+    // Опекуны рядом: живые родители, опекуны, родня или няня (кормилица не в счёт).
+    const hasGuardians = Object.values(world.npcs).some(n => n.caregiving && n.caregiving.role !== "wet-nurse" && n.lifeStatus !== "dead" && !(game.npcDeaths && game.npcDeaths[n.id] !== undefined));
+    const result = beginVeloriaJourney(game, destinationId, { hasGuardians });
+    if (result.state !== game) setGame(result.state);
     setNotice(result.message);
-    if (result.ok) setLog(l => [...l, result.message]);
+    if (result.ok || result.state !== game) setLog(l => [...l, result.message]);
   }
   function advanceJourney() {
     if (worldId !== "veloria") { setNotice("Путешествие не относится к выбранному миру."); return; }

@@ -6,8 +6,27 @@ import type { Route } from "./atlas";
 import { settlementGateLocationId } from "./settlementMaps";
 import { heroAgeYears } from "../../engine/speech";
 
-/** Младше этого возраста одного в дальнюю дорогу не отпустят и никто не возьмёт. */
+/** С этого возраста можно уходить в дорогу самому. Младше: только сбежать или уйти, если некому держать. */
 export const MIN_SOLO_TRAVEL_AGE = 14;
+/** Младше этого ребёнок сам из поселения не уйдёт вовсе. */
+export const MIN_WALK_AWAY_AGE = 6;
+
+/** Детерминированный бросок: один и тот же ход в ту же минуту даёт тот же исход. */
+function roll(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+}
+const attr = (state: GameState, name: string) => state.playerProfile?.attributes?.[name] ?? 14;
+/** Шанс тайком уйти от семьи: старше, ловчее и умнее, тем выше. */
+export function runawayChance(state: GameState, age: number): number {
+  return Math.max(0.05, Math.min(0.7, 0.15 + (age - MIN_WALK_AWAY_AGE) * 0.05 + (attr(state, "Ловкость") - 14) / 60 + (attr(state, "Интеллект") - 14) / 80));
+}
+export interface JourneyOptions {
+  /** Рядом есть те, кто за ребёнком смотрит (родители, опекуны, няня). Без них ребёнок может уйти сам. */
+  hasGuardians?: boolean;
+}
 /** Плата за место на судне в день пути (монеты). Пешком по дороге платить не нужно. */
 export const FARE_PER_DAY: Record<Route["mode"], number> = { road: 0, "mountain-pass": 0, river: 2, sea: 4 };
 export const routeFare = (segments: Route[]) => segments.reduce((sum, seg) => sum + FARE_PER_DAY[seg.mode] * seg.days, 0);
@@ -95,7 +114,7 @@ export function findVeloriaRoute(from: string, to: string, minute = 0): RoutePla
   return { from, to, segments: result.path, totalDays: result.days, danger };
 }
 
-export function beginVeloriaJourney(state: GameState, destinationId: string): { state: GameState; message: string; ok: boolean } {
+export function beginVeloriaJourney(state: GameState, destinationId: string, options: JourneyOptions = {}): { state: GameState; message: string; ok: boolean } {
   if (state.lifeStatus === "dead") return { state, ok: false, message: "Путешествие невозможно: жизнь этого персонажа завершена." };
   if (state.journey) return { state, ok: false, message: "Вы уже находитесь в пути. Сначала завершите начатое путешествие." };
   const from = state.settlementId ?? "roven";
@@ -106,14 +125,25 @@ export function beginVeloriaJourney(state: GameState, destinationId: string): { 
   }
   const plan = findVeloriaRoute(from, destinationId, state.minute);
   if (!plan || !plan.segments.length) return { state, ok: false, message: "Маршрут не найден или вы уже находитесь в этом поселении." };
-  // Правдоподобие: ребёнок один в путь не уйдёт, а корабль и речная лодка стоят денег.
+  // Правдоподобие (решение автора): малыш сам не уйдёт; ребёнка при семье не отпустят, но он может сбежать;
+  // сирота без опекунов может уйти сам. Дорога для ребёнка без взрослых опаснее.
   const age = heroAgeYears(state);
-  if (age !== undefined && age < MIN_SOLO_TRAVEL_AGE) return { state, ok: false, message: `Вам ${age < 1 ? "меньше года" : `${age}`}${age >= 1 ? (age % 10 === 1 && age % 100 !== 11 ? " год" : [2, 3, 4].includes(age % 10) && ![12, 13, 14].includes(age % 100) ? " года" : " лет") : ""}. Одного ребёнка в дальнюю дорогу не отпустят, и ни возчик, ни корабельщик его не возьмут.` };
+  const child = age !== undefined && age < MIN_SOLO_TRAVEL_AGE;
+  if (child && age! < MIN_WALK_AWAY_AGE) return { state, ok: false, message: "Вы ещё слишком малы, чтобы уйти куда-то самому: дальше ворот вас не унесут ноги." };
+  let runawayFrom: string | undefined;
+  if (child && options.hasGuardians) {
+    if (roll(`${state.minute}:${destinationId}:${state.lifeId ?? state.playerName}:runaway`) >= runawayChance(state, age!)) {
+      const caught = { ...state, minute: state.minute + 30 };
+      const message = "Вы пытаетесь тайком уйти из поселения, но взрослые замечают и возвращают вас. Одного ребёнка в дальнюю дорогу не отпустят.";
+      return { state: recordTravel(caught, caught.minute, message, from), ok: false, message };
+    }
+    runawayFrom = from;
+  }
   const fare = routeFare(plan.segments);
   if (fare > state.money) return { state, ok: false, message: `Место на судне на весь путь стоит около ${fare} монет, а у вас ${state.money}. Пешком туда не дойти.` };
   const first = plan.segments[0]!;
-  const next: GameState = { ...state, money: state.money - fare, journey: { destinationId, route: plan.segments, segmentIndex: 0, daysRemaining: first.days, elapsedDays: 0 } };
-  const message = `Вы отправляетесь из ${MAP_NODES.find(n => n.id === from)?.name ?? from}.${fare ? ` За место на судне отдано ${fare} монет.` : ""} Путь займёт около ${plan.totalDays} дней; опасность маршрута: ${plan.danger === "low" ? "низкая" : plan.danger === "moderate" ? "умеренная" : "высокая"}.`;
+  const next: GameState = { ...state, money: state.money - fare, journey: { destinationId, route: plan.segments, segmentIndex: 0, daysRemaining: first.days, elapsedDays: 0, ...(child ? { alone: true } : {}), ...(runawayFrom ? { runawayFrom } : {}) } };
+  const message = `Вы отправляетесь из ${MAP_NODES.find(n => n.id === from)?.name ?? from}.${fare ? ` За место на судне отдано ${fare} монет.` : ""} Путь займёт около ${plan.totalDays} дней; опасность маршрута: ${plan.danger === "low" ? "низкая" : plan.danger === "moderate" ? "умеренная" : "высокая"}.${runawayFrom ? " Вы ушли тайком: дома вас скоро хватятся и станут искать." : child ? " Вы идёте один, без взрослых: для ребёнка дорога куда опаснее." : ""}`;
   return { state: recordTravel(next, state.minute, message, `route:${first.from}->${first.to}`), ok: true, message };
 }
 
@@ -125,6 +155,28 @@ export function advanceVeloriaJourney(state: GameState): { state: GameState; mes
   const elapsedDays = journey.elapsedDays + 1;
   const daysRemaining = journey.daysRemaining - 1;
   const minute = state.minute + 1440;
+  const segmentNow = journey.route[journey.segmentIndex]!;
+  // Ребёнок без взрослых: каждый день в пути что-то может случиться.
+  if (journey.alone) {
+    const r = roll(`${minute}:${state.lifeId ?? state.playerName}:road`);
+    // Сбежавшего ищут: в первые дни его могут найти и вернуть домой.
+    if (journey.runawayFrom && elapsedDays <= 3 && r < 0.18) {
+      const home = journey.runawayFrom;
+      const message = `На ${elapsedDays}-й день вас находят люди, которых послала семья, и ведут обратно домой. Побег не удался.`;
+      const back = advanceCharacterAge({ ...state, minute, settlementId: home, playerLocation: settlementGateLocationId(home), journey: undefined }, 1440);
+      return { state: recordTravel(back, minute, message, home), ok: true, arrived: false, message };
+    }
+    const hazard = { low: 0.04, moderate: 0.08, high: 0.14 }[segmentNow.danger];
+    const h = roll(`${minute}:${state.lifeId ?? state.playerName}:hazard`);
+    if (h < hazard) {
+      const lost = Math.ceil(state.money / 2);
+      const message = lost > 0
+        ? `Ночью у дороги вас обирают чужие люди: пропадает ${lost} монет. Вы целы, но напуганы.`
+        : "Ночью вы мёрзнете у дороги, голодный и один. Утром идёте дальше, но день потерян.";
+      const hurt = advanceCharacterAge({ ...state, minute, money: state.money - lost, journey: { ...journey, elapsedDays, daysRemaining: lost > 0 ? daysRemaining : journey.daysRemaining } }, 1440);
+      return { state: recordTravel(hurt, minute, message, `route:${segmentNow.from}->${segmentNow.to}`), ok: true, arrived: false, message };
+    }
+  }
   if (daysRemaining > 0) {
     const message = `Прошёл ещё один день дороги. До следующего пункта пути осталось ${daysRemaining} дн.`;
     const next = advanceCharacterAge({ ...state, minute, journey: { ...journey, elapsedDays, daysRemaining } }, 1440);
