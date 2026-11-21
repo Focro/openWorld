@@ -7,7 +7,7 @@ import { parseAction } from "./engine/parse";
 import { resolveWithAi } from "./engine/ai";
 import { UnlockedKeySession, loadVaultRecord, saveVaultRecord } from "./ai/keyVault";
 import type { Session } from "@supabase/supabase-js";
-import { AUTO_SLOT, deleteCloudKeys, fetchProfile, getCloud, getCloudKey, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, type Profile } from "./cloud/account";
+import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, getCloudSave, deleteCloudKeys, fetchProfile, getCloud, getCloudKey, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, type Profile } from "./cloud/account";
 import { AccountPanel, SignInForm } from "./ui/AccountPanel";
 import { ProxyActionProposer, isAiProviderId, type AiProviderId } from "./ai/proxyClient";
 import { AiSettings } from "./ui/AiSettings";
@@ -27,7 +27,6 @@ import { BIRTH_ORIGINS, birthOrigin } from "./worlds/veloria/birthOrigins";
 import { capabilities, formatAge, INFANT_ACT_LABELS, NEUTRAL_TEMPERAMENT, type InfantActId } from "./engine/development";
 import { dayOfYear, formatClock, yearKLOf } from "./engine/time";
 import { describeAttitude } from "./engine/relations";
-import { searchChronicle } from "./engine/memory";
 import type { MemoryEntry, GameState } from "./engine/types";
 import {
   availableProfessions, availableScenarios, availableStatuses,
@@ -41,6 +40,9 @@ import { getChildAppearanceOptions, validateChildAppearance } from "./worlds/vel
 import { FAITHS } from "./worlds/veloria/faiths";
 import { WORLD_DIFFICULTIES, type WorldDifficultyId } from "./worlds/veloria/difficulty";
 import { COUNTRIES, REGIONS, MAP_NODES, ROUTES, COUNTRY_SHAPES } from "./worlds/veloria/atlas";
+import { MAP_IMAGE, knownSettlementIds, mapHitAt, type MapHit } from "./worlds/veloria/mapLayer";
+import { knownPeople, ageText } from "./engine/acquaintances";
+import { DEATH_IS_FINAL_MESSAGE, buryIfDead, loadBlockedByDeath, loadGraveyard, mergeGraveyards, newLifeId, saveGraveyard, type GraveRecord } from "./engine/permadeath";
 import { advanceVeloriaJourney, beginVeloriaJourney, findVeloriaRoute } from "./worlds/veloria/travel";
 import "./styles.css";
 
@@ -71,28 +73,38 @@ function createFamilySeed(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `family-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
-const rumorNote = (m: MemoryEntry) => m.kind === "heard" ? ` (слух, ${Math.round(m.confidence * 100)}%)` : "";
 
-function ArdanMap({ current, destination, route }: { current: string; destination: string; route: Array<{from:string;to:string}> }) {
+function ArdanMap({ current, destination, route, known, onGo }: { current: string; destination: string; route: Array<{from:string;to:string}>; known: Set<string>; onGo?: (id: string) => void }) {
+  // Тап по карте: название места, края или державы. Метка «вы здесь» над текущим поселением.
+  const [hit, setHit] = useState<MapHit | null>(null);
+  const here = MAP_NODES.find(n => n.id === current);
+  function tap(event: React.MouseEvent<SVGSVGElement>) {
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - box.left) / box.width) * 100, y = ((event.clientY - box.top) / box.height) * 100;
+    setHit(mapHitAt(x, y, 4, 12, known));
+  }
   return <div className="map-shell">
-    <svg viewBox="0 0 100 100" role="img" aria-label="Схематическая политическая карта Ардана">
-      {COUNTRY_SHAPES.map(shape=>{
+    <svg viewBox="0 0 100 100" role="img" aria-label="Карта Ардана" onClick={tap}>
+      {MAP_IMAGE ? <image href={MAP_IMAGE.src} x="0" y="0" width="100" height="100" preserveAspectRatio="none" /> : COUNTRY_SHAPES.map(shape=>{
         const country=COUNTRIES.find(item=>item.id===shape.countryId);
         return <polygon key={shape.countryId} points={shape.points.map(point=>point.join(",")).join(" ")} className={`country-shape country-${shape.countryId}`}><title>{country?.name ?? shape.countryId}</title></polygon>;
       })}
       {ROUTES.map((edge,i)=>{
         const from=MAP_NODES.find(n=>n.id===edge.from), to=MAP_NODES.find(n=>n.id===edge.to);
-        if(!from||!to) return null;
+        if(!from||!to||!known.has(from.id)||!known.has(to.id)) return null;
         const selected=route.some(r=>(r.from===edge.from&&r.to===edge.to)||(r.from===edge.to&&r.to===edge.from));
         return <line key={i} x1={from.x} y1={from.y} x2={to.x} y2={to.y} className={selected?"map-route selected":"map-route"}/>;
       })}
-      {MAP_NODES.map(node=><g key={node.id} className="map-node">
+      {MAP_NODES.filter(node => known.has(node.id)).map(node=><g key={node.id} className="map-node">
         <circle cx={node.x} cy={node.y} r={node.id===current?2.5:node.id===destination?2.1:1.4} className={node.id===current?"current":node.id===destination?"destination":""}/>
-        <title>{node.name}</title>
         {(node.kind === "capital" || node.id===current || node.id===destination) && <text x={node.x+2} y={node.y-1.5} className="map-label">{node.name}</text>}
       </g>)}
+      {here && <g className="map-pin" transform={`translate(${here.x} ${here.y})`}><path d="M0 0 L-2.2 -4.2 A2.6 2.6 0 1 1 2.2 -4.2 Z" /><circle cx="0" cy="-5.6" r="1" /></g>}
+      {hit && <circle cx={hit.x} cy={hit.y} r="3.2" className="map-hit" />}
     </svg>
-    <div className="map-legend"><span><i className="legend-current"/>Текущее место</span><span><i className="legend-destination"/>Цель</span><span><i className="legend-route"/>Выбранный путь</span></div>
+    {hit ? <div className="map-card" role="status"><b>{hit.name}</b><span>{hit.detail}</span>{hit.id === current && <em>Вы здесь</em>}{hit.kind === "settlement" && hit.id !== current && (() => { const r = findVeloriaRoute(current, hit.id); return r ? <><span>Путь: {r.totalDays} {r.totalDays === 1 ? "день" : r.totalDays < 5 ? "дня" : "дней"}</span>{onGo && <button className="map-go" onClick={() => onGo(hit.id)}>ОТПРАВИТЬСЯ СЮДА</button>}</> : <span>Пути отсюда нет.</span>; })()}<button aria-label="Закрыть" onClick={() => setHit(null)}>×</button></div>
+      : <p className="map-tip">Нажмите на карту, чтобы узнать, что это за место.</p>}
+    <div className="map-legend"><span><i className="legend-current"/>Вы здесь</span><span><i className="legend-destination"/>Цель</span><span><i className="legend-route"/>Выбранный путь</span></div>
   </div>;
 }
 
@@ -116,7 +128,7 @@ export default function App() {
     const text = readAutosave();
     if (!text) return;
     const imported = importGamePayload(text, WORLDS.map(world => world.id), "demo");
-    if (!imported || !imported.game.playerProfile) return;
+    if (!imported || !imported.game.playerProfile || loadBlockedByDeath(imported.game, loadGraveyard())) return;
     const migrated = migrateStateForWorld(imported.worldId, imported.game);
     setWorldId(imported.worldId); setGame(migrated); setLog(migrated.playerMemory.map(m => m.text)); setTab("ИГРА");
     setNotice("Продолжаем с того места, где вы остановились.");
@@ -150,6 +162,8 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [cloudSavedAt, setCloudSavedAt] = useState<string>();
+  // Окончательная смерть: список умерших героев, чтобы старое сохранение их не воскресило.
+  const [graveyard, setGraveyard] = useState<GraveRecord[]>(() => loadGraveyard());
   const sessionRef = useRef<Session | null>(null);
   sessionRef.current = session;
   const localSafety = useMemo(() => localSafetyStore(), []);
@@ -186,6 +200,22 @@ export default function App() {
       if (!loadVaultRecord()) { const remote = await getCloudKey(cloud).catch(() => null); if (remote) { saveVaultRecord(remote); setKeyTick(n => n + 1); } }
     }).catch(error => setNotice(error instanceof Error ? error.message : String(error)));
     return () => { cancelled = true; };
+  }, [cloud, session?.user.id]);
+  // Смерть героя записывается навсегда: в браузер и, при входе, в аккаунт.
+  useEffect(() => {
+    const next = buryIfDead(worldId, game, graveyard);
+    if (next === graveyard) return;
+    setGraveyard(next); saveGraveyard(next);
+    if (cloud && session) void putCloudSave(cloud, GRAVEYARD_WORLD, GRAVEYARD_SLOT, JSON.stringify(next)).catch(() => undefined);
+  }, [game.lifeStatus, worldId]);
+  useEffect(() => {
+    if (!cloud || !session) return;
+    void getCloudSave(cloud, GRAVEYARD_WORLD, GRAVEYARD_SLOT).then(json => {
+      const remote = json ? JSON.parse(json) as GraveRecord[] : [];
+      const merged = mergeGraveyards(loadGraveyard(), Array.isArray(remote) ? remote : []);
+      setGraveyard(merged); saveGraveyard(merged);
+      if (merged.length !== remote.length) void putCloudSave(cloud, GRAVEYARD_WORLD, GRAVEYARD_SLOT, JSON.stringify(merged)).catch(() => undefined);
+    }).catch(() => undefined);
   }, [cloud, session?.user.id]);
   // Дата рождения, указанная до входа, один раз уходит в аккаунт.
   useEffect(() => {
@@ -259,7 +289,16 @@ export default function App() {
   /** Старт с рождения: взрослые поля анкеты (рост, профессия, навыки) не показываются. */
   const isBirthStart = draft.dynasticRole === "second-prince" || draft.age === 0;
   const total = Object.values(draft.attributes).reduce((sum, n) => sum + n, 0);
-  const found = useMemo(() => searchChronicle(game, { text: query }), [game, query]);
+  const diary = useMemo(() => { const q = query.trim().toLocaleLowerCase("ru"); return q ? game.playerMemory.filter(m => m.text.toLocaleLowerCase("ru").includes(q)) : game.playerMemory; }, [game.playerMemory, query]);
+  const people = useMemo(() => knownPeople(world, game), [world, game]);
+  const homeStateId = birthOrigin((game.campaign?.recipe as { draft?: { birthOriginId?: string } } | undefined)?.draft?.birthOriginId)?.stateId;
+  const knownPlaces = useMemo(() => knownSettlementIds(game.settlementId ?? "roven", homeStateId, game.visitedSettlements), [game.settlementId, homeStateId, game.visitedSettlements]);
+  // Где герой побывал, остаётся на его карте.
+  useEffect(() => {
+    const here = game.settlementId;
+    if (!here || !game.playerProfile || game.visitedSettlements?.includes(here)) return;
+    setGame(g => g.settlementId === here ? { ...g, visitedSettlements: [...(g.visitedSettlements ?? []), here] } : g);
+  }, [game.settlementId, game.playerProfile]);
   const quick = useMemo(() => {
     const here = world.locations[game.playerLocation];
     const go = (here?.exits ?? []).map(e => `идти ${world.locations[e.to]?.name ?? e.to}`);
@@ -360,7 +399,7 @@ export default function App() {
   function launchCampaign(continueWorld: boolean, freshWorldAfterDeath = false) {
     const result = startVeloriaCampaign({ kind: "veloria-character", draft, difficultyId: difficulty }, continueWorld && worldId === "veloria" ? game : undefined);
     if (!result.ok) { setNotice(result.errors.join(" ")); setTab("ПЕРСОНАЖ"); return; }
-    setWorldId("veloria"); setGame(result.state); setLog(result.state.playerMemory.map(m => m.text)); setSaved(true);
+    setWorldId("veloria"); setGame({ ...result.state, lifeId: newLifeId() }); setLog(result.state.playerMemory.map(m => m.text)); setSaved(true);
     setNotice(freshWorldAfterDeath ? "Создана новая версия мира: прежняя хроника и память NPC остались в завершённой кампании." : result.notice); setTab("ИГРА");
   }
   function createCharacter() { launchCampaign(game.lifeStatus === "dead"); }
@@ -388,8 +427,23 @@ export default function App() {
     if (result.ok) setLog(l => [...l, result.message]);
   }
   function startNewWorldFromDeath() { launchCampaign(false, true); }
+  /** После смерти: то же происхождение, но новая семья и новая жизнь (герой собирается заново). */
+  function rebornSameOrigin() {
+    const prev = (game.campaign?.recipe as { draft?: VeloriaCharacterDraft } | undefined)?.draft;
+    const origin = birthOrigin(prev?.birthOriginId) ?? BIRTH_ORIGINS[0]!;
+    setDraft(d => ({ ...draftForOrigin({ ...(prev ?? d), name: "" }, origin), familySeed: createFamilySeed() }));
+    setSaved(false); setTab("ПЕРСОНАЖ");
+    setNotice("Новая жизнь с тем же происхождением. Семья и судьба будут другими.");
+  }
   function switchWorld(id: string, playerName = game.playerName) {
     const entry = getWorldEntry(id); if (!entry) return;
+    // У каждого мира своё сохранение: возвращаемся туда, где остановились в этом мире.
+    const own = importGamePayload(readAutosave(undefined, id) ?? "", WORLDS.map(w => w.id), id);
+    if (own && own.worldId === id && own.game.playerProfile && !loadBlockedByDeath(own.game, graveyard)) {
+      const migrated = migrateStateForWorld(id, own.game);
+      setWorldId(id); setGame(migrated); setLog(migrated.playerMemory.map(m => m.text)); setQuery(""); setNotice("Продолжаем ваше сохранение в этом мире.");
+      return;
+    }
     const next = createInitialState(entry.create(), playerName);
     setWorldId(id); setGame(next); setLog(next.playerMemory.map(m => m.text)); setQuery(""); setNotice("Создана новая сессия в выбранном мире.");
   }
@@ -411,6 +465,8 @@ export default function App() {
   function importSave(source = saveText) {
     const imported = importGamePayload(source, WORLDS.map(world => world.id), "demo");
     if (!imported) { setNotice("Не удалось загрузить: формат, версия или выбранный мир сохранения неверны."); return; }
+    const grave = loadBlockedByDeath(imported.game, graveyard);
+    if (grave) { setNotice(DEATH_IS_FINAL_MESSAGE(grave.name)); return; }
     const migrated = migrateStateForWorld(imported.worldId, imported.game);
     setWorldId(imported.worldId); setGame(migrated); setLog(migrated.playerMemory.map(m => m.text));
     setNotice(imported.sourceFormat === "legacy-branch-save" ? "Старое сохранение движка 0.4 импортировано в демо-мир." : "Сохранение загружено.");
@@ -453,7 +509,7 @@ export default function App() {
       {game.development && <LifePanel world={world} game={game} onAct={runAct} onLive={runLive} onHour={() => runParsed({ type: "wait", minutes: 60 }, "подождать час")} />}
       {game.playerAppearance && <div className="start-preview"><b>Ваш нынешний облик</b><p>{describeAppearance(game.playerAppearance)}</p></div>}
       {game.socialState && (game.socialState.suspicion > 0 || game.socialState.heresySuspicion > 0) && <div className="warning"><b>Общественная репутация</b><p>Подозрение: {game.socialState.suspicion}/100 · подозрение в ереси: {game.socialState.heresySuspicion}/100 · правовой статус: {({none:"нет дела",watched:"за вами наблюдают",summoned:"вызов на разбирательство",detained:"задержан(а)",condemned:"приговорён(а)",deposed:"свергнут(а)"} as Record<string,string>)[game.socialState.legalCase] ?? game.socialState.legalCase}.</p><p>Попытки создать религиозное движение: {game.socialState.cultAttempts} · реальные сторонники: {(game.socialState.followers?.length ?? 0)}. Стадия: {({none:"нет",rumor:"слухи",sect:"небольшая секта",cult:"устойчивый культ"} as Record<string,string>)[game.socialState.movement] ?? "нет"}.</p></div>}
-      {game.lifeStatus === "dead" && <div className="warning"><b>История этого персонажа завершена.</b><p>{game.deathRecord ? `Причина: ${game.deathRecord.cause}. Место: ${MAP_NODES.find(n=>n.id===game.deathRecord?.locationId)?.name ?? game.deathRecord.locationId}.` : "Смерть зафиксирована в сохранении."} Воскресить этого героя нельзя.</p><div className="save-row"><button className="primary" onClick={()=>setTab("ПЕРСОНАЖ")}>СОЗДАТЬ НОВОГО ГЕРОЯ В ЭТОМ МИРЕ</button><button onClick={startNewWorldFromDeath}>НАЧАТЬ НОВУЮ ВЕРСИЮ МИРА</button></div></div>}
+      {game.lifeStatus === "dead" && <div className="warning"><b>История этого персонажа завершена.</b><p>{game.deathRecord ? `Причина: ${game.deathRecord.cause}. Место: ${MAP_NODES.find(n=>n.id===game.deathRecord?.locationId)?.name ?? game.deathRecord.locationId}.` : "Смерть зафиксирована в сохранении."} Смерть в этом мире окончательна: ни старое сохранение, ни облако героя не вернут.</p><div className="save-row"><button className="primary" onClick={rebornSameOrigin}>РОДИТЬСЯ ЗАНОВО ТЕМ ЖЕ</button><button onClick={()=>setTab("ПЕРСОНАЖ")}>НОВАЯ ЖИЗНЬ</button><button onClick={startNewWorldFromDeath}>НАЧАТЬ МИР ЗАНОВО</button></div></div>}
       <div className="story">{log.map((line, i) => <p key={i}>{line}</p>)}</div>
       <div className="quick">{quick.map(q => <button key={q} type="button" onClick={() => run(q)}>{q}</button>)}</div>
       <form className="action-form" onSubmit={submitAction}><input value={action} onChange={e => setAction(e.target.value)} placeholder="Что вы хотите сделать?"/><button className="primary">ДЕЙСТВИЕ</button></form>
@@ -467,9 +523,9 @@ export default function App() {
 
     {tab === "ДОРОГА" && <section className="panel"><div className="eyebrow">ГЛОБАЛЬНАЯ КАРТА</div><h2>Путешествие по Ардану</h2>
       <div className="location">Сейчас: {currentSettlement?.name ?? currentSettlementId}{game.journey ? " · в пути" : ""}</div>
-      <ArdanMap current={currentSettlementId} destination={game.journey?.destinationId ?? destinationId} route={game.journey?.route ?? selectedRoute?.segments ?? []}/>
+      <ArdanMap current={currentSettlementId} destination={game.journey?.destinationId ?? destinationId} route={game.journey?.route ?? selectedRoute?.segments ?? []} known={knownPlaces} onGo={game.journey ? undefined : id => setDestinationId(id)}/>
       {game.journey ? <div className="journey-card"><b>Маршрут до {MAP_NODES.find(n=>n.id===game.journey!.destinationId)?.name ?? game.journey.destinationId}</b><p>Сейчас: {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.from)?.name ?? game.journey.route[game.journey.segmentIndex]?.from} → {MAP_NODES.find(n=>n.id===game.journey!.route[game.journey!.segmentIndex]?.to)?.name ?? game.journey.route[game.journey.segmentIndex]?.to}</p><p>Участок {game.journey.segmentIndex+1} из {game.journey.route.length}. Осталось дней на участке: <strong>{game.journey.daysRemaining}</strong>. В пути: {game.journey.elapsedDays} дн.</p><p className="hint">Время продвигается по одному дню за действие. При достижении промежуточного пункта обновляется положение героя.</p><button className="primary" onClick={advanceJourney}>ПРОДВИНУТЬСЯ НА ОДИН ДЕНЬ</button></div> : <>
-        <label>Куда отправиться<select value={destinationId} onChange={e=>setDestinationId(e.target.value)}>{MAP_NODES.filter(node=>node.id!==currentSettlementId).map(node=><option key={node.id} value={node.id}>{node.name}, {COUNTRIES.find(c=>c.id===node.countryId)?.name}</option>)}</select></label>
+        <label>Куда отправиться<select value={destinationId} onChange={e=>setDestinationId(e.target.value)}>{MAP_NODES.filter(node=>node.id!==currentSettlementId&&knownPlaces.has(node.id)).map(node=><option key={node.id} value={node.id}>{node.name}, {COUNTRIES.find(c=>c.id===node.countryId)?.name}</option>)}</select></label>
         {selectedRoute ? <div className="start-preview"><b>Маршрут: {selectedRoute.totalDays} игровых дней</b><p>{selectedRoute.segments.map(segment=>`${MAP_NODES.find(n=>n.id===segment.from)?.name ?? segment.from} → ${MAP_NODES.find(n=>n.id===segment.to)?.name ?? segment.to} (${segment.days} дн., ${segment.mode === "road" ? "дорога" : segment.mode === "river" ? "река" : segment.mode === "sea" ? "море" : "горный перевал"}, опасность: ${segment.danger === "low" ? "низкая" : segment.danger === "moderate" ? "умеренная" : "высокая"})`).join("; ")}</p><small>Погодные закрытия и сезонные ограничения пока показываются как справочные данные и будут подключены к календарю.</small></div> : <div className="warning">Маршрут между этими точками не найден.</div>}
         <button className="primary" disabled={!selectedRoute || selectedRoute.totalDays===0} onClick={startJourney}>НАЧАТЬ ПУТЕШЕСТВИЕ</button>
       </>}
@@ -485,8 +541,12 @@ export default function App() {
         <label>Описание<textarea rows={3} maxLength={2000} value={worldDraft.description} onChange={e=>setWorldDraft({...worldDraft,description:e.target.value})}/></label><p className="hint">Пока это анкета-концепт: полноценный генератор государств, географии, законов и NPC ещё предстоит подключить.</p>
     </section>}
 
-    {tab === "ПАМЯТЬ" && <section className="panel"><div className="eyebrow">ХРОНИКА И ЗНАНИЯ</div><h2>Память мира</h2><h3 className="sub">Объективная хроника</h3><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по хронике…"/>{found.length?<ul className="memory">{found.map(c=><li key={c.id}><span>{formatClock(c.minute)}</span>{c.text}</li>)}</ul>:<div className="placeholder">{game.chronicle.length?"Ничего не найдено.":"Событий пока нет."}</div>}
-      <h3 className="sub">Память игрока</h3><ul className="memory">{game.playerMemory.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}</li>)}</ul><h3 className="sub">Память NPC</h3>{Object.values(world.npcs).map(npc=><div key={npc.id}><b className="npc">{npc.name}</b><p className="muted">Отношение к игроку: {describeAttitude(game.relations[npc.id]!)}</p>{(game.npcMemory[npc.id]??[]).length?<ul className="memory">{game.npcMemory[npc.id]!.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}{rumorNote(m)}</li>)}</ul>:<p className="muted">Пока нет воспоминаний.</p>}</div>)}</section>}
+    {tab === "ПАМЯТЬ" && <section className="panel"><div className="eyebrow">ДНЕВНИК И ЛЮДИ</div><h2>Память</h2>
+      <h3 className="sub">Дневник</h3><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по дневнику…"/>
+      {diary.length ? <ul className="memory">{diary.map((m,i)=><li key={i}><span>{formatClock(m.minute)}</span>{m.text}</li>)}</ul> : <div className="placeholder">{game.playerMemory.length ? "Ничего не найдено." : "Записей пока нет."}</div>}
+      <h3 className="sub">Люди</h3><p className="hint">Кого знает ваш герой. Что люди думают и помнят о нём, остаётся при них.</p>
+      {people.length ? <div className="people-list">{people.map(p => <article key={p.id} className="person-card"><b>{p.name}</b><span>{p.alive ? (p.age !== undefined ? ageText(p.age) : "") : "умер(ла)"}</span>{p.alive && p.nature && <p>{p.nature}</p>}{p.alive && p.looks && <p className="muted">{p.looks}</p>}</article>)}</div> : <div className="placeholder">Пока вы никого не знаете.</div>}
+    </section>}
 
     {tab === "СИСТЕМА" && <section className="panel"><div className="eyebrow">СИСТЕМА</div><h2>Сохранение и состояние проекта</h2><p className="hint">{autosave.ok && autosave.savedAt ? `Автосохранение включено: последнее в ${new Date(autosave.savedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}. Игра сама продолжит с этого места.` : game.playerProfile ? "Автосохранение не удалось: в браузере нет места или хранилище закрыто. Сохраните игру файлом." : "Автосохранение начнётся, когда появится герой."}</p><div className="save-row"><button onClick={exportSave}>ПОДГОТОВИТЬ СОХРАНЕНИЕ</button><button onClick={() => importSave()}>ЗАГРУЗИТЬ ИЗ ПОЛЯ</button></div><div className="save-row"><button onClick={downloadSave}>СКАЧАТЬ ФАЙЛ</button><label className="file-button">ОТКРЫТЬ ФАЙЛ<input type="file" accept="application/json,.json" onChange={e => { uploadSave(e.target.files?.[0]); e.target.value = ""; }} /></label></div><label>JSON сохранения<textarea rows={12} value={saveText} onChange={e=>setSaveText(e.target.value)} placeholder="Нажми «Подготовить сохранение» или вставь JSON сюда…"/></label>
       <div className="ai-settings"><h3 className="sub">Повествование</h3>
@@ -499,6 +559,6 @@ export default function App() {
       <div className="warning">Реестры скрытых фигур и культов пока лежат в открытых исходниках; в публичном GitHub они не являются секретными. Для настоящей тайны потребуется приватный backend.</div>
       <ul className="checklist"><li>✓ Велорийский конструктор персонажа подключён к игровому состоянию</li><li>✓ Ровен: единственная стартовая точка первой кампании</li><li>✓ Происхождение, статус, профессия, семья и сценарий валидируются</li><li>✓ Сложность выбирается до начала кампании и не масштабируется автоматически</li><li>✓ Сохранение/загрузка JSON в интерфейсе</li><li>✓ Хроника, память NPC и отношения отображаются в интерфейсе</li><li>✓ Межгородские путешествия: дни пути, промежуточные поселения и запись в хронику</li><li>✓ NPC в Ровене учитывают время пешего перехода между точками расписания</li><li>✓ После зафиксированной смерти доступны преемник в продолжающемся мире или новая версия мира</li><li>○ Уличные карты остальных городов, глобальное перемещение NPC и самостоятельные решения</li><li>✓ Естественное старение героя от прошедшего игрового времени</li><li>○ Болезни, лечение, травмы и автоматические причины смерти</li><li>✓ Живые ответы NPC через нейросеть: свой голос по возрасту, характеру, сословию и краю, память о разговоре</li><li>○ Правосудие и самостоятельные действия NPC</li><li>○ Серверное хранение секретов и ИИ-посредник</li></ul>
     </section>}
-    <footer>LIVING WORLD RPG <span>· 0.17.0 · локальная альфа</span></footer>
+    <footer>LIVING WORLD RPG <span>· 0.18.0 · локальная альфа</span></footer>
   </main>;
 }
