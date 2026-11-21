@@ -115,7 +115,7 @@ export function understandFreeText(world: WorldData, state: GameState, text: str
   if (SAY.test(verb)) {
     // «спросить торговку, сколько стоит хлеб» → реплика целиком: смысл реплики решает сцена, а не ИИ.
     const speech = raw.replace(/^\s*(я\s+)?\S+\s*(у\s+\S+|ей|ему|им|её|его|их)?\s*[,:]?\s*(что|о том, что|про|о|об)?\s*/i, "").trim() || raw;
-    return { ok: true, action: { type: "say", text: speech.slice(0, 1000) } };
+    return { ok: true, action: { type: "say", text: speech.slice(0, 4000) } };
   }
   for (const [target, type] of TYPO_TARGETS) if (verb.length >= 6 && editDistance(verb, target) <= 1) {
     return type === "wait" ? { ok: true, action: { type: "wait", minutes: 60 } } : { ok: true, action: { type } };

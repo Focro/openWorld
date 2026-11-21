@@ -67,7 +67,7 @@ test("scene protocol: needs speakers, gets its own prompt and a larger but bound
   assert.ok(validateEnvelope({ envelope: { ...scene, outputContract: {} } }));
   assert.match(buildSystemPrompt(scene), /replies/);
   assert.equal(maxTokensFor(scene), config.sceneMaxTokens);
-  assert.ok(config.sceneMaxTokens <= 600);
+  assert.ok(config.sceneMaxTokens >= 1000 && config.sceneMaxTokens <= 4000);
   const request = buildChatCompletionsRequest({ model: "m", provider: PROVIDERS.deepseek }, scene);
   assert.equal(request.max_tokens, config.sceneMaxTokens);
 });

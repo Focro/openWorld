@@ -284,8 +284,8 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       });
     }
     case "gesture": {
-      if (typeof action.text !== "string" || !action.text.trim() || action.text.length > 500)
-        return reject(state, "Жест или действие должно быть описано в пределах 500 символов.");
+      if (typeof action.text !== "string" || !action.text.trim() || action.text.length > 4000)
+        return reject(state, "Жест или действие должно быть описано в пределах 4000 символов.");
       const minute = state.minute + 1;
       const speechless = state.development ? capabilities(state.development, state.minute).maxWordsPerUtterance < 6 : (state.playerProfile?.age ?? 22) < 5;
       const reaction = speechless
@@ -298,8 +298,8 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       });
     }
     case "say": {
-      if (typeof action.text !== "string" || !action.text.trim() || action.text.length > 1000)
-        return reject(state, "Реплика должна содержать от 1 до 1000 символов. Мир не изменился.");
+      if (typeof action.text !== "string" || !action.text.trim() || action.text.length > 4000)
+        return reject(state, "Реплика должна содержать от 1 до 4000 символов. Мир не изменился.");
       if (state.development) {
         const limit = capabilities(state.development, state.minute).maxWordsPerUtterance;
         const words = action.text.trim().split(/\s+/).filter(Boolean).length;

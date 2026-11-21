@@ -123,7 +123,12 @@ export interface SceneContext {
   /** Кому игрок обращается, если это понятно из текста. */
   to?: string;
   facts?: string[];
+  /** Что произошло: речь, жест, детское действие, осмотр или приход в новое место. */
+  event: SceneEvent;
+  /** Описание места: только при осмотре и приходе, чтобы повествование было предметным. */
+  place?: string;
 }
+export type SceneEvent = "speech" | "gesture" | "infant" | "look" | "arrival";
 
 const trim = (text: string, max: number) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
@@ -136,7 +141,7 @@ export function addressedNpc(world: WorldData, ids: string[], text: string): str
   });
 }
 
-export function buildSceneContext(world: WorldData, state: GameState, playerText: string, lang: GameLanguage = "ru", maxNpcs = 4): SceneContext {
+export function buildSceneContext(world: WorldData, state: GameState, playerText: string, lang: GameLanguage = "ru", event: SceneEvent = "speech", maxNpcs = 6): SceneContext {
   const loc = world.locations[state.playerLocation]!;
   const present = npcsAt(world, state.minute, loc.id, state.npcDeaths);
   const to = addressedNpc(world, present, playerText);
@@ -166,19 +171,21 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
     }),
     recent: recentEntries.map(event => trim(event.text, 160)),
     ...(to ? { to } : {}),
-    ...(facts.length ? { facts } : {})
+    ...(facts.length ? { facts } : {}),
+    event,
+    ...(event === "look" || event === "arrival" ? { place: trim(loc.description, 600) } : {})
   };
 }
 
 export const SCENE_PROTOCOL = "openworld-scene-v1";
 /** Стабильные инструкции сцены: одинаковы между ходами, поэтому кэшируются у провайдеров. */
 export const SCENE_INSTRUCTIONS = [
-  "Ты пишешь живую сцену текстовой RPG: что отвечают игроку люди рядом с ним.",
-  "У каждого свой голос. talk описывает манеру речи: возраст, характер, сословие, край. Ребёнок говорит как ребёнок, старик как старик, стражник не говорит как торговка. Не делай всех одинаково вежливыми и гладкими.",
-  "rel: как NPC относится к игроку, mem: что он помнит. Не выдумывай общего прошлого и фактов о мире сверх facts.",
-  "Отвечают один или двое, кому есть что сказать; если обратились по имени (to), отвечает он. Можно не отвечать, если человеку не до того.",
-  "Не меняй мир: никто не отдаёт вещи, не называет новых цен, не уходит и не нападает. Последствия решает движок.",
-  "Реплика до 300 знаков, разговорная, без пересказа контекста. narration: одна короткая ремарка о жесте или настроении, можно пустую.",
+  "Ты рассказчик и голоса людей в текстовой RPG. Игрок сделал ход (playerText, event), ты описываешь, как откликается мир.",
+  "ГЛАВНЫЙ ЗАПРЕТ: ты никогда не пишешь за героя игрока (me). Не описываешь его слова, действия, мысли, чувства, ощущения, решения и реакции, не пишешь «вы почувствовали», «вы улыбнулись», «ты решаешь». Герой делает и чувствует только то, что написал игрок. Ты пишешь только мир и других людей и останавливаешься там, где герою пора действовать.",
+  "narration: литературное повествование, развёрнутое и образное: место, свет, звуки, запахи, что делают люди вокруг, их жесты и выражения лиц. При event look или arrival подробно опиши место по place. Несколько абзацев допустимы, если сцене есть что показать.",
+  "replies: живые реплики людей рядом. У каждого свой голос по talk (возраст, характер, сословие, край): ребёнок говорит как ребёнок, старик как старик, стражник не как торговка. Разговорная речь, оговорки, недосказанность, никакой одинаковой вежливости. Длина по характеру: болтун говорит много, молчун мало.",
+  "Говорит тот, кому есть что сказать; если обратились по имени (to), отвечает он. Можно молчать, если человеку не до того. rel: отношение к игроку, mem: что человек помнит. Не выдумывай общего прошлого и фактов о мире сверх facts и recent.",
+  "Не меняй мир: никто не отдаёт вещи, не называет новых цен, не уходит, не нападает и не умирает. Последствия решает движок.",
   "Пиши на языке lang (ru или en). Не используй длинное тире."
 ];
 
@@ -188,7 +195,7 @@ export function buildSceneEnvelope(context: SceneContext, playerText: string) {
     systemInstructions: SCENE_INSTRUCTIONS,
     context,
     playerText,
-    outputContract: { type: "object" as const, required: ["replies"], speakers: context.npcs.map(npc => npc.id), maxReplies: 2, maxCharacters: 300 }
+    outputContract: { type: "object" as const, required: ["replies"], speakers: context.npcs.map(npc => npc.id), maxReplies: MAX_SCENE_REPLIES, maxCharacters: MAX_REPLY_CHARS }
   };
 }
 export type SceneEnvelope = ReturnType<typeof buildSceneEnvelope>;
@@ -201,19 +208,48 @@ export interface SceneWriter {
 export interface SceneReply { npcId: string; text: string }
 export interface Scene { replies: SceneReply[]; narration?: string }
 
-/** Приводит ответ модели к сцене: говорят только присутствующие, не больше двух, без длинных тире. */
-export function coerceScene(raw: unknown, speakers: string[]): Scene | null {
+/** Щедрые пределы только от сбоев модели: игрока не ограничиваем. */
+export const MAX_SCENE_REPLIES = 6;
+export const MAX_REPLY_CHARS = 2000;
+export const MAX_NARRATION_CHARS = 6000;
+
+const sentences = (text: string) => text.split(/(?<=[.!?…»"])\s+(?=\S)/);
+const END = "(?=[\\s,.!?;:…»\"]|$)";
+const HERO_START = new RegExp(`^[«"(*\\s]*(вы|ты|you)${END}`, "i");
+const HERO_INNER = /(^|[\s,;:(])(ваш[а-яё]*|тво[а-яё]+|your)\s+(сердц|мысл|душ|дыхани|heart|mind|thought|breath)|(^|[\s,;:(])(вас|тебя|you)\s+(охватыва|охватил|переполня|переполнил|накрыва|накрыл|пронза|пронзил|захлёстыва|overwhelm|fill)/i;
+const HERO_SUBJECT = new RegExp(`(^|[\\s,;:(])(вы|ты)\\s+(?:уже\\s+|вдруг\\s+|невольно\\s+|снова\\s+)?[а-яё]+(ете|ите|ёте|ешь|ишь|ёшь|ли|лись|ла|лась|ло|л|лся)${END}`, "i");
+const HERO_EN = /\byou\s+(?:suddenly\s+|slowly\s+)?(feel|felt|think|thought|say|said|nod|nodded|smile|smiled|decide|decided|want|wanted|realize|realized|notice|noticed|sense|sensed|reply|replied|answer|answered|take|took|turn|turned|step|stepped|walk|walked|laugh|laughed|sigh|sighed|remember|remembered)\b/i;
+
+/**
+ * Убирает из текста рассказчика предложения, где модель решает за героя игрока:
+ * «Вы улыбаетесь», «ты чувствуешь», «Ирина кивает». Обращение к герою в косвенном
+ * падеже («мать берёт вас на руки») остаётся: это действие другого человека.
+ */
+export function removeHeroActions(text: string, playerName = ""): { text: string; removed: number } {
+  const first = playerName.trim().split(/\s+/)[0] ?? "";
+  const nameRe = first.length >= 2 ? new RegExp(`(^|[\\s,;:(«"])${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+(?:уже\\s+|вдруг\\s+)?[а-яё]+(ет|ёт|ит|ется|ётся|ится|ал|ала|ел|ела|ил|ила|ул|ула|ял|яла|ался|алась|ился|илась)${END}`, "i") : null;
+  let removed = 0;
+  const kept = text.split(/\n+/).map(paragraph => sentences(paragraph).filter(sentence => {
+    const bad = HERO_START.test(sentence) || HERO_INNER.test(sentence) || HERO_SUBJECT.test(sentence) || HERO_EN.test(sentence) || Boolean(nameRe?.test(sentence));
+    if (bad) removed++;
+    return !bad;
+  }).join(" ")).filter(paragraph => paragraph.trim()).join("\n\n");
+  return { text: kept.trim(), removed };
+}
+
+/** Приводит ответ модели к сцене: говорят только присутствующие, за героя никто не решает, без длинных тире. */
+export function coerceScene(raw: unknown, speakers: string[], playerName = ""): Scene | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as { replies?: unknown; narration?: unknown };
   const replies: SceneReply[] = [];
   if (Array.isArray(r.replies)) for (const item of r.replies) {
-    if (replies.length >= 2) break;
+    if (replies.length >= MAX_SCENE_REPLIES) break;
     const entry = item as { npc?: unknown; text?: unknown };
     if (typeof entry?.npc !== "string" || !speakers.includes(entry.npc) || typeof entry.text !== "string") continue;
-    const text = stripDashes(entry.text.trim()).replace(/^["«]+|["»]+$/g, "").slice(0, 400);
+    const text = stripDashes(entry.text.trim()).replace(/^["«]+|["»]+$/g, "").slice(0, MAX_REPLY_CHARS);
     if (text) replies.push({ npcId: entry.npc, text });
   }
-  const narration = typeof r.narration === "string" ? stripDashes(r.narration.trim()).slice(0, 300) : "";
+  const narration = typeof r.narration === "string" ? removeHeroActions(stripDashes(r.narration.trim()), playerName).text.slice(0, MAX_NARRATION_CHARS) : "";
   if (!replies.length && !narration) return null;
   return narration ? { replies, narration } : { replies };
 }
@@ -234,7 +270,7 @@ export function applyScene(world: WorldData, state: GameState, scene: Scene): { 
     chronicle = [...chronicle, { id, minute: state.minute, locationId: loc, text, witnesses, source: sourceId ? { kind: "npc", id: sourceId } : { kind: "system" } }];
     for (const npcId of witnesses) npcMemory[npcId] = [...(npcMemory[npcId] ?? []), { minute: state.minute, text, kind: "witnessed", confidence: 1, eventId: id }];
     playerMemory.push({ minute: state.minute, text, kind: "own", confidence: 1, eventId: id });
-    lines.push(text);
+    lines.push(...text.split(/\n{2,}/).map(paragraph => paragraph.trim()).filter(Boolean));
   };
   if (scene.narration) record(scene.narration);
   for (const reply of scene.replies) {

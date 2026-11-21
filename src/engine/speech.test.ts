@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, speechProfile, stripDashes, addressedNpc } from "./speech";
+import { applyScene, buildSceneContext, buildSceneEnvelope, coerceScene, speechProfile, stripDashes, addressedNpc, removeHeroActions, SCENE_INSTRUCTIONS } from "./speech";
 import { applyAction } from "./rules";
 import { npcsAt } from "./world";
 import { startVeloriaCampaign } from "../worlds/veloria/campaign";
@@ -71,7 +71,7 @@ describe("живая сцена", () => {
     expect(addressedNpc(world, present, "кто-нибудь?")).toBeUndefined();
   });
 
-  it("говорят только присутствующие, не больше двух, текст очищен", () => {
+  it("говорят только присутствующие, текст очищен, длинные ответы не режутся", () => {
     const scene = coerceScene({ replies: [
       { npc: first.id, text: "«Ну здравствуй — давно не виделись»" },
       { npc: "stranger", text: "меня тут нет" },
@@ -79,7 +79,9 @@ describe("живая сцена", () => {
       { npc: first.id, text: "третье" }
     ], narration: "Кивает — устало." }, present);
     expect(scene).not.toBeNull();
-    expect(scene!.replies).toHaveLength(2);
+    expect(scene!.replies).toHaveLength(3);
+    const long = "Слово ".repeat(250).trim();
+    expect(coerceScene({ replies: [{ npc: first.id, text: long }] }, present)!.replies[0]!.text).toBe(long);
     expect(scene!.replies[0]!.text).toBe("Ну здравствуй, давно не виделись");
     expect(scene!.narration).toBe("Кивает, устало.");
     expect(coerceScene({ replies: [] }, present)).toBeNull();
@@ -98,5 +100,31 @@ describe("живая сцена", () => {
     expect(next.minute).toBe(said.state.minute);
     // Следующая сцена помнит разговор.
     expect(buildSceneContext(world, next, "а ещё?").recent.join(" ")).toContain("И тебе привет.");
+  });
+});
+
+describe("мир не пишет за героя", () => {
+  it("убирает действия, слова и чувства героя, оставляет мир и других людей", () => {
+    const text = "Над рынком висит запах тёплого хлеба. Вы улыбаетесь торговке. Марта поднимает глаза и берёт вас за руку. Ты чувствуешь тепло.\nВаше сердце сжимается. Ирина кивает в ответ. Вас охватывает тревога. Ветер треплет навес.";
+    const result = removeHeroActions(text, "Ирина Вейл");
+    expect(result.text).toContain("запах тёплого хлеба");
+    expect(result.text).toContain("Марта поднимает глаза и берёт вас за руку.");
+    expect(result.text).toContain("Ветер треплет навес.");
+    expect(result.text).not.toMatch(/улыбаетесь|чувствуешь|сердце|кивает|охватывает/);
+    expect(result.removed).toBe(5);
+  });
+  it("английский текст тоже", () => {
+    const result = removeHeroActions("Rain drums on the roof. You nod slowly. The guard frowns at you. You feel cold.", "Irina");
+    expect(result.text).toBe("Rain drums on the roof. The guard frowns at you.");
+  });
+  it("запрет есть в инструкциях, а проверка срабатывает в coerceScene", () => {
+    expect(SCENE_INSTRUCTIONS.join(" ")).toMatch(/никогда не пишешь за героя/);
+    const scene = coerceScene({ replies: [], narration: "Лавка пахнет кожей. Вы решаете уйти." }, [], "Ирина");
+    expect(scene!.narration).toBe("Лавка пахнет кожей.");
+  });
+  it("осмотр получает описание места, разговор нет", () => {
+    const { world, state } = adult();
+    expect(buildSceneContext(world, state, "осмотреться", "ru", "look").place).toBeTruthy();
+    expect(buildSceneContext(world, state, "привет", "ru", "speech").place).toBeUndefined();
   });
 });
