@@ -31,7 +31,7 @@ function liveDays(world: Parameters<typeof livePeriod>[0], state: GameState, day
   let left = days;
   while (left > 0) {
     const before = current.minute;
-    const r = livePeriod(world, current, Math.min(left, 365));
+    const r = livePeriod(world, current, Math.min(left, 7));
     if (!r.ok) throw new Error(r.message);
     current = r.state;
     left -= Math.max(1, Math.round((current.minute - before) / DAY));
@@ -134,11 +134,11 @@ describe("second prince from birth", () => {
     // Вехи сняты как повод для остановки: остаются только события мира (рождение Марена в 724 КЛ).
     let current: GameState = near;
     let birthSeen = false;
-    for (let i = 0; i < 3 && !birthSeen; i++) {
-      const r = livePeriod(world, current, 365);
+    for (let i = 0; i < 120 && !birthSeen; i++) {
+      const r = livePeriod(world, current, 7);
       current = r.state;
       birthSeen = r.message.toLowerCase().includes("родил");
-      if (birthSeen) expect(r.message).toContain("Время остановлено");
+      if (birthSeen && !r.message.includes("Проходит 7 дней")) expect(r.message).toContain("Время остановлено");
     }
     expect(birthSeen).toBe(true);
   }, 60_000);
@@ -192,13 +192,20 @@ describe("прожить период без лишних остановок", (
     const { pluralDays } = await import("./rules");
     expect([1, 3, 11, 21, 41, 56, 112, 365].map(n => `${n} ${pluralDays(n)}`)).toEqual(["1 день", "3 дня", "11 дней", "21 день", "41 день", "56 дней", "112 дней", "365 дней"]);
   });
-  it("год в младенчестве проживается целиком, а вехи перечисляются в итоге", async () => {
+  it("неделя проживается целиком, а вехи перечисляются в итоге; больше недели за раз нельзя", async () => {
     const { startVeloriaCampaign } = await import("../worlds/veloria/campaign");
     const ATTRS = { "Сила": 15, "Выносливость": 15, "Ловкость": 14, "Интеллект": 14, "Восприятие": 14, "Харизма": 14, "Воля": 14 };
     const r = startVeloriaCampaign({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Малыш", age: 0, originId: "tenant-farmer", statusId: "rural-free", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS }, familySeed: "year" } });
     if (!r.ok) throw new Error(r.errors.join(" "));
-    const lived = livePeriod(r.world, r.state, 365);
-    expect(lived.message).toContain("Проходит 365 дней");
-    expect(lived.message).toContain("Новая веха развития");
+    expect(livePeriod(r.world, r.state, 30).ok).toBe(false);
+    let current = r.state;
+    let milestone = false;
+    for (let i = 0; i < 12 && !milestone; i++) {
+      const lived = livePeriod(r.world, current, 7);
+      expect(lived.message).toContain("Проходит 7 дней");
+      milestone = lived.message.includes("Новая веха развития");
+      current = lived.state;
+    }
+    expect(milestone).toBe(true);
   }, 60_000);
 });

@@ -5,6 +5,8 @@ import type { CharacterFamilyRecord } from "./family";
 import { VELORIA_CANON } from "./lore";
 import { regionalName, sampleResidentAppearance, type StateId } from "./populations";
 import { generateNewbornHousehold, type HouseholdKind, type Wealth } from "./birthFamily";
+import { generateBirthHousehold, type BirthHouseholdKind, type BirthPreview } from "./birthHousehold";
+import type { LocationDef } from "../../engine/types";
 import {
   getChildAppearanceOptions,
   type AppearanceProfile,
@@ -27,7 +29,11 @@ export interface GeneratedFamilyAssignment {
   defaultAppearance?: AppearanceProfile;
   summary: string;
   /** Только для старта с рождения в обычной семье. */
-  household?: { kind: HouseholdKind; wealth: Wealth; homeId: string };
+  household?: { kind: HouseholdKind | BirthHouseholdKind; wealth: Wealth; homeId: string; settlementId?: string };
+  /** Новые места семьи (дом, мастерская) и выходы к ним из поселения. */
+  locations?: LocationDef[];
+  links?: Array<{ from: string; to: string; distanceM: number }>;
+  preview?: BirthPreview;
 }
 
 function hash(value: string): number {
@@ -137,6 +143,19 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
     return {
       available: true, record, members: [], guardians: [nurse], biologicalParents: [father, mother], defaultAppearance: fixedAppearance,
       summary: "Биологические родители: Гарен Вальд и женщина из далёкой восточной земли. Родители не состояли в браке; Гарен признал сына. Элиана (в 723 КЛ: принцесса, королевой станет в 735 КЛ) не является твоей матерью: она жена Гарена и испытывает к тебе личную неприязнь из-за его измены. Королевская кормилица Мейра назначена опекуном на время младенчества."
+    };
+  }
+  if (draft.birthOriginId) {
+    const seed = hash(draft.familySeed ?? draft.name.trim().toLocaleLowerCase("ru-RU"));
+    const occupied = new Set(existingNpcIds);
+    let familyId = `birth-family-${seed.toString(36)}`;
+    for (let i = 1; occupied.has(`${familyId}-parent-a`) || occupied.has(`${familyId}-parent-b`) || occupied.has(`${familyId}-guardian`); i++) familyId = `birth-family-${seed.toString(36)}-${i}`;
+    const household = generateBirthHousehold(draft, familyId, `${seed}`);
+    if ("error" in household) return { available: false, reason: household.error, members: [], biologicalParents: [], guardians: [], summary: household.error };
+    return {
+      available: true, record: household.record, members: household.members, biologicalParents: household.biologicalParents, guardians: household.guardians,
+      defaultAppearance: household.appearance, summary: household.summary, preview: household.preview, locations: household.locations, links: household.links,
+      household: { kind: household.kind, wealth: household.wealth, homeId: household.homeId, settlementId: household.settlementId }
     };
   }
   if (draft.age === 0) {
@@ -254,8 +273,23 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
 export function attachGeneratedFamily(world: WorldData, assignment: GeneratedFamilyAssignment): WorldData {
   if (!assignment.available || assignment.members.length === 0) return world;
   if (assignment.members.some(member => world.npcs[member.id])) throw new Error("Сгенерированная семья столкнулась с уже существующими ID NPC.");
+  const locations = { ...world.locations };
+  for (const location of assignment.locations ?? []) {
+    if (locations[location.id]) throw new Error("Место семьи столкнулось с уже существующей локацией.");
+    locations[location.id] = location;
+  }
+  for (const link of assignment.links ?? []) {
+    const from = locations[link.from];
+    if (!from) throw new Error(`Нет места ${link.from} для дома семьи.`);
+    if (!from.exits.some(exit => exit.to === link.to)) locations[link.from] = { ...from, exits: [...from.exits, { to: link.to, distanceM: link.distanceM, terrain: "street" }] };
+  }
   return {
-    ...world,
+    ...world, locations,
     npcs: { ...world.npcs, ...Object.fromEntries(assignment.members.map(member => [member.id, member])) }
   };
+}
+
+/** Что игрок видит о семье до рождения: только настоящее, без будущего. */
+export function previewBirthFamily(draft: VeloriaCharacterDraft): BirthPreview | null {
+  return generateVeloriaFamily(draft).preview ?? null;
 }

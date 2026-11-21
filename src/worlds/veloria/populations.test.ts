@@ -130,7 +130,7 @@ describe("birth into an ordinary family", () => {
       const exit = world.locations[state.playerLocation]!.exits[0]!;
       expect(applyAction(world, state, { type: "move", to: exit.to }).ok).toBe(false);
       expect(applyAction(world, state, { type: "infant", act: "cry" }).ok).toBe(true);
-      expect(livePeriod(world, state, 30).ok).toBe(true);
+      expect(livePeriod(world, state, 7).ok).toBe(true);
       checked++;
     }
     expect(checked).toBe(4);

@@ -408,7 +408,7 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
 }
 
 
-export const MAX_LIVE_DAYS = 365;
+export const MAX_LIVE_DAYS = 7;
 
 /** «1 день», «3 дня», «41 день», «56 дней», «112 дней». */
 export function pluralDays(n: number): string {
@@ -426,7 +426,7 @@ export function pluralDays(n: number): string {
  */
 export function livePeriod(world: WorldData, state: GameState, days: number): ActionResult {
   if (state.lifeStatus === "dead") return reject(state, "История этого персонажа завершена.");
-  if (!Number.isInteger(days) || days < 1 || days > MAX_LIVE_DAYS) return reject(state, `Прожить можно от 1 до ${MAX_LIVE_DAYS} дней за раз.`);
+  if (!Number.isInteger(days) || days < 1 || days > MAX_LIVE_DAYS) return reject(state, "За раз можно прожить от часа до недели. Для часа скажите «подождать час».");
   if (state.journey) return reject(state, "Во время путешествия используйте продолжение пути.");
   const here = world.locations[state.playerLocation];
   if (!here) return reject(state, "Текущая локация неизвестна. Мир не изменился.");
