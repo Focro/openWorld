@@ -75,3 +75,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* Аккаунт (0.17.0) */
 .cloud-saves { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
 .cloud-saves li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Карта и люди (0.18.0) */
+.map-shell svg{cursor:pointer}
+.map-pin path{fill:#81d3a4;stroke:#e2f8e9;stroke-width:.5}.map-pin circle{fill:#18232f}
+.map-hit{fill:none;stroke:#f1e7d6;stroke-width:.6;stroke-dasharray:1 .8}
+.map-card{position:relative;display:grid;gap:4px;margin-top:10px;padding:12px 40px 12px 12px;background:#18232f;border:1px solid #344257;border-radius:10px}
+.map-card span{color:#9eacbf;font-size:13px}.map-card em{color:#81d3a4;font-style:normal;font-size:13px}
+.map-card>button[aria-label]{position:absolute;top:6px;right:6px;min-width:32px;min-height:32px;padding:0;background:none;border:none;color:#9eacbf;font-size:20px}
+.map-card .map-go{justify-self:start;margin-top:6px}
+.map-tip{margin:8px 0 0;color:#9eacbf;font-size:12px}
+.people-list{display:grid;gap:10px}
+.person-card{display:grid;gap:4px;padding:12px;border:1px solid #344257;border-radius:10px}
+.person-card span{color:#9eacbf;font-size:13px}.person-card p{margin:0}

@@ -86,6 +86,8 @@ export async function saveAdultMode(cloud: Cloud, userId: string, on: boolean): 
 
 // ===== сохранения =====
 export const AUTO_SLOT = "auto";
+/** Список умерших героев (окончательная смерть) лежит отдельной записью, общей для всех миров. */
+export const GRAVEYARD_WORLD = "_account", GRAVEYARD_SLOT = "graveyard";
 /** База принимает до 1 МБ на сохранение; с запасом режем раньше. */
 export const MAX_CLOUD_SAVE_CHARS = 900_000;
 export interface CloudSaveInfo { worldId: string; slot: string; updatedAt: string }

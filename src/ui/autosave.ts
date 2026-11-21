@@ -15,12 +15,14 @@ export interface AutosaveInfo { ok: boolean; savedAt?: string; bytes?: number }
 export function writeAutosave(worldId: string, game: GameState, storage: Storage | undefined = store(), now = new Date()): AutosaveInfo {
   if (!game.playerProfile || !storage) return { ok: false };
   const text = JSON.stringify({ schemaVersion: 1, worldId, game, savedAt: now.toISOString() });
-  try { storage.setItem(AUTOSAVE_KEY, text); return { ok: true, savedAt: now.toISOString(), bytes: text.length }; }
+  // Последняя игра и отдельная копия для каждого мира: сохранения идут по мирам.
+  try { storage.setItem(AUTOSAVE_KEY, text); try { storage.setItem(`${AUTOSAVE_KEY}:${worldId}`, text); } catch { /* хватит и общей копии */ } return { ok: true, savedAt: now.toISOString(), bytes: text.length }; }
   catch { return { ok: false }; }
 }
 
-export function readAutosave(storage: Storage | undefined = store()): string | null {
-  try { return storage?.getItem(AUTOSAVE_KEY) ?? null; } catch { return null; }
+/** Без worldId: последняя игра; с worldId: последняя игра в этом мире. */
+export function readAutosave(storage: Storage | undefined = store(), worldId?: string): string | null {
+  try { return (worldId ? storage?.getItem(`${AUTOSAVE_KEY}:${worldId}`) : null) ?? (worldId ? null : storage?.getItem(AUTOSAVE_KEY)) ?? null; } catch { return null; }
 }
 
 export function clearAutosave(storage: Storage | undefined = store()): void {
