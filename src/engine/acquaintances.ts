@@ -31,7 +31,9 @@ export function knownPeople(world: WorldData, state: GameState): Acquaintance[] 
     const prefix = /^([^:;]{1,40}):\s*/.exec(raw);
     const nature = (family && prefix ? raw.slice(prefix[0].length) : raw).trim();
     const shop = Object.values(world.locations).find(l => l.shop?.keeperId === id);
-    const role = family && prefix ? prefix[1]!.trim() : shop ? `торгует: ${shop.name}` : undefined;
+    // Занятие авторского жителя города (поле resident из каталога жителей), если оно есть.
+    const occupation = (npc as { resident?: { occupation?: unknown } }).resident?.occupation;
+    const role = family && prefix ? prefix[1]!.trim() : typeof occupation === "string" && occupation ? occupation : shop ? `торгует: ${shop.name}` : undefined;
     const appearance = state.npcAppearances?.[id] ?? npc.appearance;
     out.push({ id, name: npc.name, ...(role ? { role } : {}), age: npcAgeYears(npc, state), nature: nature || undefined, looks: appearance ? describeAppearance(appearance) : undefined, alive, family });
   }
