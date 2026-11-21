@@ -1,5 +1,5 @@
 /**
- * Дополнительные дома Ардана (0.14.0) — ПРЕДЛОЖЕНИЕ ПРОЕКТА, а не канон 1.0.
+ * Дополнительные дома Ардана (0.14.0): ПРЕДЛОЖЕНИЕ ПРОЕКТА, а не канон 1.0.
  *
  * Автор мира попросил больше домов с собственными характерами. Канонические 30 домов
  * (nobleHouses.ts) не меняются; здесь по три новых дома на каждое государство.
@@ -27,9 +27,9 @@ type ProposedHouse = Omit<DynasticHouse, "countryId">;
 const house = (x: Omit<ProposedHouse, "canonStatus">): ProposedHouse => ({ ...x, canonStatus: "proposal" });
 
 export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
-  // ESTRAN — наследственная корона: титул по старшинству, корона подтверждает
+  // ESTRAN: наследственная корона: титул по старшинству, корона подтверждает
   house({ id: "p-ashford", name: "Дом Ашфорд", stateId: "estran", seat: "Ашфордский замок над бродом", title: "графы", foundedYear: 612, founder: "Освин Ашфорд",
-    originOfPower: "Получили брод и пошлину за поставки зерна короне в голодные годы.", inheritanceLaw: "Старший законный сын; при отсутствии сыновей — старшая дочь с согласия короны.",
+    originOfPower: "Получили брод и пошлину за поставки зерна короне в голодные годы.", inheritanceLaw: "Старший законный сын; при отсутствии сыновей: старшая дочь с согласия короны.",
     successionRule: "male-preference", headId: "ash-roland", motto: "Брод не ждёт", wealth: "comfortable", publicStanding: "Осторожный дом, всегда голосующий вместе с большинством совета.",
     members: [
       dead("ash-hugo", "Хьюго Ашфорд", 662, 731, "прежний граф", [], ["ash-clara"]),
@@ -43,7 +43,7 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     secrets: ["Вдовствующая графиня скрывает долг перед варентским банком."] }),
   house({ id: "p-fenwick", name: "Дом Фенвик", stateId: "estran", seat: "Фенвикские болота и солеварни", title: "бароны", foundedYear: 689, founder: "Мэйбл Фенвик",
     originOfPower: "Новый служилый дом: основательница получила титул за осушение болот.", inheritanceLaw: "Старший законный ребёнок независимо от пола (по жалованной грамоте 689 КЛ).",
-    successionRule: "absolute-primogeniture", headId: "fen-mabel", motto: "Из воды — земля", wealth: "modest", publicStanding: "Старая знать считает их выскочками, крестьяне — справедливыми.",
+    successionRule: "absolute-primogeniture", headId: "fen-mabel", motto: "Из воды: земля", wealth: "modest", publicStanding: "Старая знать считает их выскочками, крестьяне: справедливыми.",
     members: [
       m("fen-mabel", "Мэйбл Фенвик", 668, "баронесса, основательница", [], ["fen-uade"]),
       dead("fen-uade", "Уэйд Фенвик", 664, 719, "супруг основательницы", [], ["fen-mabel"], "Погиб при прорыве дамбы"),
@@ -64,9 +64,9 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     ], cadetBranches: [], allies: ["reynar"], rivals: ["morholt"], obligations: ["охранять участок Северного тракта"],
     secrets: [] }),
 
-  // SAHRAD — султанат: патрилинейно, но совет колодцев и долги могут вмешаться
+  // SAHRAD: султанат: патрилинейно, но совет колодцев и долги могут вмешаться
   house({ id: "p-haddad", name: "Дом Хаддад", stateId: "sahrad", seat: "Кузнечный квартал Кадиры", title: "амиры ремесленных цехов", foundedYear: 655, founder: "Хасан Хаддад",
-    originOfPower: "Поднялись на оружии и медной утвари для султанского войска.", inheritanceLaw: "Старший сын; если сыновей нет — старший зять, принятый в дом.",
+    originOfPower: "Поднялись на оружии и медной утвари для султанского войска.", inheritanceLaw: "Старший сын; если сыновей нет: старший зять, принятый в дом.",
     successionRule: "male-preference", headId: "had-malik", motto: "Огонь кует верность", wealth: "great", publicStanding: "Богатый цеховой дом; при дворе их уважают, но в старых эмиратах морщатся.",
     members: [
       dead("had-hasan", "Хасан Хаддад", 630, 702, "основатель"),
@@ -91,7 +91,7 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     secrets: [] }),
   house({ id: "p-zarraf", name: "Дом Зарраф", stateId: "sahrad", seat: "Медное побережье, порт Шаммар", title: "менялы и судовладельцы", foundedYear: 690, founder: "Саид Зарраф",
     originOfPower: "Разбогатели на обмене монет между Варентом и султанатом.", inheritanceLaw: "Имущество делится между сыновьями и дочерьми по закону, ведение дел получает назначенный главой.",
-    successionRule: "testament", headId: "zar-said", motto: "Каждой монете — вес", wealth: "great", publicStanding: "Новые деньги; им должны половина портовых эмиров.",
+    successionRule: "testament", headId: "zar-said", motto: "Каждой монете: вес", wealth: "great", publicStanding: "Новые деньги; им должны половина портовых эмиров.",
     members: [
       m("zar-said", "Саид Зарраф", 668, "глава дома", [], ["zar-yara"]),
       m("zar-yara", "Яра Зарраф", 679, "супруга, ведёт книги", [], ["zar-said"]),
@@ -101,7 +101,7 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     ], cadetBranches: [], allies: ["house-merovar"], rivals: ["house-miraj"], obligations: ["платить портовую пошлину серебром"],
     secrets: ["Глава дома ещё не назвал наследника дела; сын и дочь соперничают."] }),
 
-  // THARVEK — выборный Конклав: заслуга и испытание важнее крови
+  // THARVEK: выборный Конклав: заслуга и испытание важнее крови
   house({ id: "p-kremen", name: "Дом Кремень", stateId: "tharvek", seat: "Кремнёвая застава", title: "князья заставы", foundedYear: 641, founder: "Радим Кремень",
     originOfPower: "Основатель удержал заставу в обвал 641 КЛ; Конклав дал роду землю.", inheritanceLaw: "Наследника выбирает Конклав из детей князя после испытания перевалом.",
     successionRule: "elective", headId: "kre-zdeslav", motto: "Не сдвинуть", wealth: "modest", publicStanding: "Суровый воинский дом, любимый гарнизонами.",
@@ -116,7 +116,7 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     secrets: [] }),
   house({ id: "p-rudnoy", name: "Дом Рудной", stateId: "tharvek", seat: "Рудные залы Велиграда", title: "старосты рудников", foundedYear: 580, founder: "Бранко Рудной",
     originOfPower: "Шахтёрская община выбрала род старостами; позже Конклав признал титул.", inheritanceLaw: "Староста избирается шахтёрским кругом из членов дома; круг может отозвать его.",
-    successionRule: "council", headId: "rud-drag", motto: "Глубже — честнее", wealth: "comfortable", publicStanding: "Дом шахтёров: знать их не любит, общины поддерживают.",
+    successionRule: "council", headId: "rud-drag", motto: "Глубже: честнее", wealth: "comfortable", publicStanding: "Дом шахтёров: знать их не любит, общины поддерживают.",
     members: [
       m("rud-drag", "Драгана Рудная", 683, "староста рудников", [], ["rud-milan"]),
       dead("rud-milan", "Радим Скалич", 680, 733, "супруг старосты", [], ["rud-drag"], "Погиб в обвале"),
@@ -137,10 +137,10 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     ], cadetBranches: [], allies: ["dravik"], rivals: [], obligations: ["свидетельствовать договоры долин"],
     secrets: ["Обвинение младшего сына могло быть подстроено."] }),
 
-  // VARENT — торговая лига: капитал по завещанию, место в Совете — по гражданству и доле
+  // VARENT: торговая лига: капитал по завещанию, место в Совете: по гражданству и доле
   house({ id: "p-cantarini", name: "Дом Кантарини", stateId: "varent", seat: "Палаццо у Стеклянной гавани", title: "банкиры Лиги", foundedYear: 655, founder: "Лоренцо Кантарини",
     originOfPower: "Банк, кредитующий половину судовладельцев Лиги.", inheritanceLaw: "Банк переходит по завещанию к одному наследнику; остальное делится поровну.",
-    successionRule: "testament", headId: "can-beatris", motto: "Доверие — тоже капитал", wealth: "great", publicStanding: "Самый богатый банк Варента; каждый их брак — политическое событие.",
+    successionRule: "testament", headId: "can-beatris", motto: "Доверие: тоже капитал", wealth: "great", publicStanding: "Самый богатый банк Варента; каждый их брак: политическое событие.",
     members: [
       dead("can-lorenzo", "Лоренцо Кантарини", 640, 712, "основатель банка"),
       m("can-beatris", "Беатрис Кантарини", 678, "глава банка", ["can-lorenzo"], ["can-tiberio"]),
@@ -162,18 +162,18 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     ], cadetBranches: [], allies: ["lorent"], rivals: ["narel"], obligations: ["выставлять два корабля в общий флот"],
     secrets: [] }),
   house({ id: "p-tessari", name: "Дом Тессари", stateId: "varent", seat: "Квартал печатников Варенпорта", title: "нотарии и печатники", foundedYear: 618, founder: "Альвизе Тессари",
-    originOfPower: "Печатают договоры Лиги и хранят копии реестров.", inheritanceLaw: "Наследник обязан сдать экзамен коллегии нотариев; без экзамена — только доля имущества.",
-    successionRule: "council", headId: "tes-severo", motto: "Записано — значит было", wealth: "modest", publicStanding: "Им доверяют бумаги, но не секреты.",
+    originOfPower: "Печатают договоры Лиги и хранят копии реестров.", inheritanceLaw: "Наследник обязан сдать экзамен коллегии нотариев; без экзамена: только доля имущества.",
+    successionRule: "council", headId: "tes-severo", motto: "Записано: значит было", wealth: "modest", publicStanding: "Им доверяют бумаги, но не секреты.",
     members: [
       m("tes-severo", "Северо Тессари", 672, "глава коллегии дома", [], ["tes-julia"]),
       m("tes-julia", "Джулия Тессари", 676, "супруга", [], ["tes-severo"]),
       m("tes-kiara", "Кьяра Тессари", 699, "старшая дочь, нотарий", ["tes-severo", "tes-julia"]),
       m("tes-alvise", "Нико Тессари", 704, "сын", ["tes-severo", "tes-julia"], [], "Дважды провалил экзамен"),
-      ack("tes-dario", "Дарио Тессари", 701, "признанный сын главы", ["tes-severo"], "Мать — служанка дома; признан нотариально")
+      ack("tes-dario", "Дарио Тессари", 701, "признанный сын главы", ["tes-severo"], "Мать: служанка дома; признан нотариально")
     ], cadetBranches: [], allies: ["vell"], rivals: [], obligations: ["хранить копии договоров Совета"],
     secrets: ["В архиве дома лежит подложный договор, о котором знает только глава."] }),
 
-  // ELYNDOR — лига общин: право ограничено общинным договором, наследника утверждает круг
+  // ELYNDOR: лига общин: право ограничено общинным договором, наследника утверждает круг
   house({ id: "p-ryabin", name: "Род Рябин", stateId: "elyndor", seat: "Рябиновый круг у Летариэля", title: "старшие круга", foundedYear: 470, founder: "Сейни Рябин",
     originOfPower: "Один из родов, первыми заключивших договор о лесных тропах.", inheritanceLaw: "Старшинство переходит к тому, кого назовёт круг рода; пол и порядок рождения не решают.",
     successionRule: "council", headId: "rya-kaisa", motto: "Лес помнит долги", wealth: "modest", publicStanding: "Почтенный род; к их слову прислушивается Совет Старших Рощ.",
@@ -208,10 +208,10 @@ export const PROPOSED_RAW_HOUSES: ProposedHouse[] = [
     ], cadetBranches: [], allies: [], rivals: ["sylvar", "p-ryabin"], obligations: ["сажать два дерева за каждое срубленное"],
     secrets: ["Род рубит в запретной роще и платит хранителю за молчание."] }),
 
-  // KHARUM — империя: наследника утверждает указ, а должность — экзамен
+  // KHARUM: империя: наследника утверждает указ, а должность: экзамен
   house({ id: "p-han", name: "Дом Хань", stateId: "kharum", seat: "Южная провинция Хань-Лу", title: "наместники", foundedYear: 512, founder: "Хань Шэн",
     originOfPower: "Наместничество, подтверждаемое каждым новым императором.", inheritanceLaw: "Император назначает наместника; обычно старшего сына, сдавшего экзамен.",
-    successionRule: "appointment", headId: "han-lyang", motto: "Порядок — опора неба", wealth: "great", publicStanding: "Сильнейший провинциальный дом; двор опасается их самостоятельности.",
+    successionRule: "appointment", headId: "han-lyang", motto: "Порядок: опора неба", wealth: "great", publicStanding: "Сильнейший провинциальный дом; двор опасается их самостоятельности.",
     members: [
       dead("han-hao", "Хань Хао", 655, 726, "прежний наместник"),
       m("han-lyang", "Хань Лян", 684, "наместник", ["han-hao"], ["han-qing"]),

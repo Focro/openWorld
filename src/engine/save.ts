@@ -39,7 +39,7 @@ export function commitState(save: SaveFile, state: GameState): SaveFile {
 }
 
 /**
- * Создаёт новую ветку от снимка atIndex активной ветки (по умолчанию — от последнего)
+ * Создаёт новую ветку от снимка atIndex активной ветки (по умолчанию: от последнего)
  * и делает её активной. Возвращает null при занятом id или неверном индексе.
  */
 export function forkBranch(save: SaveFile, newId: string, atIndex?: number): SaveFile | null {

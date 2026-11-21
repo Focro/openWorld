@@ -3,7 +3,7 @@ import type { AppearanceObservation, CharacterAppearanceState, ClothingCondition
 /** Статические определения мира (не меняются во время игры). */
 /** Тип местности влияет на скорость и проходимость (см. geography.ts). */
 export type Terrain = "street" | "road" | "path" | "forest" | "mountain" | "swamp";
-/** Путь между локациями — реальные данные: расстояние в метрах, а не «минуты». */
+/** Путь между локациями: реальные данные: расстояние в метрах, а не «минуты». */
 export interface Exit { to: string; distanceM: number; terrain: Terrain }
 export interface Shop { keeperId: string; prices: Record<string, number> }
 export interface LocationDef {
@@ -70,7 +70,7 @@ export interface NpcDef {
   birthYear?: number;
   lifeStatus?: "alive" | "dead" | "missing";
   familyRole?: "biological-parent" | "guardian" | "other";
-  /** Собственные цели NPC (он знает их о себе; игрок — нет). */
+  /** Собственные цели NPC (он знает их о себе; игрок: нет). */
   goals: string[];
   /** Authored personality; if absent, a stable role-based profile is derived from NPC id. */
   personality?: NpcPersonality;
@@ -118,7 +118,7 @@ export interface WorldData {
 
 /**
  * Раздельные хранилища памяти.
- * own — личный опыт игрока; witnessed — NPC видел сам; heard — слух (мнение с уверенностью < 1).
+ * own: личный опыт игрока; witnessed: NPC видел сам; heard: слух (мнение с уверенностью < 1).
  */
 export type MemoryKind = "own" | "witnessed" | "heard";
 export interface MemoryEntry {
@@ -143,6 +143,8 @@ export interface GameEvent {
   text: string;
   witnesses: string[];
   source: EventSource;
+  /** Фоновая бытовая запись (встреча NPC между собой): не попадает в контекст сцены. */
+  routine?: true;
 }
 /** Хроника хранит объективные события мира. */
 export type ChronicleEntry = GameEvent;
@@ -150,7 +152,7 @@ export type ChronicleEntry = GameEvent;
 /** Отношение NPC к игроку: четыре независимых параметра, каждый −100..100. */
 export interface Relation { trust: number; sympathy: number; fear: number; respect: number }
 
-/** Динамическое состояние — единственный источник истины. */
+/** Динамическое состояние: единственный источник истины. */
 export interface GameState {
   schemaVersion: 1;
   playerName: string;
@@ -170,7 +172,7 @@ export interface GameState {
   npcPsychology?: Record<string, NpcPsychology>;
   /** NPC-to-NPC bonds, independent from each NPC's relationship with the player. */
   npcBonds?: Record<string, Record<string, NpcBond>>;
-  /** Текущая внешность игрока — источник истины для визуального описания. */
+  /** Текущая внешность игрока: источник истины для визуального описания. */
   playerAppearance?: CharacterAppearanceState;
   /** Изменяемая внешность NPC; при отсутствии записи используется их исходный профиль. */
   npcAppearances?: Record<string, CharacterAppearanceState>;

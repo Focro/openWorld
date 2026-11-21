@@ -1,11 +1,13 @@
 /**
- * OpenWorld RPG — серверный прокси ИИ (0.13.0).
+ * OpenWorld RPG: серверный прокси ИИ (0.15.0).
  *
  * Зачем он нужен:
  *  - ключ провайдера не попадает в JavaScript-бандл игры и в репозиторий;
  *  - здесь ограничиваются расходы (запросы в минуту и в сутки на клиента, размер запроса, max_tokens);
  *  - модель только ПРЕДЛАГАЕТ действие: прокси возвращает JSON-предложение,
- *    а движок игры сам проверяет его по правилам (engine/ai.ts → coerceProposal + allowedActionsFor).
+ *    а движок игры сам проверяет его по правилам (engine/ai.ts: coerceProposal + allowedActionsFor);
+ *  - реплики NPC пишет модель (протокол openworld-scene-v1), а движок проверяет, кто говорит,
+ *    и записывает сказанное в память свидетелей (engine/speech.ts).
  *
  * Провайдеры: anthropic (Claude, официальный SDK), openai, deepseek, openrouter
  * (у трёх последних OpenAI-совместимый HTTP API /chat/completions).
@@ -31,6 +33,9 @@ export const config = {
   effort: process.env.AI_EFFORT ?? "low",
   // Ответ — короткий JSON действия; большой лимит только тратит деньги игрока.
   maxTokens: Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 200),
+  // Живая сцена: литературное повествование и реплики людей. Игроки любят длинный текст,
+  // поэтому лимит щедрый; экономия идёт за счёт короткого контекста, а не урезанного ответа.
+  sceneMaxTokens: Number(process.env.AI_MAX_SCENE_TOKENS ?? 2000),
   maxBodyBytes: 64 * 1024,
   perMinute: Number(process.env.AI_MAX_REQUESTS_PER_MINUTE ?? 6),
   perDay: Number(process.env.AI_MAX_REQUESTS_PER_DAY ?? 300),
@@ -85,9 +90,10 @@ export function createRateLimiter({ perMinute, perDay }, now = () => Date.now())
 export function validateEnvelope(body) {
   if (!body || typeof body !== "object") return "Пустой запрос.";
   const env = body.envelope;
-  if (!env || !["openworld-ai-context-v1", "openworld-intent-v1"].includes(env.protocol)) return "Неизвестный протокол контекста.";
-  if (typeof env.playerText !== "string" || !env.playerText.trim() || env.playerText.length > 1000) return "Текст игрока: от 1 до 1000 символов.";
+  if (!env || !["openworld-ai-context-v1", "openworld-intent-v1", SCENE_PROTOCOL].includes(env.protocol)) return "Неизвестный протокол контекста.";
+  if (typeof env.playerText !== "string" || !env.playerText.trim() || env.playerText.length > 4000) return "Текст игрока: от 1 до 4000 символов.";
   if (!Array.isArray(env.systemInstructions) || !env.context || !env.outputContract) return "Неполный контекст.";
+  if (env.protocol === SCENE_PROTOCOL) return Array.isArray(env.outputContract.speakers) ? null : "Не указан список говорящих.";
   if (!Array.isArray(env.outputContract.allowedActions)) return "Не указан список допустимых действий.";
   return null;
 }
@@ -100,7 +106,15 @@ export function extractProposal(text) {
 }
 
 /** Стабильная часть запроса: одинакова между ходами, поэтому кэшируется у провайдеров, которые это умеют. */
+export const SCENE_PROTOCOL = "openworld-scene-v1";
+const isScene = envelope => envelope.protocol === SCENE_PROTOCOL;
+export const maxTokensFor = envelope => isScene(envelope) ? config.sceneMaxTokens : config.maxTokens;
+
 export function buildSystemPrompt(envelope) {
+  if (isScene(envelope)) return [
+    ...envelope.systemInstructions,
+    "Ответь ТОЛЬКО одним JSON-объектом: {\"replies\":[{\"npc\":\"id\",\"text\":\"...\"}],\"narration\":\"...\"}. npc берётся только из speakers."
+  ].join("\n");
   return [
     ...envelope.systemInstructions,
     "Ответь ТОЛЬКО одним JSON-объектом без пояснений. Поле \"type\" обязательно и берётся из списка acts / allowedActions.",
@@ -115,7 +129,7 @@ async function callAnthropic(target, envelope) {
   try {
     const response = await client.beta.messages.create({
       model: target.model,
-      max_tokens: config.maxTokens,
+      max_tokens: maxTokensFor(envelope),
       output_config: { effort: config.effort },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
@@ -139,7 +153,7 @@ async function callAnthropic(target, envelope) {
 export function buildChatCompletionsRequest(target, envelope) {
   return {
     model: target.model,
-    [target.provider.tokenField]: config.maxTokens,
+    [target.provider.tokenField]: maxTokensFor(envelope),
     messages: [{ role: "system", content: buildSystemPrompt(envelope) }, { role: "user", content: userContent(envelope) }]
   };
 }

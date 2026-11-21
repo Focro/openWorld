@@ -20,7 +20,7 @@ export const CANON_APPEARANCE: Record<string, AppearanceProfile> = {
   "rey-second-prince-mother": { skinTone: 5, hairColor: "black", hairTexture: "straight", eyeColor: "dark-brown", facialFeatures: "east-asian" }
 };
 
-/** Ребёнок двух родителей: каждый признак берётся у одного из них, тон кожи — между их тонами. */
+/** Ребёнок двух родителей: каждый признак берётся у одного из них, тон кожи: между их тонами. */
 export function childOf(a: AppearanceProfile, b: AppearanceProfile, seed: string): AppearanceProfile {
   const low = Math.min(a.skinTone, b.skinTone), high = Math.max(a.skinTone, b.skinTone);
   const skinTone = (low + (seedHash(`${seed}:skin`) % (high - low + 1))) as SkinTone;

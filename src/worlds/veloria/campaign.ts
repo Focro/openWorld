@@ -59,7 +59,7 @@ export function resolveInheritedAppearance(draft: VeloriaCharacterDraft): Appear
 export type CampaignStart = { ok: true; world: WorldData; state: GameState; notice: string } | { ok: false; errors: string[] };
 
 /**
- * Создаёт кампанию. Если передано состояние умершего героя — новый герой продолжает тот же мир
+ * Создаёт кампанию. Если передано состояние умершего героя: новый герой продолжает тот же мир
  * (хроника и память NPC сохраняются), иначе начинается новая версия мира.
  */
 export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: GameState): CampaignStart {
@@ -121,7 +121,8 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     state.relations["rey-second-prince-nurse"] = { trust: 30, sympathy: 55, fear: 0, respect: 5 };
     state.playerMemory = [{
       minute: state.minute, kind: "own", confidence: 0.2,
-      text: `[До первых связных воспоминаний] Вы родились в ${SECOND_PRINCE_START_YEAR} КЛ в королевской детской Коронхольма. Гарен Вальд признал вас сыном. Принцесса Элиана, его супруга, не является вашей матерью и холодна к вам из-за измены мужа. ${start.notes.join(" ")}`
+      // Подробности рождения уже есть в start.notes (character.ts), здесь их не повторяем.
+      text: `[До первых связных воспоминаний] ${start.notes.join(" ")}`
     }];
   }
   // Развитие: возраст отсчитывается от минуты рождения. Для взрослого старта вехи считаются пройденными.
@@ -130,7 +131,7 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     birthMinute, nowMinute: state.minute, aptitudes: draft.attributes,
     seed: `${draft.familySeed ?? draft.name}:${draft.name}`,
     sex: isPrince ? "male" : draft.sex ?? "unspecified",
-    // Обычный новорождённый: задатки — как у принца, темперамент и телосложение выбирает игрок.
+    // Обычный новорождённый: задатки: как у принца, темперамент и телосложение выбирает игрок.
     temperament: draft.temperament, build: draft.bodyBuild, heightTendency: draft.heightTendency
   });
   if (isBirth && !isPrince) {

@@ -3,8 +3,8 @@
  *
  * Мир сам собирает семью новорождённого из устойчивого seed анкеты: состав дома, достаток,
  * возраст и характер родителей, старшие братья и сёстры, бабушка, кормилица. Одна и та же
- * анкета всегда даёт ту же семью; другой seed — другую. Внешность родителей берётся из населения
- * Эстрана (иногда родитель приезжий), внешность ребёнка — только от них.
+ * анкета всегда даёт ту же семью; другой seed: другую. Внешность родителей берётся из населения
+ * Эстрана (иногда родитель приезжий), внешность ребёнка: только от них.
  *
  * Это сгенерированная семья, а не канон: никто из этих людей не входит в родословные домов.
  */
@@ -30,13 +30,13 @@ export type HouseholdKind = "both-parents" | "with-grandmother" | "large-family"
 export type Wealth = "бедно" | "скромно" | "в достатке";
 
 export const HOUSEHOLD_LABELS: Record<HouseholdKind, string> = {
-  "both-parents": "мать и отец растят тебя вместе",
+  "both-parents": "мать и отец растят вас вместе",
   "with-grandmother": "родители и бабушка живут одним домом",
-  "large-family": "большая семья: у тебя много старших братьев и сестёр",
-  "widowed-mother": "отец умер до твоего рождения, мать растит тебя одна",
+  "large-family": "большая семья: у вас много старших братьев и сестёр",
+  "widowed-mother": "отец умер до вашего рождения, мать растит вас одна",
   "unmarried-mother": "мать не замужем; кто отец, в семье не говорят",
   "mother-died": "мать умерла при родах; растят отец, бабушка и кормилица",
-  "foundling": "тебя оставили у храма Семерых; растят храмовые сёстры"
+  "foundling": "вас оставили у храма Семерых; растят храмовые сёстры"
 };
 
 export interface NewbornHousehold {
@@ -103,11 +103,20 @@ function familyPersonality(seed: string, role: string): NpcPersonality {
   };
 }
 
+const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
+
 interface PersonSpec { id: string; name: string; sex: "male" | "female"; age: number; look: AppearanceProfile; origin: StateId }
 
-function person(seed: string, id: string, sex: "male" | "female", age: number, surname: string): PersonSpec {
+/** Имена внутри одной семьи не повторяются: мать и бабушка не могут обе зваться «Мэйбл». */
+function person(seed: string, id: string, sex: "male" | "female", age: number, surname: string, taken: Set<string> = new Set()): PersonSpec {
   const { originStateId, ...look } = sampleResidentAppearance("estran", `birth:${seed}:${id}`, "city");
-  const name = originStateId === "estran" ? regionalName("estran", sex, `birth:${seed}:${id}`, surname).full : `${regionalName(originStateId, sex, `birth:${seed}:${id}`).given} ${surname}`;
+  let name = "";
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const key = attempt ? `birth:${seed}:${id}:${attempt}` : `birth:${seed}:${id}`;
+    const given = originStateId === "estran" ? regionalName("estran", sex, key, surname).given : regionalName(originStateId, sex, key).given;
+    name = originStateId === "estran" ? regionalName("estran", sex, key, surname).full : `${given} ${surname}`;
+    if (!taken.has(given)) { taken.add(given); break; }
+  }
   return { id, name, sex, age, look, origin: originStateId };
 }
 
@@ -132,13 +141,14 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   const surname = regionalName("estran", "male", `${seed}:family`).surname;
   const members: NpcDef[] = [];
   const guardians: NpcDef[] = [];
+  const taken = new Set<string>();
   const biologicalParents: ParentHeritage[] = [];
   const homeActivity = "ведёт хозяйство и ухаживает за младенцем";
 
   if (kind === "foundling") {
-    const sister = person(seed, `${familyId}-sister`, "female", between(`${seed}:sister`, 28, 55), "из храма Семерых");
+    const sister = person(seed, `${familyId}-sister`, "female", between(`${seed}:sister`, 28, 55), "из храма Семерых", taken);
     sister.name = `Сестра ${sister.name.split(" ")[0]}`;
-    const nurse = person(seed, `${familyId}-wet-nurse`, "female", between(`${seed}:nurse`, 19, 34), regionalName("estran", "male", `${seed}:nurse-family`).surname);
+    const nurse = person(seed, `${familyId}-wet-nurse`, "female", between(`${seed}:nurse`, 19, 34), regionalName("estran", "male", `${seed}:nurse-family`).surname, taken);
     const sisterNpc = npc(sister, "temple", { familyRole: "guardian", caregiving: { role: "guardian", canFeed: false }, personality: familyPersonality(`${seed}:sister`, "храмовая сестра"),
       roleTags: ["clergy"], schedule: [{ from: 0, to: 24, locationId: "temple", activity: "служит в приюте и присматривает за младенцами" }] }, "серое платье храмовой сестры");
     const nurseNpc = npc(nurse, "old-quarter", { familyRole: "other", caregiving: { role: "wet-nurse", canFeed: true }, personality: familyPersonality(`${seed}:nurse`, "кормилица"),
@@ -146,7 +156,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
     members.push(sisterNpc, nurseNpc); guardians.push(sisterNpc);
     return {
       kind, wealth, homeId: "temple", members, guardians, biologicalParents,
-      summary: `${HOUSEHOLD_LABELS[kind]}. Родители неизвестны. Кормит тебя ${nurse.name}, приходящая кормилица.`,
+      summary: `${capitalize(HOUSEHOLD_LABELS[kind])}. Родители неизвестны. Кормит вас ${nurse.name}, приходящая кормилица.`,
       record: {
         characterId: `player:${familyId}`, birthYear: CURRENT_YEAR, biologicalParentIds: [], biologicalParentage: "unknown", legalParentIds: [], legalParentage: "unknown",
         guardianIds: [sisterNpc.id, "institution:sevenfold-temple"], birthStatus: "unknown", parentalUnion: { status: "unknown" }, recognitions: [],
@@ -156,8 +166,8 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   }
 
   const motherAge = between(`${seed}:mother-age`, 17, 38);
-  const mother = person(seed, `${familyId}-parent-b`, "female", motherAge, surname);
-  const father = person(seed, `${familyId}-parent-a`, "male", Math.min(60, motherAge + between(`${seed}:gap`, 0, 9)), surname);
+  const mother = person(seed, `${familyId}-parent-b`, "female", motherAge, surname, taken);
+  const father = person(seed, `${familyId}-parent-a`, "male", Math.min(60, motherAge + between(`${seed}:gap`, 0, 9)), surname, taken);
   const fatherKnown = kind !== "unmarried-mother";
   const motherAlive = kind !== "mother-died";
   const fatherAlive = kind !== "widowed-mother" && fatherKnown;
@@ -181,13 +191,13 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   }
 
   if (kind === "with-grandmother" || kind === "mother-died") {
-    const gran = person(seed, `${familyId}-grandmother`, "female", Math.min(75, motherAge + between(`${seed}:gran`, 20, 28)), surname);
+    const gran = person(seed, `${familyId}-grandmother`, "female", Math.min(75, motherAge + between(`${seed}:gran`, 20, 28)), surname, taken);
     const granNpc = npc(gran, homeId, { familyRole: "other", caregiving: { role: "relative", canFeed: false }, personality: familyPersonality(`${seed}:gran`, "бабушка"),
       schedule: [{ from: 0, to: 24, locationId: homeId, activity: "нянчит внуков и ведёт хозяйство" }] }, clothing);
     members.push(granNpc); guardians.push(granNpc);
   }
   if (kind === "mother-died") {
-    const nurse = person(seed, `${familyId}-wet-nurse`, "female", between(`${seed}:nurse`, 19, 34), regionalName("estran", "male", `${seed}:nurse-family`).surname);
+    const nurse = person(seed, `${familyId}-wet-nurse`, "female", between(`${seed}:nurse`, 19, 34), regionalName("estran", "male", `${seed}:nurse-family`).surname, taken);
     const nurseNpc = npc(nurse, "old-quarter", { familyRole: "other", caregiving: { role: "wet-nurse", canFeed: true }, personality: familyPersonality(`${seed}:nurse`, "кормилица"),
       schedule: [{ from: 6, to: 9, locationId: homeId, activity: "кормит младенца" }, { from: 12, to: 14, locationId: homeId, activity: "кормит младенца" }, { from: 18, to: 22, locationId: homeId, activity: "кормит младенца" }] }, "простое платье и фартук");
     members.push(nurseNpc);
@@ -201,7 +211,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   let age = between(`${seed}:sib-gap`, 2, 3);
   for (let i = 0; i < wanted && motherAge - age >= 17; i++) {
     const sex = unit(`${seed}:sib-sex:${i}`) < 0.5 ? "male" as const : "female" as const;
-    const sib = person(seed, `${familyId}-sibling-${i + 1}`, sex, age, surname);
+    const sib = person(seed, `${familyId}-sibling-${i + 1}`, sex, age, surname, taken);
     // Брат или сестра наследует признаки от тех же родителей.
     sib.look = fatherKnown ? childOf(mother.look, father.look, `${seed}:sib-look:${i}`) : childOf(mother.look, mother.look, `${seed}:sib-look:${i}`);
     const helps = age >= 10;
@@ -218,7 +228,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   const appearance = fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
   const foreignNote = [mother, ...(fatherKnown ? [father] : [])].filter(p => p.origin !== "estran").map(p => `${p.name.split(" ")[0]} родом не из Эстрана.`).join(" ");
   const parentsText = fatherKnown ? `Родители: ${mother.name} (${mother.age}) и ${father.name} (${father.age}).` : `Мать: ${mother.name} (${mother.age}).`;
-  const summary = `${HOUSEHOLD_LABELS[kind]}. ${parentsText} Живёте ${wealth}. ${siblings.length ? `Старшие: ${siblings.join(", ")}.` : "Ты первый ребёнок в семье."} ${foreignNote}`.trim();
+  const summary = `${capitalize(HOUSEHOLD_LABELS[kind])}. ${parentsText} Живёте ${wealth}. ${siblings.length ? `Старшие: ${siblings.join(", ")}.` : "Вы первый ребёнок в семье."} ${foreignNote}`.trim();
 
   const parentIds = biologicalParents.map(p => p.id);
   return {
@@ -229,7 +239,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
       legalParentIds: kind === "unmarried-mother" ? [mother.id] : parentIds, legalParentage: kind === "unmarried-mother" || parentIds.length === 1 ? "one-known" : "both-known",
       guardianIds: guardians.map(g => g.id), birthStatus: kind === "unmarried-mother" ? "unrecognized" : "legitimate",
       parentalUnion: { status: kind === "unmarried-mother" ? "unmarried" : "married" }, recognitions: [],
-      succession: { status: "undetermined", basis: "Простолюдинская семья: наследство — дом и ремесло по обычаю Ровена." }
+      succession: { status: "undetermined", basis: "Простолюдинская семья: наследство: дом и ремесло по обычаю Ровена." }
     }
   };
 }

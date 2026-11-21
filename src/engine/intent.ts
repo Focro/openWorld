@@ -1,16 +1,17 @@
 /**
  * Понимание свободного текста без нейросети и компактный пакет для ИИ (0.14.0).
  *
- * Цель — экономия токенов: большинство ходов разбирается здесь детерминированно,
+ * Цель: экономия токенов: большинство ходов разбирается здесь детерминированно,
  * а в ИИ уходит только то, что правда непонятно, и только нужный минимум сведений.
- *  1. understandFreeText — разбор обычной речи: «пойду на рынок», «что у меня в сумке»,
+ *  1. understandFreeText: разбор обычной речи: «пойду на рынок», «что у меня в сумке»,
  *     «спрошу торговку о хлебе», опечатки в одну букву.
- *  2. buildIntentContext — короткий контекст: место, выходы, люди, товары, разрешённые действия.
+ *  2. buildIntentContext: короткий контекст: место, выходы, люди, товары, разрешённые действия.
  *     Сведения о мире добавляются только по ключевым словам (как «лорбуки»), не больше двух.
  */
 import type { GameState, WorldData } from "./types";
 import type { ParseResult } from "./parse";
 import { normalize } from "./parse";
+import { shortName } from "./speech";
 import { npcsAt } from "./world";
 import { capabilities, ageMonths, formatAge, type InfantActId } from "./development";
 import { formatClock, formatWorldDate } from "./time";
@@ -51,7 +52,7 @@ function matchPlace(world: WorldData, fromId: string, words: string[]): string |
   if (!wanted.length) return null;
   let best: { id: string; score: number } | null = null, tie = false;
   for (const exit of exits) {
-    const name = normalize(world.locations[exit.to]?.name ?? exit.to).split(/[\s,—-]+/).filter(Boolean);
+    const name = normalize(world.locations[exit.to]?.name ?? exit.to).split(/[\s,--]+/).filter(Boolean);
     const score = wanted.filter(w => name.some(n => n.startsWith(w) || w.startsWith(stem(n)))).length;
     if (!score) continue;
     if (!best || score > best.score) { best = { id: exit.to, score }; tie = false; } else if (score === best.score) tie = true;
@@ -114,11 +115,15 @@ export function understandFreeText(world: WorldData, state: GameState, text: str
   if (SAY.test(verb)) {
     // «спросить торговку, сколько стоит хлеб» → реплика целиком: смысл реплики решает сцена, а не ИИ.
     const speech = raw.replace(/^\s*(я\s+)?\S+\s*(у\s+\S+|ей|ему|им|её|его|их)?\s*[,:]?\s*(что|о том, что|про|о|об)?\s*/i, "").trim() || raw;
-    return { ok: true, action: { type: "say", text: speech.slice(0, 1000) } };
+    return { ok: true, action: { type: "say", text: speech.slice(0, 4000) } };
   }
   for (const [target, type] of TYPO_TARGETS) if (verb.length >= 6 && editDistance(verb, target) <= 1) {
     return type === "wait" ? { ok: true, action: { type: "wait", minutes: 60 } } : { ok: true, action: { type } };
   }
+  // Малыш говорит отдельными словами: «мама», «дай», «не хочу». Это речь, а не команда.
+  const spoken = raw.split(/\s+/).filter(Boolean).length;
+  if (state.development && ageMonths(state.development, state.minute) < 72 && caps.maxWordsPerUtterance > 0 && spoken <= caps.maxWordsPerUtterance)
+    return { ok: true, action: { type: "say", text: raw.slice(0, 200) } };
   return null;
 }
 
@@ -145,7 +150,7 @@ export function buildIntentContext(world: WorldData, state: GameState, playerTex
     age: state.development ? `${capabilities(state.development, state.minute).stage.label}, ${formatAge(state.development, state.minute)}` : "взрослый",
     here: `${loc.id}|${loc.name}`,
     exits: loc.exits.map(e => [e.to, world.locations[e.to]?.name ?? e.to]),
-    npcs: npcIds.map(id => [id, world.npcs[id]!.name.split(" — ")[0]!]),
+    npcs: npcIds.map(id => [id, shortName(world.npcs[id]!)]),
     ...(loc.shop ? { shop: Object.entries(loc.shop.prices).map(([id, price]) => [id, world.items[id]?.name ?? id, price] as [string, string, number]) } : {}),
     inv: Object.entries(state.inventory).filter(([, q]) => q > 0),
     money: state.money,
@@ -158,9 +163,9 @@ export const INTENT_PROTOCOL = "openworld-intent-v1";
 /** Стабильные инструкции: одинаковы между ходами, поэтому кэшируются у провайдеров. */
 export const INTENT_INSTRUCTIONS = [
   "Ты переводишь фразу игрока текстовой RPG в одно игровое действие. Движок сам проверит, возможно ли оно.",
-  "Используй только id из контекста: exits — куда идти, shop — что купить, npcs — кто рядом. Не выдумывай места, предметы и людей.",
+  "Используй только id из контекста: exits: куда идти, shop: что купить, npcs: кто рядом. Не выдумывай места, предметы и людей.",
   "Форматы: {type:look} {type:inventory} {type:wait,minutes} {type:move,to} {type:buy,item,qty} {type:say,text} {type:gesture,text} {type:infant,act} {type:live,days}.",
-  "age — возраст персонажа: младенец не ходит и не говорит. acts — разрешённые сейчас действия."
+  "age: возраст персонажа: младенец не ходит и не говорит. acts: разрешённые сейчас действия."
 ];
 
 export function buildIntentEnvelope(context: IntentContext, playerText: string) {

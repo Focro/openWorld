@@ -110,7 +110,7 @@ export function parseAction(world: WorldData, text: string): ParseResult {
   if (SAY.includes(cmd)) {
     const speech = text.trim().replace(/^(сказать|произнести|заявить|проповедовать|say)\s*/i, "").trim();
     if (!speech) return { ok: false, reason: "Напишите, что именно персонаж говорит." };
-    if (speech.length > 1000) return { ok: false, reason: "Реплика слишком длинная: максимум 1000 символов." };
+    if (speech.length > 4000) return { ok: false, reason: "Реплика слишком длинная: максимум 4000 символов." };
     return { ok: true, action: { type: "say", text: speech } };
   }
 

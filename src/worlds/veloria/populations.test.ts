@@ -108,6 +108,12 @@ describe("birth into an ordinary family", () => {
     expect(sizes.size).toBeGreaterThanOrEqual(4);
     expect(generateVeloriaFamily(newborn("free-farmer", "x")).summary).toBe(generateVeloriaFamily(newborn("free-farmer", "x")).summary);
   });
+  it("never gives two people in one household the same first name", () => {
+    for (const origin of ["tenant-farmer", "craft-apprentice", "merchant-child", "temple-orphan"] as const) for (let i = 0; i < 150; i++) {
+      const given = generateVeloriaFamily(newborn(origin, `dup-${i}`)).members.map(m => m.name.split(" ")[0]);
+      expect(new Set(given).size, `${origin} dup-${i}: ${given.join(", ")}`).toBe(given.length);
+    }
+  });
   it("refuses newborn starts in noble or adult-only origins", () => {
     expect(generateVeloriaFamily(newborn("former-soldier", "x")).available).toBe(false);
   });
@@ -129,4 +135,14 @@ describe("birth into an ordinary family", () => {
     }
     expect(checked).toBe(4);
   }, 60_000);
+});
+
+describe("нет двойников в стартовом окружении", () => {
+  it("у странника один Сержант Бран и один Элрик Данн", () => {
+    const r = startVeloriaCampaign({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Путник", age: 22, originId: "wanderer", statusId: "marginal", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS } } });
+    if (!r.ok) throw new Error(r.errors.join(" "));
+    const names = Object.values(r.world.npcs).map(n => n.name);
+    expect(names.filter(n => n === "Сержант Бран")).toHaveLength(1);
+    expect(names.filter(n => n === "Элрик Данн")).toHaveLength(1);
+  });
 });
