@@ -7,12 +7,13 @@
  * Тап по карте показывает ближайшее место: поселение, край (горы, леса, дельта) или державу.
  */
 import { COUNTRIES, COUNTRY_SHAPES, MAP_NODES, MAP_WATERS, REGIONS } from "./atlas";
+import { placeStory, type PlaceStory } from "./placeLore";
 
 /** Картинка карты в public/ (путь относительно сайта) или null, пока её нет. */
 export const MAP_IMAGE: { src: string; width: number; height: number } | null = null;
 
 export type MapHitKind = "settlement" | "region" | "country" | "water";
-export interface MapHit { kind: MapHitKind; id: string; name: string; detail: string; x: number; y: number; /** Названо в Библии мира. */ canon: boolean }
+export interface MapHit { kind: MapHitKind; id: string; name: string; detail: string; x: number; y: number; /** Названо в Библии мира. */ canon: boolean; /** Что рассказать о месте: канон, проектное дополнение и дома. */ story?: PlaceStory | null }
 
 const KIND_WORD: Record<string, string> = { capital: "столица", city: "город", town: "городок", village: "деревня", fort: "крепость", port: "порт", oasis: "оазис" };
 
@@ -44,7 +45,7 @@ export function mapHitAt(x: number, y: number, settlementRadius = 4, regionRadiu
   const node = MAP_NODES.filter(n => !known || known.has(n.id)).sort((a, b) => dist(a) - dist(b))[0];
   if (node && dist(node) <= settlementRadius) {
     const country = COUNTRIES.find(c => c.id === node.countryId)?.name ?? node.countryId;
-    return { kind: "settlement", id: node.id, name: node.name, detail: `${KIND_WORD[node.kind] ?? node.kind}, ${country}`, x: node.x, y: node.y, canon: node.canon === true };
+    return { kind: "settlement", id: node.id, name: node.name, detail: `${KIND_WORD[node.kind] ?? node.kind}, ${country}`, x: node.x, y: node.y, canon: node.canon === true, story: placeStory(node.id) };
   }
   // Река: близко к её линии. Море: внутри очертания.
   for (const w of MAP_WATERS) {
@@ -53,10 +54,10 @@ export function mapHitAt(x: number, y: number, settlementRadius = 4, regionRadiu
   }
   const shape = COUNTRY_SHAPES.find(s => insidePolygon(x, y, s.points));
   const region = [...REGION_ANCHORS].filter(r => !shape || REGIONS.find(g => g.id === r.id)?.countryId === shape.countryId).sort((a, b) => dist(a) - dist(b))[0];
-  if (region && dist(region) <= regionRadius) return { kind: "region", id: region.id, name: region.name, detail: region.terrain, x: region.x, y: region.y, canon: REGIONS.find(g => g.id === region.id)?.canon === true };
+  if (region && dist(region) <= regionRadius) return { kind: "region", id: region.id, name: region.name, detail: region.terrain, x: region.x, y: region.y, canon: REGIONS.find(g => g.id === region.id)?.canon === true, story: placeStory(region.id) };
   if (shape) {
     const country = COUNTRIES.find(c => c.id === shape.countryId);
-    return { kind: "country", id: shape.countryId, name: country?.name ?? shape.countryId, detail: country?.government ?? "", x, y, canon: true };
+    return { kind: "country", id: shape.countryId, name: country?.name ?? shape.countryId, detail: country?.government ?? "", x, y, canon: true, story: placeStory(shape.countryId) };
   }
   return null;
 }
