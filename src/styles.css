@@ -2,7 +2,7 @@
 .journey-card{padding:16px;border:1px solid #66543b;background:#24251f;border-radius:10px;margin:14px 0}.journey-card p{font-size:13px;line-height:1.55;color:#c4cdd9}.journey-card strong{color:#f0c58a}
 .map-shell{margin:14px 0 18px;padding:14px;background:#111a25;border:1px solid #344257;border-radius:12px}.map-shell svg{display:block;width:100%;height:auto;max-height:390px;background:radial-gradient(ellipse at 55% 48%,#263d4a,#172531 65%,#111a25);border-radius:8px}.country-shape{stroke:#9aaab5;stroke-width:.5;stroke-linejoin:round;opacity:.32}.country-estran{fill:#b68b62}.country-sahrad{fill:#d6ae69}.country-varent{fill:#5e9eae}.country-tharvek{fill:#8c98a8}.country-elyndor{fill:#6b9b76}.country-kharum{fill:#a76f66}.map-label{fill:#f1e7d6;font-size:2.5px;paint-order:stroke;stroke:#18232f;stroke-width:.6px;stroke-linejoin:round}.map-route{stroke:#617386;stroke-width:.65;opacity:.62;stroke-dasharray:1.5 1}.map-route.selected{stroke:#e0b779;stroke-width:1.4;opacity:1;stroke-dasharray:none}.map-node circle{fill:#aebdca;stroke:#18232f;stroke-width:.6}.map-node circle.current{fill:#81d3a4;stroke:#e2f8e9;stroke-width:.8}.map-node circle.destination{fill:#e0b779;stroke:#fff0d7;stroke-width:.8}.map-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;color:#9eacbf;font-size:10px}.map-legend span{display:flex;align-items:center;gap:6px}.map-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#aebdca}.map-legend .legend-current{background:#81d3a4}.map-legend .legend-destination{background:#e0b779}.map-legend .legend-route{width:15px;height:2px;border-radius:0;background:#e0b779}
 
-/* 0.13.0 — панель жизненного этапа */
+/* 0.13.0: панель жизненного этапа */
 .life-panel{margin:14px 0;padding:14px 16px;border:1px solid #3a4a62;border-radius:12px;background:#121a26}
 .life-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start}
 .life-head b{color:#f2d5a6}
@@ -27,7 +27,7 @@
 button:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:700px){.life-columns,.meters{grid-template-columns:1fr}}
 
-/* 0.13.0 — настройки ИИ */
+/* 0.13.0: настройки ИИ */
 .ai-settings { margin: 16px 0; display: grid; gap: 8px; }
 .inline-check { display: flex; align-items: center; gap: 8px; }
 .inline-check input { width: auto; }

@@ -59,3 +59,15 @@ test("accepts the compact intent protocol and keeps the system prompt short", as
   assert.equal(validateEnvelope({ envelope: intent }), null);
   assert.ok(buildSystemPrompt(intent).length < 300);
 });
+
+test("scene protocol: needs speakers, gets its own prompt and a larger but bounded token limit", async () => {
+  const { buildSystemPrompt, buildChatCompletionsRequest, maxTokensFor, config, PROVIDERS } = await import("./ai-proxy.mjs");
+  const scene = { protocol: "openworld-scene-v1", playerText: "Привет, Марта!", systemInstructions: ["живо"], context: { npcs: [] }, outputContract: { speakers: ["marta"] } };
+  assert.equal(validateEnvelope({ envelope: scene }), null);
+  assert.ok(validateEnvelope({ envelope: { ...scene, outputContract: {} } }));
+  assert.match(buildSystemPrompt(scene), /replies/);
+  assert.equal(maxTokensFor(scene), config.sceneMaxTokens);
+  assert.ok(config.sceneMaxTokens <= 600);
+  const request = buildChatCompletionsRequest({ model: "m", provider: PROVIDERS.deepseek }, scene);
+  assert.equal(request.max_tokens, config.sceneMaxTokens);
+});

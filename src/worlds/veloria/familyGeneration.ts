@@ -61,8 +61,8 @@ function workForOrigin(originId: VeloriaCharacterDraft["originId"], second: bool
 }
 
 /**
- * Родитель — житель Ровена: внешность берётся из населения Эстрана, изредка родитель
- * оказывается приезжим (Ровен — торговый город на реке). См. populations.ts.
+ * Родитель: житель Ровена: внешность берётся из населения Эстрана, изредка родитель
+ * оказывается приезжим (Ровен: торговый город на реке). См. populations.ts.
  */
 export function parentHeritage(id: string, name: string, seed: number): ParentHeritage & { originStateId: StateId } {
   const { originStateId, ...appearance } = sampleResidentAppearance("estran", `parent:${seed}`, "city");
@@ -136,7 +136,7 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
     };
     return {
       available: true, record, members: [], guardians: [nurse], biologicalParents: [father, mother], defaultAppearance: fixedAppearance,
-      summary: "Биологические родители: Гарен Вальд и женщина из далёкой восточной земли. Родители не состояли в браке; Гарен признал сына. Элиана (в 723 КЛ — принцесса, королевой станет в 735 КЛ) не является твоей матерью: она жена Гарена и испытывает к тебе личную неприязнь из-за его измены. Королевская кормилица Мейра назначена опекуном на время младенчества."
+      summary: "Биологические родители: Гарен Вальд и женщина из далёкой восточной земли. Родители не состояли в браке; Гарен признал сына. Элиана (в 723 КЛ: принцесса, королевой станет в 735 КЛ) не является твоей матерью: она жена Гарена и испытывает к тебе личную неприязнь из-за его измены. Королевская кормилица Мейра назначена опекуном на время младенчества."
     };
   }
   if (draft.age === 0) {

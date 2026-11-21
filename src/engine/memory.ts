@@ -29,7 +29,7 @@ export interface Knower { npcId: string; kind: MemoryKind; confidence: number; f
 
 /**
  * Кто из NPC знает о событии и как: очевидец (уверенность 1) или по слухам.
- * Хроника — правда; записи NPC — их версия. NPC, которых здесь нет, о событии не знают.
+ * Хроника: правда; записи NPC: их версия. NPC, которых здесь нет, о событии не знают.
  */
 export function whoKnows(state: GameState, eventId: string): Knower[] {
   const out: Knower[] = [];

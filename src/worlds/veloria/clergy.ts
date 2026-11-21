@@ -1,7 +1,7 @@
 /**
- * Духовенство шести традиций Ардана (0.14.0) — ПРЕДЛОЖЕНИЕ ПРОЕКТА.
+ * Духовенство шести традиций Ардана (0.14.0): ПРЕДЛОЖЕНИЕ ПРОЕКТА.
  *
- * Основа — канонические описания вер (faiths.ts → clergyStructure, politicalRole).
+ * Основа: канонические описания вер (faiths.ts → clergyStructure, politicalRole).
  * Здесь добавлены названия должностей, порядок их замещения, резиденции и поимённые
  * высшие служители. Канонические ограничения соблюдены:
  *  - у Памяти Зелёных Рощ нет единого верховного духовного лица;
@@ -16,7 +16,7 @@ import { sampleNativeAppearance, type StateId } from "./populations";
 export interface ClergyRank {
   /** Название должности, как его произносят в стране. */
   title: string;
-  /** 1 — местный уровень, выше — старше. */
+  /** 1: местный уровень, выше: старше. */
   level: number;
   duties: string;
   howChosen: string;
@@ -157,7 +157,7 @@ export const clergyPersonById = (id: string): (ClergyPerson & { faithId: string;
   }
   return undefined;
 };
-/** Внешность служителя — облик его страны (populations.ts), стабильная по id. */
+/** Внешность служителя: облик его страны (populations.ts), стабильная по id. */
 export const clergyAppearance = (id: string): AppearanceProfile | undefined => {
   const p = clergyPersonById(id);
   return p ? sampleNativeAppearance(p.stateId, `clergy:${id}`) : undefined;

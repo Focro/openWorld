@@ -82,7 +82,7 @@ describe("Veloria family records", () => {
     expect(result.status).toBe("ineligible");
   });
   it("lists only documented acknowledged children and invents none", () => {
-    // С 0.12.0 в реестре есть ровно один признанный ребёнок — второй принц дома Рейнар.
+    // С 0.12.0 в реестре есть ровно один признанный ребёнок: второй принц дома Рейнар.
     const documented = documentedAcknowledgedBastards();
     expect(documented.map(item => item.member.id)).toEqual(["rey-second-prince"]);
   });

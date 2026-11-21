@@ -272,7 +272,7 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       const caps = capabilities(state.development, state.minute);
       if (!caps.canWalk) return reject(state, caps.canCrawl
         ? "Вы умеете только ползать: из комнаты вас выносят взрослые, сами вы туда не доберётесь."
-        : "Вы ещё не ходите. Вас носят на руках, и куда — решают взрослые.");
+        : "Вы ещё не ходите. Вас носят на руках, и куда: решают взрослые.");
       if (exit.distanceM > caps.maxUnaccompaniedExitM) return reject(state, `Для ребёнка этого возраста путь слишком далёк: одного вас туда не отпустят (${exit.distanceM} м).`);
       const minutes = travelMinutes(exit.distanceM, exit.terrain, "walk");
       if (minutes === null) return reject(state, "Пешком здесь не пройти. Мир не изменился.");
@@ -370,7 +370,7 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
       const price = item ? shop.prices[item.id] : undefined;
       if (!item || price === undefined) return reject(state, "Такого товара здесь нет. Мир не изменился.");
       if (!Number.isInteger(action.qty) || action.qty < 1 || action.qty > MAX_BUY_QTY)
-        return reject(state, `Количество — от 1 до ${MAX_BUY_QTY}. Мир не изменился.`);
+        return reject(state, `Количество: от 1 до ${MAX_BUY_QTY}. Мир не изменился.`);
       const cost = price * action.qty;
       if (cost > state.money)
         return reject(state, `Не хватает денег: нужно ${coins(cost)}, у вас ${coins(state.money)}.`);

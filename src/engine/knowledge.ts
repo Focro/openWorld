@@ -110,7 +110,7 @@ export function buildKnowledgeIndex(world: WorldData): KnowledgeDocument[] {
     const from = MAP_NODES.find(n => n.id === route.from)?.name ?? route.from;
     const to = MAP_NODES.find(n => n.id === route.to)?.name ?? route.to;
     docs.push({
-      id: `route:${route.from}:${route.to}`, title: `Путь: ${from} — ${to}`,
+      id: `route:${route.from}:${route.to}`, title: `Путь: ${from} - ${to}`,
       text: `Маршрут между ${from} и ${to}: ${route.days} дн., способ: ${route.mode}, опасность: ${route.danger}.${route.seasonalClosure ? ` Сезонное ограничение: ${route.seasonalClosure}.` : ""}`,
       source: `atlas.routes.${route.from}.${route.to}`, audience: "public", tags: ["маршрут", "дорога", route.from, route.to]
     });
@@ -132,7 +132,7 @@ export function retrieveKnowledge(
     const title = tokenize(doc.title);
     const body = tokenize(`${doc.text} ${doc.tags.join(" ")}`);
     // Совпадение по началу слова: «Кхарум» находит «Кхарумская империя».
-    // Точное совпадение весит 1, совпадение по началу слова — 0,4.
+    // Точное совпадение весит 1, совпадение по началу слова: 0,4.
     const weight = (tokens: string[], term: string) => tokens.includes(term) ? 1 : term.length >= 5 && tokens.some(t => t.startsWith(term)) ? 0.4 : 0;
     const titleHits = terms.reduce((n, term) => n + weight(title, term), 0);
     const bodyHits = terms.reduce((n, term) => n + weight(body, term), 0);
@@ -191,7 +191,7 @@ function campaignKnowledgeIndex(world: WorldData, minute: number, startYearKL = 
       }
     }
     if (doc.id === "country:estran" && year < 735) {
-      return [{ ...doc, text: doc.text.replace("Правитель: королева Элиана III", "Правитель: король (имя в доступной хронике не установлено); Элиана III — принцесса") }];
+      return [{ ...doc, text: doc.text.replace("Правитель: королева Элиана III", "Правитель: король (имя в доступной хронике не установлено); Элиана III: принцесса") }];
     }
     return [doc];
   });
@@ -215,7 +215,7 @@ export function buildPlayerKnowledge(world: WorldData, state: GameState, query: 
 
 /**
  * Сведения «по ключевому слову» для короткого запроса к ИИ: не больше двух коротких фактов
- * и только с совпадением в названии. Если игрок ничего такого не упомянул — ничего не добавляется.
+ * и только с совпадением в названии. Если игрок ничего такого не упомянул: ничего не добавляется.
  */
 export function buildTriggeredKnowledge(world: WorldData, state: GameState, query: string, limit = 2, maxCharacters = 500): string[] {
   if (query.trim().length < 3) return [];
