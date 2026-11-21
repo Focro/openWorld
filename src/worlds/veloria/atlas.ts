@@ -19,21 +19,21 @@ export const COUNTRIES:Country[]=[
 {id:"kharum",name:"Кхарумская империя",government:"централизованная империя",ruler:"император Северан IV",capital:"har-kadar",climate:"hot-humid",culture:"кхарумская",primaryFaith:"imperial_sun",languages:["кхарумский","южный койне"],laws:["чиновничьи должности требуют экзамена","налоги собирают провинциальные управления","переселение фиксируется в реестрах"],exports:["рис","хлопок","сахар","керамика"],tensions:["придворные фракции","провинциальные восстания"],description:"Жаркая империя речных дельт, каналов и дворцовой бюрократии."}
 ];
 export const REGIONS:Region[]=[
-{id:"estran-heart",countryId:"estran",name:"Эстранское сердце",terrain:"речные долины и поля",resources:["зерно","лён","скот"],notes:"Столица и Ровен."},
+{id:"estran-heart",canon:true,countryId:"estran",name:"Эстранское сердце",terrain:"речные долины и поля",resources:["зерно","лён","скот"],notes:"Столица и Ровен."},
 {id:"estran-south",canon:true,countryId:"estran",name:"Южная долина",terrain:"поля и мельницы",resources:["зерно","скот","лён"],notes:"Мельницы и поместья."},
 {id:"estran-north",canon:true,countryId:"estran",name:"Северные холмы",terrain:"холмы и леса",resources:["железо","камень","лес"],notes:"Зимой дороги трудны."},
-{id:"sahrad-oasis",countryId:"sahrad",name:"Пояс оазисов",terrain:"пустыня и солончаки",resources:["вода","соль","финики"],notes:"Поселения стоят у колодцев."},
+{id:"sahrad-oasis",canon:true,countryId:"sahrad",name:"Пояс оазисов",terrain:"пустыня и солончаки",resources:["вода","соль","финики"],notes:"Поселения стоят у колодцев."},
 {id:"sahrad-coast",canon:true,countryId:"sahrad",name:"Медное побережье",terrain:"жаркое сухое побережье",resources:["медь","рыба","стекло"],notes:"Порты связывают султанат с Варентом."},
-{id:"varent-coast",countryId:"varent",name:"Гавани Лиги",terrain:"заливы и острова",resources:["рыба","корабельный лес"],notes:"Главные морские пути."},
-{id:"tharvek-range",countryId:"tharvek",name:"Высокий хребет",terrain:"горы и перевалы",resources:["железо","олово","камень"],notes:"Перевалы закрываются снегом."},
-{id:"elyndor-forest",countryId:"elyndor",name:"Старые леса",terrain:"леса и озёра",resources:["древесина","травы","меха"],notes:"Священные рощи."},
-{id:"kharum-delta",countryId:"kharum",name:"Великая дельта",terrain:"жаркие влажные равнины",resources:["рис","хлопок","сахар"],notes:"Каналы и плотная сеть городов."}
+{id:"varent-coast",canon:true,countryId:"varent",name:"Гавани Лиги",terrain:"заливы и острова",resources:["рыба","корабельный лес"],notes:"Главные морские пути."},
+{id:"tharvek-range",canon:true,countryId:"tharvek",name:"Высокий хребет",terrain:"горы и перевалы",resources:["железо","олово","камень"],notes:"Перевалы закрываются снегом."},
+{id:"elyndor-forest",canon:true,countryId:"elyndor",name:"Старые леса",terrain:"леса и озёра",resources:["древесина","травы","меха"],notes:"Священные рощи."},
+{id:"kharum-delta",canon:true,countryId:"kharum",name:"Великая дельта",terrain:"жаркие влажные равнины",resources:["рис","хлопок","сахар"],notes:"Каналы и плотная сеть городов."}
 ];
 export const MAP_NODES:MapNode[]=[
 {id:"koronholm",canon:true,name:"Коронхольм",countryId:"estran",regionId:"estran-heart",kind:"capital",x:30,y:37,populationBand:"large",climate:"temperate",tags:["двор","суд","монетный двор"]},
 {id:"roven",canon:true,name:"Ровен",countryId:"estran",regionId:"estran-heart",kind:"city",x:38,y:47,populationBand:"medium",climate:"temperate",tags:["торговля","река Лир"]},
 {id:"northwatch",canon:true,name:"Нортвотч",countryId:"estran",regionId:"estran-north",kind:"fort",x:27,y:24,populationBand:"small",climate:"cold",tags:["гарнизон","рудники"]},
-{id:"millford",name:"Миллфорд",countryId:"estran",regionId:"estran-south",kind:"town",x:33,y:56,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
+{id:"millford",canon:true,name:"Миллфорд",countryId:"estran",regionId:"estran-south",kind:"town",x:33,y:56,populationBand:"small",climate:"temperate",tags:["мельницы","зерно"]},
 {id:"qadira",canon:true,name:"Кадира",countryId:"sahrad",regionId:"sahrad-oasis",kind:"capital",x:44,y:83,populationBand:"large",climate:"hot-arid",tags:["султанский двор","оазис"]},
 {id:"safra",canon:true,name:"Сафра",countryId:"sahrad",regionId:"sahrad-oasis",kind:"desert-stop",x:35,y:89,populationBand:"small",climate:"hot-arid",tags:["караван-сарай","колодец"]},
 {id:"miraj",canon:true,name:"Мираж",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:55,y:72,populationBand:"medium",climate:"hot-arid",tags:["порт","медь"]},
@@ -47,20 +47,20 @@ export const MAP_NODES:MapNode[]=[
 {id:"har-kadar",canon:true,name:"Хар-Кадар",countryId:"kharum",regionId:"kharum-delta",kind:"capital",x:87,y:87,populationBand:"metropolis",climate:"hot-humid",tags:["императорский двор","главные каналы","имперский совет"]},
 {id:"azrakar",canon:true,name:"Азракар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:74,y:82,populationBand:"large",climate:"hot-humid",tags:["верхний архив","писцовые школы","реестры"]},
 {id:"namar",canon:true,name:"Намар",countryId:"kharum",regionId:"kharum-delta",kind:"city",x:81,y:75,populationBand:"large",climate:"hot-humid",tags:["рисовые рынки","текстиль"]},
-{id:"sunspire",name:"Солнечный Шпиль",countryId:"kharum",regionId:"kharum-delta",kind:"monastery",x:95,y:78,populationBand:"small",climate:"hot-humid",tags:["храмовая школа","архивы"]}
+{id:"sunspire",canon:true,name:"Солнечный Шпиль",countryId:"kharum",regionId:"kharum-delta",kind:"monastery",x:95,y:78,populationBand:"small",climate:"hot-humid",tags:["храмовая школа","архивы"]}
  ,
-{id:"westmere",name:"Вестмер",countryId:"estran",regionId:"estran-heart",kind:"town",x:44,y:40,populationBand:"small",climate:"temperate",tags:["переправа","зерновые амбары"]},
-{id:"ashcombe",name:"Эшкомб",countryId:"estran",regionId:"estran-north",kind:"village",x:22,y:30,populationBand:"small",climate:"temperate",tags:["лесопилки","железная руда"]},
-{id:"daryat",name:"Дарьят",countryId:"sahrad",regionId:"sahrad-oasis",kind:"town",x:53,y:80,populationBand:"medium",climate:"hot-arid",tags:["каналы","финиковые сады"]},
-{id:"saffron-coast",name:"Шафрановый Порт",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:35,y:71,populationBand:"small",climate:"hot-arid",tags:["красители","рыбацкие артели"]},
-{id:"tidewatch",name:"Тайд-вотч",countryId:"varent",regionId:"varent-coast",kind:"port",x:91,y:12,populationBand:"medium",climate:"temperate",tags:["маяки","верфи"]},
-{id:"saltmere",name:"Солёный Мер",countryId:"varent",regionId:"varent-coast",kind:"town",x:58,y:28,populationBand:"small",climate:"temperate",tags:["соляные склады","рыбный рынок"]},
-{id:"stonebridge",name:"Каменный Мост",countryId:"tharvek",regionId:"tharvek-range",kind:"town",x:90,y:58,populationBand:"small",climate:"mountain",tags:["мост через ущелье","постоялый двор"]},
-{id:"deepforge",name:"Глубокая Кузня",countryId:"tharvek",regionId:"tharvek-range",kind:"mining-town",x:95,y:38,populationBand:"small",climate:"mountain",tags:["рудники","плавильни"]},
-{id:"mossford",name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:9,y:21,populationBand:"small",climate:"cold",tags:["брод","травники"]},
-{id:"lake-ward",name:"Озерный Дозор",countryId:"elyndor",regionId:"elyndor-forest",kind:"town",x:16,y:25,populationBand:"small",climate:"cold",tags:["рыбацкие пристани","лодочные мастера"]},
-{id:"reedhaven",name:"Тростниковая Гавань",countryId:"kharum",regionId:"kharum-delta",kind:"port",x:73,y:93,populationBand:"medium",climate:"hot-humid",tags:["речные баржи","рисовые склады"]},
-{id:"ivory-gate",name:"Врата Слоновой Кости",countryId:"kharum",regionId:"kharum-delta",kind:"town",x:93,y:94,populationBand:"medium",climate:"hot-humid",tags:["таможня","имперская дорога"]}
+{id:"westmere",canon:true,name:"Вестмер",countryId:"estran",regionId:"estran-heart",kind:"town",x:44,y:40,populationBand:"small",climate:"temperate",tags:["переправа","зерновые амбары"]},
+{id:"ashcombe",canon:true,name:"Эшкомб",countryId:"estran",regionId:"estran-north",kind:"village",x:22,y:30,populationBand:"small",climate:"temperate",tags:["лесопилки","железная руда"]},
+{id:"daryat",canon:true,name:"Дарьят",countryId:"sahrad",regionId:"sahrad-oasis",kind:"town",x:53,y:80,populationBand:"medium",climate:"hot-arid",tags:["каналы","финиковые сады"]},
+{id:"saffron-coast",canon:true,name:"Шафрановый Порт",countryId:"sahrad",regionId:"sahrad-coast",kind:"port",x:35,y:71,populationBand:"small",climate:"hot-arid",tags:["красители","рыбацкие артели"]},
+{id:"tidewatch",canon:true,name:"Тайд-вотч",countryId:"varent",regionId:"varent-coast",kind:"port",x:91,y:12,populationBand:"medium",climate:"temperate",tags:["маяки","верфи"]},
+{id:"saltmere",canon:true,name:"Солёный Мер",countryId:"varent",regionId:"varent-coast",kind:"town",x:58,y:28,populationBand:"small",climate:"temperate",tags:["соляные склады","рыбный рынок"]},
+{id:"stonebridge",canon:true,name:"Каменный Мост",countryId:"tharvek",regionId:"tharvek-range",kind:"town",x:90,y:58,populationBand:"small",climate:"mountain",tags:["мост через ущелье","постоялый двор"]},
+{id:"deepforge",canon:true,name:"Глубокая Кузня",countryId:"tharvek",regionId:"tharvek-range",kind:"mining-town",x:95,y:38,populationBand:"small",climate:"mountain",tags:["рудники","плавильни"]},
+{id:"mossford",canon:true,name:"Моховый Брод",countryId:"elyndor",regionId:"elyndor-forest",kind:"village",x:9,y:21,populationBand:"small",climate:"cold",tags:["брод","травники"]},
+{id:"lake-ward",canon:true,name:"Озерный Дозор",countryId:"elyndor",regionId:"elyndor-forest",kind:"town",x:16,y:25,populationBand:"small",climate:"cold",tags:["рыбацкие пристани","лодочные мастера"]},
+{id:"reedhaven",canon:true,name:"Тростниковая Гавань",countryId:"kharum",regionId:"kharum-delta",kind:"port",x:73,y:93,populationBand:"medium",climate:"hot-humid",tags:["речные баржи","рисовые склады"]},
+{id:"ivory-gate",canon:true,name:"Врата Слоновой Кости",countryId:"kharum",regionId:"kharum-delta",kind:"town",x:93,y:94,populationBand:"medium",climate:"hot-humid",tags:["таможня","имперская дорога"]}
 ];
 /**
  * Дороги и пути (0.18.0). Дни не задаются вручную: они считаются из расстояния на карте и способа пути,
