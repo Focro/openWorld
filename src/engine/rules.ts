@@ -9,6 +9,7 @@ import { capabilities, performInfantAct, memoryFraming, formatAge, INFANT_ACT_LA
 import { resolveSpeech } from "./social";
 import { applyAppearanceChange, observeAppearance } from "./appearance";
 import { advanceNpcPsychology } from "./personality";
+import { compactNpcMemory } from "./memory";
 import type { Action, ActionResult, GameEvent, GameState, Relation, WorldData } from "./types";
 
 export const MAX_WAIT_MINUTES = 720;
@@ -110,7 +111,7 @@ function commit(
   // Слухи распространяются между NPC, оказавшимися в одной локации; устаревшие забываются.
   const next = pruneRumors(spreadGossip(world, withEvent));
   const extra = [...flow.events.map(e => e.text), ...flow.notices.filter(n => n.important).map(n => n.text)];
-  return { state: next, ok: true, message: extra.length ? `${ev.playerText}\n${extra.join("\n")}` : ev.playerText, events: [...flow.events, event] };
+  return { state: compactNpcMemory(next), ok: true, message: extra.length ? `${ev.playerText}\n${extra.join("\n")}` : ev.playerText, events: [...flow.events, event] };
 }
 
 /**
@@ -409,9 +410,18 @@ export function applyAction(world: WorldData, state: GameState, action: Action):
 
 export const MAX_LIVE_DAYS = 365;
 
+/** «1 день», «3 дня», «41 день», «56 дней», «112 дней». */
+export function pluralDays(n: number): string {
+  const tens = n % 100, ones = n % 10;
+  if (tens >= 11 && tens <= 14) return "дней";
+  if (ones === 1) return "день";
+  if (ones >= 2 && ones <= 4) return "дня";
+  return "дней";
+}
+
 /**
  * «Прожить период»: время идёт день за днём, пока не пройдёт указанный срок
- * или не случится важное событие (веха развития, рождение, смерть, коронация).
+ * или не случится событие мира (рождение, смерть, коронация). Вехи развития перечисляются в итоге.
  * Так длинный пропуск не перескакивает через то, что игрок должен увидеть.
  */
 export function livePeriod(world: WorldData, state: GameState, days: number): ActionResult {
@@ -430,16 +440,17 @@ export function livePeriod(world: WorldData, state: GameState, days: number): Ac
     current = { ...flow.state, minute: target };
     lived += 1;
     events.push(...flow.events);
-    const important = [...flow.events.map(e => e.text), ...flow.notices.filter(n => n.important).map(n => n.text)];
-    highlights.push(...important);
-    if (important.length) break;
+    // Вехи развития попадают в итог периода, но не обрывают его: иначе «прожить год» в младенчестве
+    // останавливался каждые месяц-два. Останавливают только события мира: рождение, смерть, коронация.
+    highlights.push(...flow.notices.filter(n => n.important).map(n => n.text), ...flow.events.map(e => e.text));
+    if (flow.events.length) break;
   }
   const psychology = advanceNpcPsychology(world, { ...state, chronicle: current.chronicle, npcMemory: current.npcMemory, npcDeaths: current.npcDeaths }, current.minute - state.minute);
   current = { ...current, npcPsychology: psychology.npcPsychology, npcBonds: psychology.npcBonds, chronicle: psychology.chronicle, npcMemory: psychology.npcMemory };
   current = pruneRumors(spreadGossip(world, current));
   const stopped = lived < days ? ` Время остановлено на важном событии (прожито ${lived} из ${days} дн.).` : "";
   const ageText = current.development ? ` Возраст: ${formatAge(current.development, current.minute)}.` : "";
-  const summary = `Проходит ${lived} ${lived === 1 ? "день" : lived < 5 ? "дня" : "дней"}.${ageText}${stopped}`;
+  const summary = `Проходит ${lived} ${pluralDays(lived)}.${ageText}${stopped}`;
   current = { ...current, playerMemory: [...current.playerMemory, { minute: current.minute, ...memoryFraming(current.development, summary), kind: "own" }] };
-  return { state: current, ok: true, message: highlights.length ? `${summary}\n${highlights.join("\n")}` : summary, events };
+  return { state: compactNpcMemory(current), ok: true, message: highlights.length ? `${summary}\n${highlights.join("\n")}` : summary, events };
 }

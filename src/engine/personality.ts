@@ -174,7 +174,7 @@ export function advanceNpcPsychology(world: WorldData, state: GameState, elapsed
             : `${world.npcs[a]!.name} и ${world.npcs[b]!.name} оказались рядом в локации «${locationName}», каждый занимаясь своим делом.`;
           backgroundEvents.push({
             id: eventId, minute: sampleMinute, locationId, text: interactionText,
-            witnesses: coLocated, source: { kind: "npc", id: a }
+            witnesses: coLocated, source: { kind: "npc", id: a }, routine: true
           });
           for (const witnessId of coLocated) {
             npcMemory[witnessId] = [...(npcMemory[witnessId] ?? []), { minute: sampleMinute, text: interactionText, kind: "witnessed", confidence: 1, eventId }];

@@ -71,3 +71,20 @@ describe("intent cache", () => {
     expect(intentCacheKey(buildIntentContext(world, state, "x", ["look"]), "x")).not.toBe(intentCacheKey(buildIntentContext(world, moved, "x", ["look"]), "x"));
   });
 });
+
+describe("малыш говорит словами", () => {
+  it("«мама» у двухлетнего это речь, а у младенца нет", async () => {
+    const { startVeloriaCampaign: start } = await import("../worlds/veloria/campaign");
+    const r = start({ kind: "veloria-character", difficultyId: "balanced", draft: { name: "Малыш", age: 0, originId: "tenant-farmer", statusId: "rural-free", professionId: "none", familyState: "together", startScenarioId: "ordinary", biography: "", attributes: { ...ATTRS }, familySeed: "toddler" } });
+    if (!r.ok) throw new Error(r.errors.join(" "));
+    expect(understandFreeText(r.world, r.state, "мама")).toBeNull();
+    const twoYears = { ...r.state, minute: r.state.minute + 2 * 365 * 1440 };
+    const dev = { ...twoYears, development: { ...twoYears.development!, milestones: { ...twoYears.development!.milestones, "first-word": twoYears.minute, "two-word-phrases": twoYears.minute } } } as GameState;
+    const result = understandFreeText(r.world, dev, "мама");
+    expect(result).toEqual({ ok: true, action: { type: "say", text: "мама" } });
+    const { applyAction } = await import("./rules");
+    const said = applyAction(r.world, dev, { type: "say", text: "мама" });
+    expect(said.ok).toBe(true);
+    expect(said.message).not.toMatch(/слишком малы/);
+  });
+});
