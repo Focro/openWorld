@@ -52,7 +52,7 @@ The game is in Russian for now. English is planned.
 
 ## Status
 
-Early alpha, current version **0.16.0**. Every life starts in childhood: be born in any of the six realms, into one of 57 families, from a stable loft to the royal court, at birth or at an age up to 12. The AI is the narrator: it describes places in a literary way and speaks for residents, each with their own voice, goals and morals, and it never decides for your hero. Accounts and a shared server are the next big step. Detailed town life exists only in Roven so far. Combat, illness and trials are still ahead. See the [CHANGELOG](CHANGELOG.md) for what changed in each version (in Russian).
+Early alpha, current version **0.16.1**. Every life starts in childhood: be born in any of the six realms, into one of 57 families, from a stable loft to the royal court, at birth or at an age up to 12. The AI is the narrator: it describes places in a literary way and speaks for residents, each with their own voice, goals and morals, and it never decides for your hero. Accounts and a shared server are the next big step. Detailed town life exists only in Roven so far. Combat, illness and trials are still ahead. See the [CHANGELOG](CHANGELOG.md) for what changed in each version (in Russian).
 
 ## For developers
 

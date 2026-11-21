@@ -1,3 +1,4 @@
+import { npcAgeYears } from "./speech";
 import { buildIntentContext, type IntentContext } from "./intent";
 import { applyAction } from "./rules";
 import { formatClock, formatWorldDate, yearKLOf } from "./time";
@@ -187,7 +188,7 @@ export function buildNpcContext(
     time: `${formatWorldDate(state.minute, state.worldStartYearKL ?? 742)} · ${formatClock(state.minute)}`,
     npc: {
       id: npc.id, name: npc.name,
-      age: npc.birthYear !== undefined ? Math.max(0, yearKLOf(state.minute, state.worldStartYearKL ?? 742) - npc.birthYear) : npc.age,
+      age: npcAgeYears(npc, state),
       familyRole: npc.familyRole,
       lifeStatus: npc.lifeStatus,
       playerRelationship

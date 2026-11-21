@@ -12,15 +12,16 @@ import type { GameState, WorldData } from "./types";
 import type { ParseResult } from "./parse";
 import { normalize } from "./parse";
 import { shortName } from "./speech";
-import { npcsAt } from "./world";
+import { npcsAt, reachablePlaces } from "./world";
 import { capabilities, ageMonths, formatAge, type InfantActId } from "./development";
 import { formatClock, formatWorldDate } from "./time";
 import { buildTriggeredKnowledge } from "./knowledge";
+import { detectOutcomeClaim } from "./plausibility";
 
 const FILLER = new Set(["я", "хочу", "хотел", "хотела", "бы", "буду", "давай", "давайте", "пожалуйста", "попробую", "попробовать", "немного", "ещё", "еще", "тут", "здесь", "сейчас", "просто", "ну", "а", "и", "же", "тогда", "затем", "потом", "сначала", "можно", "надо", "нужно", "пора", "медленно", "быстро", "тихо", "осторожно"]);
 const PREPOSITIONS = new Set(["в", "во", "на", "к", "ко", "до", "за", "у", "из", "с", "со", "по", "обратно", "назад", "туда"]);
 
-const MOVE = /^(ид[уиё]|идти|пойд|пош[её]л|пошл|направ|отправ|бег[уи]|побег|зайт|зайд|захож|загляну|выйт|выйд|выхож|верн|двину|шага|прогуля|прой[дт]|перей[дт]|сход)/;
+const MOVE = /^(убег|убеж|сбег|сбеж|выбег|выбеж|забег|забеж|прибег|прибеж|удира|улизн|ушёл|ушел|ушла|уйд|ухож|ид[уиё]|идти|пойд|пош[её]л|пошл|направ|отправ|бег[уи]|побег|зайт|зайд|захож|загляну|выйт|выйд|выхож|верн|двину|шага|прогуля|прой[дт]|перей[дт]|сход)/;
 const LOOK = /^(осмотр|осматр|огляд|оглян|оглядыва|посмотр|смотрю|разгляд|озира)/;
 const WAIT = /^(жд[уа]|ждать|подожд|обожд|отдох|передохн|посиж|постою|вздремн|отдыха)/;
 const BUY = /^(куп|покуп|приобр|возьму|беру|закаж)/;
@@ -47,17 +48,24 @@ const stem = (word: string) => word.length > 5 ? word.slice(0, word.length - 2) 
 
 /** Ищет место среди выходов по корням слов: «на рынок» → «Нижний рынок». */
 function matchPlace(world: WorldData, fromId: string, words: string[]): string | null {
-  const exits = world.locations[fromId]?.exits ?? [];
   const wanted = words.filter(w => w.length >= 3 && !PREPOSITIONS.has(w)).map(stem);
   if (!wanted.length) return null;
-  let best: { id: string; score: number } | null = null, tie = false;
-  for (const exit of exits) {
-    const name = normalize(world.locations[exit.to]?.name ?? exit.to).split(/[\s,--]+/).filter(Boolean);
-    const score = wanted.filter(w => name.some(n => n.startsWith(w) || w.startsWith(stem(n)))).length;
-    if (!score) continue;
-    if (!best || score > best.score) { best = { id: exit.to, score }; tie = false; } else if (score === best.score) tie = true;
-  }
-  return best && !tie ? best.id : null;
+  const scoreOf = (id: string) => {
+    const name = normalize(world.locations[id]?.name ?? id).split(/[\s,-]+/).filter(n => n.length >= 3);
+    return wanted.filter(w => name.some(n => n.startsWith(w) || w.startsWith(stem(n)))).length;
+  };
+  const pick = (ids: string[]) => {
+    let best: { id: string; score: number } | null = null, tie = false;
+    for (const id of ids) {
+      const score = scoreOf(id);
+      if (!score) continue;
+      if (!best || score > best.score) { best = { id, score }; tie = false; } else if (score === best.score && id !== best.id) tie = true;
+    }
+    return best && !tie ? best.id : null;
+  };
+  // Сначала соседние места, потом ближайшие по пути: «убежал на рынок» из дома, где рынок через улицу.
+  for (const ring of reachablePlaces(world, fromId, 6)) if (ring.some(id => scoreOf(id))) return pick(ring);
+  return null;
 }
 
 function matchItem(world: WorldData, state: GameState, words: string[]): string | null {
@@ -89,6 +97,8 @@ export function understandFreeText(world: WorldData, state: GameState, text: str
   if (infantStage) for (const [re, act] of INFANT_STEMS) if (re.test(verb) && caps.infantActions.includes(act)) return { ok: true, action: { type: "infant", act } };
 
   if (quoted && quoted[1]!.trim()) return { ok: true, action: { type: "say", text: quoted[1]!.trim() } };
+  // «Я влюбил её в себя», «пробуждаю силу»: это попытка, исход решают правила, ИИ не нужен.
+  if (detectOutcomeClaim(raw)) return { ok: true, action: { type: "gesture", text: raw } };
   if (GREETING.test(verb)) return { ok: true, action: { type: "say", text: raw } };
   if (/^что$/.test(verb) && rest.some(w => /^(у|меня|при|себе|сумк|карман)/.test(w))) return { ok: true, action: { type: "inventory" } };
   if (/^(карман|сумк|котомк|рюкзак|вещи|пожитк)/.test(verb) || (/^(провер|посмотр|загляну)/.test(verb) && rest.some(w => /^(сумк|карман|вещ|котомк)/.test(w)))) return { ok: true, action: { type: "inventory" } };

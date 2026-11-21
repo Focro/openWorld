@@ -17,6 +17,7 @@ import { validateChildAppearance, type AppearanceProfile } from "./heritage";
 import { validateFamilyRecord } from "./family";
 import type { WorldDifficultyId } from "./difficulty";
 import { SECOND_PRINCE_START_YEAR } from "./reynarCourt";
+import { seedHash } from "./populations";
 
 export interface VeloriaCampaignRecipe {
   kind: "veloria-character";
@@ -130,7 +131,9 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     }];
   }
   // Развитие: возраст отсчитывается от минуты рождения. Для взрослого старта вехи считаются пройденными.
-  const birthMinute = isBirth ? state.minute : state.minute - draft.age * MINUTES_PER_YEAR;
+  // У ребёнка из «Новой жизни» свой день рождения внутри года, а не ровно в день старта.
+  const birthdayOffset = newLife ? (seedHash(`${draft.familySeed ?? draft.name}:hero-birthday`) % 365) * 1440 : 0;
+  const birthMinute = isBirth ? state.minute : state.minute - draft.age * MINUTES_PER_YEAR - birthdayOffset;
   state.development = createDevelopment({
     birthMinute, nowMinute: state.minute, aptitudes: draft.attributes,
     seed: `${draft.familySeed ?? draft.name}:${draft.name}`,
@@ -141,7 +144,13 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
   if (newLife && !isBirth) {
     // Ребёнок уже прожил годы с этими людьми: привязанность к тем, кто растил, сложилась по их теплоте.
     for (const member of family.members) {
-      if (member.lifeStatus !== "alive" || member.homeId !== family.household?.homeId) continue;
+      const friend = member.id.includes("-friend-");
+      if (member.lifeStatus !== "alive" || (member.homeId !== family.household?.homeId && !friend)) continue;
+      if (friend) {
+        state.development.attachments[member.id] = { security: 15, familiarity: 55, wariness: 0, lastContactMinute: state.minute };
+        state.relations[member.id] = { trust: 30, sympathy: 45, fear: 0, respect: 5 };
+        continue;
+      }
       const warmth = member.personality?.traits.warmth ?? 60;
       const carer = member.caregiving?.role === "mother" || member.caregiving?.role === "father" || member.caregiving?.role === "guardian";
       state.development.attachments[member.id] = { security: Math.round((carer ? 35 : 15) + warmth * 0.4), familiarity: carer ? 80 : 60, wariness: warmth < 40 ? 15 : 0, lastContactMinute: state.minute };

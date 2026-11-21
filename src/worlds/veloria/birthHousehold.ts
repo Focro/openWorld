@@ -21,6 +21,7 @@ import { birthOrigin, type BirthOrigin, type WealthHint, type WorkPlace } from "
 import { settlementGateLocationId } from "./settlementMaps";
 
 const CURRENT_YEAR = 742;
+const MINUTES_PER_YEAR = 365 * 1440;
 const WEALTH: WealthHint[] = ["бедно", "скромно", "в достатке"];
 
 export type BirthHouseholdKind = "both-parents" | "with-grandparents" | "large-family" | "widowed-mother" | "unmarried-mother" | "mother-died" | "foundling";
@@ -33,6 +34,8 @@ export interface BirthPreviewMember {
 export interface BirthPreview {
   summary: string; home: string; wealth: WealthHint;
   members: BirthPreviewMember[];
+  /** Друзья: соседские дети или дети приюта. Пусто для малышей до трёх лет. */
+  friends: BirthPreviewMember[];
   suggestedName: string;
 }
 
@@ -201,10 +204,13 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const guardians: NpcDef[] = [];
   const biologicalParents: ParentHeritage[] = [];
   const preview: BirthPreviewMember[] = [];
-  const add = (spec: Spec, role: string, p: ReturnType<typeof personality>, extra: Partial<NpcDef>, occupation: string, livesWithYou = true, dress = clothing) => {
+  const add = (spec: Spec, role: string, p: ReturnType<typeof personality>, extra: Partial<NpcDef>, occupation: string, livesWithYou = true, dress: string = clothing) => {
     const { word, ...pers } = p;
+    // Свой день рождения: возраст растёт в этот день, а не у всех разом в Новый год.
+    const birthdayOffset = Math.floor(unit(`${seed}:birthday:${spec.id}`) * 365);
+    const bornAtMinute = -spec.age * MINUTES_PER_YEAR - birthdayOffset * 1440;
     const npc: NpcDef = {
-      id: spec.id, name: spec.name, homeId: extra.homeId ?? homeId, age: spec.age, birthYear: CURRENT_YEAR - spec.age, lifeStatus: "alive",
+      id: spec.id, name: spec.name, homeId: extra.homeId ?? homeId, age: spec.age, birthYear: CURRENT_YEAR - spec.age - (birthdayOffset > 0 ? 1 : 0), bornAtMinute, lifeStatus: "alive",
       roleTags: [origin.group === "малый дом" && extra.familyRole !== "other" ? "noble" : "commoner"], goals: ["содержать дом и близких"],
       originStateId: spec.origin, schedule: [], personality: pers,
       appearance: createAppearanceState({ skinTone: spec.look.skinTone, naturalHairColor: spec.look.hairColor, hairTexture: spec.look.hairTexture, eyeColor: spec.look.eyeColor, facialFeatures: spec.look.facialFeatures },
@@ -219,6 +225,28 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   };
   const day = (at: string, activity: string, from = 6, to = 18) => from === 0 && to === 24 ? [{ from: 0, to: 24, locationId: at, activity }]
     : [{ from: 0, to: from, locationId: homeId, activity: "спит дома" }, { from, to, locationId: at, activity }, { from: to, to: 24, locationId: homeId, activity: "дома с семьёй" }];
+
+  const friendsPreview: BirthPreviewMember[] = [];
+  /** Соседские дети примерно того же возраста: живут своими семьями, днём играют рядом. */
+  const addFriends = (playAt: string, livingAt: string, inShelter: boolean) => {
+    if (heroAge < 3) return;
+    const count = between(`${seed}:friends`, 1, heroAge >= 6 ? 3 : 2);
+    for (let i = 0; i < count; i++) {
+      const sex = chance(`${seed}:friend-sex:${i}`, 0.5) ? "male" as const : "female" as const;
+      const age = Math.max(2, Math.min(14, heroAge + between(`${seed}:friend-age:${i}`, -2, 2)));
+      const famName = regionalName(state, "male", `${seed}:friend-family:${i}`).surname;
+      const f = person(`${familyId}-friend-${i + 1}`, sex, age, { family: inShelter ? "" : famName, fatherGiven: regionalName(state, "male", `${seed}:friend-father:${i}`).given });
+      if (inShelter) f.name = f.given;
+      const role = inShelter ? (sex === "male" ? "мальчик из приюта" : "девочка из приюта") : (sex === "male" ? "соседский мальчик" : "соседская девочка");
+      const before = preview.length;
+      add(f, role, personality(`${seed}:friend:${i}`, role, "child", ["игры", "дружба"], sex, age), {
+        familyRole: "other", homeId: livingAt,
+        schedule: inShelter ? [{ from: 0, to: 24, locationId: livingAt, activity: "живёт и учится в приюте" }]
+          : [{ from: 0, to: 9, locationId: livingAt, activity: "дома" }, { from: 9, to: 17, locationId: playAt, activity: "играет с соседскими детьми" }, { from: 17, to: 24, locationId: livingAt, activity: "дома" }]
+      }, inShelter ? "живёт в приюте" : "играет во дворе по соседству", inShelter, inShelter ? "одинаковая приютская одежда" : undefined);
+      friendsPreview.push(...preview.splice(before));
+    }
+  };
 
   // Подкидыш: растят служители веры, кормит приходящая кормилица, рядом другие дети приюта.
   if (kind === "foundling" && origin.foundling) {
@@ -236,15 +264,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
         schedule: [{ from: 6, to: 9, locationId: homeId, activity: "кормит младенцев приюта" }, { from: 12, to: 14, locationId: homeId, activity: "кормит младенцев приюта" }, { from: 18, to: 21, locationId: homeId, activity: "кормит младенцев приюта" }]
       }, "приходит кормить младенцев", false, "простое платье и фартук");
     }
-    const friendCount = heroAge >= 3 ? between(`${seed}:orphans`, 1, 2) : 0;
-    for (let i = 0; i < friendCount; i++) {
-      const sex = chance(`${seed}:orphan-sex:${i}`, 0.5) ? "male" as const : "female" as const;
-      const o = person(`${familyId}-ward-${i + 1}`, sex, Math.max(1, heroAge + between(`${seed}:orphan-age:${i}`, -2, 3)), { family: "" });
-      o.name = o.given;
-      add(o, sex === "male" ? "мальчик из приюта" : "девочка из приюта", personality(`${seed}:orphan:${i}`, "воспитанник приюта", "child", ["выжить", "дружба"], sex, o.age), {
-        familyRole: "other", schedule: [{ from: 0, to: 24, locationId: homeId, activity: "живёт и учится в приюте" }]
-      }, "живёт в приюте", true, "одинаковая приютская одежда");
-    }
+    addFriends(homeId, homeId, true);
     const summary = `Вас оставили младенцем: ${origin.home.name.toLocaleLowerCase("ru")}. Кто ваши родители, неизвестно. Растит вас ${g.name}.${heroAge > 0 ? ` Вам ${heroAge} ${yearsWord(heroAge)}.` : ""}`;
     return {
       origin, kind, wealth: "бедно", settlementId: s, homeId, locations, links, members, guardians, biologicalParents, summary,
@@ -253,7 +273,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
         guardianIds: [gn.id, f.institutionId], birthStatus: "unknown", parentalUnion: { status: "unknown" }, recognitions: [],
         succession: { status: "undetermined", basis: "Происхождение подкидыша неизвестно." }
       },
-      preview: { summary, home: origin.home.name, wealth: "бедно", members: preview, suggestedName: regionalName(state, draft.sex === "female" ? "female" : "male", `${seed}:hero`).given }
+      preview: { summary, home: origin.home.name, wealth: "бедно", members: preview, friends: friendsPreview, suggestedName: regionalName(state, draft.sex === "female" ? "female" : "male", `${seed}:hero`).given }
     };
   }
 
@@ -384,6 +404,8 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     }, work, false);
   }
 
+  addFriends(homeId === near ? square : near, near, false);
+
   const childAppearance = fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
   const houseText: Record<Exclude<BirthHouseholdKind, "foundling">, string> = {
     "both-parents": "мать и отец растят вас вместе",
@@ -416,6 +438,6 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
       parentalUnion: { status: kind === "unmarried-mother" ? "unmarried" : "married" }, recognitions: [],
       succession: { status: "undetermined", basis: noble ? "Малый род: право наследования определяется обычаем державы и старшинством детей." : "Простолюдинская семья: наследство по местному обычаю." }
     },
-    preview: { summary, home: origin.home.name, wealth, members: preview, suggestedName: pattern === "surname-given" ? hero.given : hero.given }
+    preview: { summary, home: origin.home.name, wealth, members: preview, friends: friendsPreview, suggestedName: pattern === "surname-given" ? hero.given : hero.given }
   };
 }
