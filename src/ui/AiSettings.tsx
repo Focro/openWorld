@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { AI_PROVIDERS, isAiProviderId, type AiProviderId } from "../ai/proxyClient";
+import { loadUsage } from "../ai/usage";
+import { isGameLanguage, type GameLanguage } from "../engine/speech";
 import { clearVaultRecord, decryptApiKey, encryptApiKey, loadVaultRecord, passwordProblems, saveVaultRecord, type UnlockedKeySession } from "../ai/keyVault";
 
 /** Настройка ИИ: свой ключ хранится только зашифрованным паролем игрока. Игра работает и без ИИ. */
-export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, provider, onProvider, model, onModel, onChange }: {
+export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, provider, onProvider, model, onModel, onChange, lang, onLang }: {
   session: UnlockedKeySession; endpoint: string; onEndpoint: (value: string) => void;
   enabled: boolean; onEnabled: (value: boolean) => void;
   provider: AiProviderId; onProvider: (value: AiProviderId) => void;
   model: string; onModel: (value: string) => void; onChange: () => void;
+  lang: GameLanguage; onLang: (value: GameLanguage) => void;
 }) {
   const [record, setRecord] = useState(() => loadVaultRecord());
   const [apiKey, setApiKey] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const usage = loadUsage();
+  const [limit, setLimit] = useState(() => { try { return localStorage.getItem("openworld.ai.daily-limit") ?? "50"; } catch { return "50"; } });
 
   async function save() {
     const problems = passwordProblems(password);
@@ -22,7 +27,7 @@ export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, 
     try {
       const next = await encryptApiKey(apiKey, password, provider);
       if (!saveVaultRecord(next)) setMessage("Браузер не дал сохранить запись (например, приватный режим). Ключ будет жить только до закрытия вкладки.");
-      else setMessage("Ключ зашифрован и сохранён. Пароль нигде не хранится — не забудьте его.");
+      else setMessage("Ключ зашифрован и сохранён. Пароль нигде не хранится: не забудьте его.");
       session.unlock(provider, apiKey.trim()); setRecord(next); setApiKey(""); setPassword(""); onChange();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Не удалось зашифровать ключ."); }
     setBusy(false);
@@ -39,8 +44,9 @@ export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, 
 
   return <div className="ai-settings">
     <h3 className="sub">Нейросеть (необязательно)</h3>
-    <p className="hint">Без ИИ игра полностью работает на командах. ИИ только переводит свободный текст в действие, а движок проверяет, возможно ли оно. Ключ хранится в этом браузере зашифрованным вашим паролем и отправляется только на ваш прокси.</p>
-    <label className="inline-check"><input type="checkbox" checked={enabled} onChange={e => onEnabled(e.target.checked)} /> Понимать свободный текст через ИИ</label>
+    <p className="hint">С нейросетью люди в мире отвечают вам живыми словами, каждый своим голосом, и игра понимает свободный текст. Память, отношения и правила хранит и проверяет сама игра. Без нейросети работают команды, а люди рядом молчат. Ключ хранится в этом браузере зашифрованным вашим паролем и отправляется только на ваш прокси.</p>
+    <label className="inline-check"><input type="checkbox" checked={enabled} onChange={e => onEnabled(e.target.checked)} /> Включить нейросеть: живые ответы людей и свободный текст</label>
+    <label>Язык ответов персонажей<select value={lang} onChange={e => { if (isGameLanguage(e.target.value)) onLang(e.target.value); }}><option value="ru">Русский</option><option value="en">English</option></select></label>
     <div className="form-grid">
       <label>Нейросеть<select value={record?.provider ?? provider} disabled={Boolean(record)} onChange={e => { if (isAiProviderId(e.target.value)) onProvider(e.target.value); }}>{AI_PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
       <label>Модель (необязательно)<input value={model} onChange={e => onModel(e.target.value)} placeholder="по умолчанию сервера" /></label>
@@ -61,5 +67,8 @@ export function AiSettings({ session, endpoint, onEndpoint, enabled, onEnabled, 
       {record && <button onClick={forget}>УДАЛИТЬ КЛЮЧ ИЗ БРАУЗЕРА</button>}
     </div>
     {message && <p className="hint">{message}</p>}
+    <h3 className="sub">Расход сегодня</h3>
+    <p className="hint">Запросов к ИИ: {usage.requests} · токенов: {usage.inputTokens} на вход, {usage.outputTokens} на выход · из кэша: {usage.cacheHits} · понято без ИИ: {usage.understoodLocally}.</p>
+    <label>Дневной лимит запросов (0: без лимита)<input type="number" min={0} max={1000} value={limit} onChange={e => { setLimit(e.target.value); try { localStorage.setItem("openworld.ai.daily-limit", String(Math.max(0, Number(e.target.value) || 0))); } catch { /* хранилище недоступно */ } }} /></label>
   </div>;
 }

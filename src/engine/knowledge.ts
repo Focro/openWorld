@@ -6,6 +6,8 @@
 import type { GameState, MemoryEntry, WorldData } from "./types";
 import { COUNTRIES, MAP_NODES, REGIONS, ROUTES } from "../worlds/veloria/atlas";
 import { UPPER_SOCIETY_ROSTER } from "../worlds/veloria/upperSociety";
+import { FAITHS } from "../worlds/veloria/faiths";
+import { FAITH_INSTITUTIONS } from "../worlds/veloria/clergy";
 import { yearKLOf } from "./time";
 
 export type KnowledgeAudience = "public" | "player" | "npc";
@@ -89,11 +91,26 @@ export function buildKnowledgeIndex(world: WorldData): KnowledgeDocument[] {
     text: `${person.name}. Государство: ${COUNTRIES.find(country => country.id === person.stateId)?.name ?? person.stateId}. Дом: ${person.houseName}. Положение дома: ${person.houseTitle}. Роль: ${person.role}. Резиденция дома: ${person.seat}. Статус в родословной: ${person.status === "alive" ? "подтверждён как живой в текущем каноне" : "жизненный статус не подтверждён"}. ${person.publicContext}`,
     source: `veloria.upperSociety.${person.id}`, audience: "public", tags: ["высший свет", "дворянство", "династия", "дом", person.stateId, person.houseId, person.id]
   });
+  // Веры и их публичное устройство: коротко, чтобы не раздувать контекст ИИ.
+  for (const faith of (world.globalStartId ? FAITHS : [])) {
+    const inst = FAITH_INSTITUTIONS.find(item => item.faithId === faith.id);
+    const head = inst?.presidingId ? inst.persons.find(p => p.id === inst.presidingId) : undefined;
+    docs.push({
+      id: `faith:${faith.id}`, title: faith.name,
+      text: `${faith.name}. Где распространена: ${faith.regions.map(r => COUNTRIES.find(c => c.id === r)?.name ?? r).join(", ")}. Главное: ${faith.principles.slice(0, 3).join("; ")}.${inst ? ` Управление: ${inst.governingBody}, ${inst.seat}.${head ? ` Возглавляет: ${head.name} (${head.rankTitle}).` : ""} Должности: ${inst.ranks.map(r => r.title).join(", ")}.` : ""}`,
+      source: `veloria.faiths.${faith.id}`, audience: "public", tags: ["вера", "религия", "храм", "духовенство", faith.id, inst?.stateId ?? ""]
+    });
+  }
+  for (const inst of (world.globalStartId ? FAITH_INSTITUTIONS : [])) for (const person of inst.persons) docs.push({
+    id: `clergy:${person.id}`, title: person.name,
+    text: `${person.name}, ${person.rankTitle}. Вера: ${FAITHS.find(f => f.id === inst.faithId)?.name ?? inst.faithId}. Где служит: ${person.seat}. Публичная позиция: ${person.publicStance}`,
+    source: `veloria.clergy.${person.id}`, audience: "public", tags: ["духовенство", "священник", "служитель", inst.faithId, inst.stateId, person.id]
+  });
   for (const route of (world.globalStartId ? ROUTES : [])) {
     const from = MAP_NODES.find(n => n.id === route.from)?.name ?? route.from;
     const to = MAP_NODES.find(n => n.id === route.to)?.name ?? route.to;
     docs.push({
-      id: `route:${route.from}:${route.to}`, title: `Путь: ${from} — ${to}`,
+      id: `route:${route.from}:${route.to}`, title: `Путь: ${from} - ${to}`,
       text: `Маршрут между ${from} и ${to}: ${route.days} дн., способ: ${route.mode}, опасность: ${route.danger}.${route.seasonalClosure ? ` Сезонное ограничение: ${route.seasonalClosure}.` : ""}`,
       source: `atlas.routes.${route.from}.${route.to}`, audience: "public", tags: ["маршрут", "дорога", route.from, route.to]
     });
@@ -114,8 +131,11 @@ export function retrieveKnowledge(
   const ranked = allowed.map(doc => {
     const title = tokenize(doc.title);
     const body = tokenize(`${doc.text} ${doc.tags.join(" ")}`);
-    const titleHits = terms.filter(term => title.includes(term)).length;
-    const bodyHits = terms.filter(term => body.includes(term)).length;
+    // Совпадение по началу слова: «Кхарум» находит «Кхарумская империя».
+    // Точное совпадение весит 1, совпадение по началу слова: 0,4.
+    const weight = (tokens: string[], term: string) => tokens.includes(term) ? 1 : term.length >= 5 && tokens.some(t => t.startsWith(term)) ? 0.4 : 0;
+    const titleHits = terms.reduce((n, term) => n + weight(title, term), 0);
+    const bodyHits = terms.reduce((n, term) => n + weight(body, term), 0);
     const phraseBoost = query.trim().length > 3 && doc.title.toLocaleLowerCase("ru-RU").includes(query.trim().toLocaleLowerCase("ru-RU")) ? 4 : 0;
     const recency = doc.updatedMinute === undefined ? 0 : Math.max(0, 1 - Math.max(0, now - doc.updatedMinute) / (60 * 24 * 30));
     return { ...doc, score: titleHits * 3 + bodyHits + phraseBoost + recency };
@@ -171,7 +191,7 @@ function campaignKnowledgeIndex(world: WorldData, minute: number, startYearKL = 
       }
     }
     if (doc.id === "country:estran" && year < 735) {
-      return [{ ...doc, text: doc.text.replace("Правитель: королева Элиана III", "Правитель: король (имя в доступной хронике не установлено); Элиана III — принцесса") }];
+      return [{ ...doc, text: doc.text.replace("Правитель: королева Элиана III", "Правитель: король (имя в доступной хронике не установлено); Элиана III: принцесса") }];
     }
     return [doc];
   });
@@ -191,6 +211,19 @@ export function buildPlayerKnowledge(world: WorldData, state: GameState, query: 
   return formatKnowledgeForPrompt(retrieveKnowledge(index, query, {
     audience: "player", limit: 6, maxCharacters: 2200, nowMinute: state.minute
   }));
+}
+
+/**
+ * Сведения «по ключевому слову» для короткого запроса к ИИ: не больше двух коротких фактов
+ * и только с совпадением в названии. Если игрок ничего такого не упомянул: ничего не добавляется.
+ */
+export function buildTriggeredKnowledge(world: WorldData, state: GameState, query: string, limit = 2, maxCharacters = 500): string[] {
+  if (query.trim().length < 3) return [];
+  const index = campaignKnowledgeIndex(world, state.minute, state.worldStartYearKL ?? 742);
+  return retrieveKnowledge(index, query, { audience: "player", limit: 6, maxCharacters: 4000, nowMinute: state.minute })
+    .filter(hit => { const terms = expandTerms(query).filter(t => t.length >= 4); return tokenize(hit.title).some(t => terms.some(q => t === q || (q.length >= 5 && t.startsWith(q)))); })
+    .slice(0, limit)
+    .map(hit => `${hit.title}: ${hit.text.slice(0, Math.floor(maxCharacters / limit))}`);
 }
 
 /** NPCs receive public canon plus only their own private goal documents and memories. */

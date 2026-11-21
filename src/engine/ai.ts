@@ -1,3 +1,5 @@
+import { npcAgeYears } from "./speech";
+import { buildIntentContext, type IntentContext } from "./intent";
 import { applyAction } from "./rules";
 import { formatClock, formatWorldDate, yearKLOf } from "./time";
 import { npcLocation, npcsAt } from "./world";
@@ -75,7 +77,7 @@ export function buildAiPromptEnvelope(context: PlayerContext, playerText: string
       "Ты повествователь и интерпретатор намерений для OpenWorld RPG.",
       "Контекст содержит только разрешённые сведения; источники указаны рядом с фактами.",
       "Не меняй мир и не выдавай несуществующие факты за правду.",
-      "Личность NPC — устойчивый психологический фундамент, а не готовый сценарий реплик: отвечай естественно, учитывая темперамент, опыт, привычки, текущие эмоции и отношения.",
+      "Личность NPC: устойчивый психологический фундамент, а не готовый сценарий реплик: отвечай естественно, учитывая темперамент, опыт, привычки, текущие эмоции и отношения.",
       "Не меняй темперамент мгновенно из-за одного события. Новые привычки формируются повторением, укрепляются практикой и могут ослабевать без подкрепления.",
       "Один NPC может вести себя по-разному с разными людьми; не смешивай личную привязанность с общей добротой или характером.",
       "Верни одно предложение действия в структурированном формате; исполнение и проверка принадлежат движку."
@@ -100,7 +102,7 @@ export function buildNpcDialogueEnvelope(context: NpcContext, interlocutorText: 
     protocol: "openworld-npc-dialogue-v1",
     systemInstructions: [
       "Ты отыгрываешь только указанного NPC, а не всеведущего рассказчика.",
-      "Личность — устойчивый темперамент и система ценностей, а не готовые реплики или запрет на развитие.",
+      "Личность: устойчивый темперамент и система ценностей, а не готовые реплики или запрет на развитие.",
       "Сначала учитывай темперамент и жизненный опыт, затем привычки, эмоциональное состояние, отношения с собеседником и конкретную ситуацию.",
       "Не делай персонажа одинаково ласковым, грубым, доверчивым или холодным со всеми: отношение зависит от конкретного человека.",
       "Изменения характера и привычек происходят постепенно, через повторяющийся опыт; не переписывай прошлое и не выдумывай травмы или воспоминания.",
@@ -113,7 +115,8 @@ export function buildNpcDialogueEnvelope(context: NpcContext, interlocutorText: 
 }
 
 export interface ActionProposer {
-  propose(context: PlayerContext, playerText: string): Promise<unknown>;
+  /** Получает короткий контекст намерения (intent.ts), а не полный контекст сцены: так дешевле. */
+  propose(context: IntentContext, playerText: string): Promise<unknown>;
 }
 
 export function buildPlayerContext(world: WorldData, state: GameState, memoryLimit = 10, query = ""): PlayerContext {
@@ -165,7 +168,7 @@ export function buildPlayerContext(world: WorldData, state: GameState, memoryLim
       "Возраст и жизненный этап из поля lifeStage обязательны: младенец не говорит, не ходит, не читает и не принимает взрослых решений; ребёнок говорит и действует по возрасту.",
       "Воспоминания с пометкой «до первых связных воспоминаний» персонаж сознательно не помнит.",
       "Наследуемая внешность (цвет кожи, глаз, природный цвет волос, черты лица) неизменна; не описывай её иначе.",
-      ...(state.playerProfile?.dynasticRole === "second-prince" ? ["Ты взаимодействуешь с новорождённым наследником: его характеристики — задатки, а не взрослые навыки; не приписывай ему речь или самостоятельные действия, невозможные младенцу."] : [])
+      ...(state.playerProfile?.dynasticRole === "second-prince" ? ["Ты взаимодействуешь с новорождённым наследником: его характеристики: задатки, а не взрослые навыки; не приписывай ему речь или самостоятельные действия, невозможные младенцу."] : [])
     ]
   };
 }
@@ -185,7 +188,7 @@ export function buildNpcContext(
     time: `${formatWorldDate(state.minute, state.worldStartYearKL ?? 742)} · ${formatClock(state.minute)}`,
     npc: {
       id: npc.id, name: npc.name,
-      age: npc.birthYear !== undefined ? Math.max(0, yearKLOf(state.minute, state.worldStartYearKL ?? 742) - npc.birthYear) : npc.age,
+      age: npcAgeYears(npc, state),
       familyRole: npc.familyRole,
       lifeStatus: npc.lifeStatus,
       playerRelationship
@@ -266,8 +269,8 @@ export function coerceProposal(raw: unknown): Action | null {
         : null;
     case "live": return isInt(r.days) ? { type: "live", days: r.days } : null;
     case "infant": return typeof r.act === "string" && r.act in INFANT_ACT_LABELS ? { type: "infant", act: r.act as InfantActId } : null;
-    case "say": return typeof r.text === "string" && r.text.trim() && r.text.length <= 1000 ? { type: "say", text: r.text } : null;
-    case "gesture": return typeof r.text === "string" && r.text.trim() && r.text.length <= 500 ? { type: "gesture", text: r.text } : null;
+    case "say": return typeof r.text === "string" && r.text.trim() && r.text.length <= 4000 ? { type: "say", text: r.text } : null;
+    case "gesture": return typeof r.text === "string" && r.text.trim() && r.text.length <= 4000 ? { type: "gesture", text: r.text } : null;
     default: return null;
   }
 }
@@ -275,10 +278,10 @@ export function coerceProposal(raw: unknown): Action | null {
 /** Просит ИИ предложить действие и применяет его по обычным правилам. */
 export async function resolveWithAi(
   world: WorldData, state: GameState, playerText: string, proposer: ActionProposer
-): Promise<ActionResult> {
+): Promise<ActionResult & { action?: Action }> {
   let raw: unknown;
   try {
-    raw = await proposer.propose(buildPlayerContext(world, state, 10, playerText), playerText);
+    raw = await proposer.propose(buildIntentContext(world, state, playerText, allowedActionsFor(state)), playerText);
   } catch {
     return { state, ok: false, message: "ИИ недоступен. Мир не изменился.", events: [] };
   }
@@ -286,5 +289,5 @@ export async function resolveWithAi(
   if (!action) return { state, ok: false, message: "ИИ предложил недопустимое действие. Мир не изменился.", events: [] };
   const key = action.type === "infant" ? `infant:${action.act}` : action.type;
   if (!allowedActionsFor(state).includes(key)) return { state, ok: false, message: "ИИ предложил действие, недоступное персонажу в этом возрасте. Мир не изменился.", events: [] };
-  return applyAction(world, state, action);
+  return { ...applyAction(world, state, action), action };
 }

@@ -41,7 +41,7 @@ describe("validateWorld", () => {
     const w = clone();
     w.startLocationId = "nowhere";
     w.locations.square!.exits.push({ to: "moon", distanceM: 100, terrain: "road" });
-    w.locations.tavern!.exits = [];                   // с площади в таверну есть, обратно — нет
+    w.locations.tavern!.exits = [];                   // с площади в таверну есть, обратно: нет
     expect(validateWorld(w).length).toBeGreaterThanOrEqual(3);
   });
   it("catches different distances in each direction and bad numbers", () => {

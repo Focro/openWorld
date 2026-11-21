@@ -78,10 +78,13 @@ describe("Veloria on the engine", () => {
     expect(p.ok).toBe(true);
     if (p.ok) expect(p.action).toEqual({ type: "move", to: "grey-fox" });
   });
-  it("a fictional road with no exit stays impossible", () => {
+  it("a fictional road with no exit stays impossible, a real one is walked step by step", () => {
     const w = world();
     const s = createInitialState(w);
-    expect(applyAction(w, s, { type: "move", to: "smithy" }).ok).toBe(false);
+    expect(applyAction(w, s, { type: "move", to: "no-such-place" }).ok).toBe(false);
+    const far = applyAction(w, s, { type: "move", to: "smithy" });
+    expect(far.ok).toBe(true);
+    expect(far.state.minute - s.minute).toBeGreaterThan(2);
   });
 });
 

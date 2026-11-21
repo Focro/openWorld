@@ -2,11 +2,11 @@
  * Королевский двор Рейнаров в Коронхольме: дворцовые локации, члены семьи как NPC,
  * их расписания по возрасту и хронология кампании второго принца.
  *
- * Канон (см. docs/veloria и nobleHouses.ts): Альдрен — 722 КЛ, второй принц — 723 КЛ,
- * Марен — 724 КЛ, Элиза — 726 КЛ, Орен — 727 КЛ, смерть матери второго принца — 725 КЛ
+ * Канон (см. docs/veloria и nobleHouses.ts): Альдрен: 722 КЛ, второй принц: 723 КЛ,
+ * Марен: 724 КЛ, Элиза: 726 КЛ, Орен: 727 КЛ, смерть матери второго принца: 725 КЛ
  * (причина не установлена), Элиана III становится королевой в 735 КЛ.
  *
- * Канон фиксирует только ГОДЫ. Точные дни внутри года — проектное допущение
+ * Канон фиксирует только ГОДЫ. Точные дни внутри года: проектное допущение
  * (provenance: "canon-date-assumed"), а не канонический факт.
  */
 import type { LocationDef, NpcDef, ScheduleEntry, ScheduledWorldEvent } from "../../engine/types";
@@ -30,12 +30,12 @@ export const REYNAR_ASSUMED_BIRTH_DAYS: Record<string, { year: number; day: numb
 };
 
 export const PALACE_LOCATIONS: LocationDef[] = [
-  { id: "rey:royal-nursery", name: "Коронхольм — королевская детская", description: "Тихая комната во внутреннем крыле дворца. Здесь находятся дети королевского дома и их воспитатели.", exits: [{ to: "rey:royal-corridor", distanceM: 25, terrain: "street" }] },
-  { id: "rey:royal-chamber", name: "Коронхольм — покои королевской семьи", description: "Частные покои Элианы и Гарена. Семейные разногласия скрываются за придворным этикетом.", exits: [{ to: "rey:royal-corridor", distanceM: 30, terrain: "street" }] },
-  { id: "rey:royal-corridor", name: "Коронхольм — внутренний коридор", description: "Коридор соединяет детскую, покои семьи, классную комнату и внутренний двор. Стража следит, кто проходит дальше.", exits: [{ to: "rey:royal-nursery", distanceM: 25, terrain: "street" }, { to: "rey:royal-chamber", distanceM: 30, terrain: "street" }, { to: "rey:schoolroom", distanceM: 40, terrain: "street" }, { to: "rey:palace-courtyard", distanceM: 60, terrain: "street" }] },
+  { id: "rey:royal-nursery", name: "Коронхольм, королевская детская", description: "Тихая комната во внутреннем крыле дворца. Здесь находятся дети королевского дома и их воспитатели.", exits: [{ to: "rey:royal-corridor", distanceM: 25, terrain: "street" }] },
+  { id: "rey:royal-chamber", name: "Коронхольм, покои королевской семьи", description: "Частные покои Элианы и Гарена. Семейные разногласия скрываются за придворным этикетом.", exits: [{ to: "rey:royal-corridor", distanceM: 30, terrain: "street" }] },
+  { id: "rey:royal-corridor", name: "Коронхольм, внутренний коридор", description: "Коридор соединяет детскую, покои семьи, классную комнату и внутренний двор. Стража следит, кто проходит дальше.", exits: [{ to: "rey:royal-nursery", distanceM: 25, terrain: "street" }, { to: "rey:royal-chamber", distanceM: 30, terrain: "street" }, { to: "rey:schoolroom", distanceM: 40, terrain: "street" }, { to: "rey:palace-courtyard", distanceM: 60, terrain: "street" }] },
   // Проектная локация 0.13.0: место уроков детей двора. Не меняет канон дворца, только детализирует его.
-  { id: "rey:schoolroom", name: "Коронхольм — классная комната", description: "Светлая комната с картами, грифельными досками и полками книг. Здесь детей двора учат грамоте, счёту, истории и этикету.", exits: [{ to: "rey:royal-corridor", distanceM: 40, terrain: "street" }] },
-  { id: "rey:palace-courtyard", name: "Коронхольм — внутренний двор", description: "Закрытый двор между жилым крылом и главными воротами. Отсюда можно попасть к городской площади.", exits: [{ to: "rey:royal-corridor", distanceM: 60, terrain: "street" }, { to: "atlas:koronholm:square", distanceM: 180, terrain: "street" }] }
+  { id: "rey:schoolroom", name: "Коронхольм, классная комната", description: "Светлая комната с картами, грифельными досками и полками книг. Здесь детей двора учат грамоте, счёту, истории и этикету.", exits: [{ to: "rey:royal-corridor", distanceM: 40, terrain: "street" }] },
+  { id: "rey:palace-courtyard", name: "Коронхольм, внутренний двор", description: "Закрытый двор между жилым крылом и главными воротами. Отсюда можно попасть к городской площади.", exits: [{ to: "rey:royal-corridor", distanceM: 60, terrain: "street" }, { to: "atlas:koronholm:square", distanceM: 180, terrain: "street" }] }
 ];
 
 const NURSERY = "rey:royal-nursery", CHAMBER = "rey:royal-chamber", SCHOOL = "rey:schoolroom", COURTYARD = "rey:palace-courtyard";
@@ -72,7 +72,7 @@ function courtChild(id: string, startYearKL: number): NpcDef | null {
 }
 
 /**
- * Собирает двор. Если игрок — второй принц, его NPC-версия НЕ создаётся,
+ * Собирает двор. Если игрок: второй принц, его NPC-версия НЕ создаётся,
  * а младшие дети рождаются по ходу кампании через запланированные события.
  */
 export function buildReynarCourt(playerIsSecondPrince: boolean, startYearKL: number): ReynarCourt {
@@ -131,14 +131,14 @@ export function buildReynarCourt(playerIsSecondPrince: boolean, startYearKL: num
       return { id: `reynar:birth:${id}`, minute: minuteOfKL(birth.year, birth.day, startYearKL, 6 * 60), locationId: CHAMBER, text, npcBirthId: id, provenance: "canon-date-assumed" };
     };
     events.push(
-      birthEvent("rey-maren", "В 724 КЛ у принцессы Элианы и Гарена Вальда родилась дочь — Марен Рейнар."),
+      birthEvent("rey-maren", "В 724 КЛ у принцессы Элианы и Гарена Вальда родилась дочь: Марен Рейнар."),
       {
         id: "reynar:death:rey-second-prince-mother", minute: 2 * YEAR + 8 * 60 + 10, locationId: NURSERY,
         text: "В 725 КЛ мать второго принца умерла. Причина смерти не установлена; двор ограничился кратким официальным сообщением.",
         npcDeathId: "rey-second-prince-mother", provenance: "canon-date-assumed"
       },
-      birthEvent("rey-fourth-princess", "В 726 КЛ у принцессы Элианы и Гарена Вальда родилась дочь — Элиза Рейнар."),
-      birthEvent("rey-oren", "В 727 КЛ у принцессы Элианы и Гарена Вальда родился сын — Орен Рейнар."),
+      birthEvent("rey-fourth-princess", "В 726 КЛ у принцессы Элианы и Гарена Вальда родилась дочь: Элиза Рейнар."),
+      birthEvent("rey-oren", "В 727 КЛ у принцессы Элианы и Гарена Вальда родился сын: Орен Рейнар."),
       {
         id: "reynar:accession:rey-elin", minute: minuteOfKL(735, 120, startYearKL, 10 * 60), locationId: CHAMBER,
         // Обстоятельства передачи власти в каноне не описаны и намеренно не выдумываются.
