@@ -117,7 +117,7 @@ export interface SceneContext {
   here: string;
   /** Кто говорит с NPC: имя и возраст или этап жизни. */
   me: string;
-  npcs: Array<{ id: string; name: string; who?: string; talk: string; rel: string; mem?: string[] }>;
+  npcs: Array<{ id: string; name: string; who?: string; talk: string; rel: string; mem?: string[]; wants?: string; moral?: string }>;
   /** Последние события и реплики в этом месте: для связности разговора. */
   recent: string[];
   /** Кому игрок обращается, если это понятно из текста. */
@@ -127,6 +127,21 @@ export interface SceneContext {
   event: SceneEvent;
   /** Описание места: только при осмотре и приходе, чтобы повествование было предметным. */
   place?: string;
+  /** Лицо повествования, которое выбрал игрок: "2" (вы) или "3" (по имени). */
+  voice: NarrationPerson;
+  /** Разрешены ли откровенные сцены между взрослыми (вход 18+ и отдельный переключатель). */
+  adult: boolean;
+  /** В сцене есть несовершеннолетние (герой или люди рядом): сексуальное полностью исключено. */
+  minors?: true;
+}
+export type NarrationPerson = "2" | "3";
+export const isNarrationPerson = (value: string): value is NarrationPerson => value === "2" || value === "3";
+export interface SceneOptions { lang?: GameLanguage; event?: SceneEvent; person?: NarrationPerson; adult?: boolean; maxNpcs?: number }
+
+/** Возраст героя в годах: с рождения по развитию, иначе по анкете. */
+export function heroAgeYears(state: GameState): number | undefined {
+  if (state.development) return Math.floor((state.minute - state.development.birthMinute) / MINUTES_PER_YEAR);
+  return state.playerProfile?.age;
 }
 export type SceneEvent = "speech" | "gesture" | "infant" | "look" | "arrival";
 
@@ -141,7 +156,8 @@ export function addressedNpc(world: WorldData, ids: string[], text: string): str
   });
 }
 
-export function buildSceneContext(world: WorldData, state: GameState, playerText: string, lang: GameLanguage = "ru", event: SceneEvent = "speech", maxNpcs = 6): SceneContext {
+export function buildSceneContext(world: WorldData, state: GameState, playerText: string, options: SceneOptions = {}): SceneContext {
+  const { lang = "ru", event = "speech", person = "2", maxNpcs = 6 } = options;
   const loc = world.locations[state.playerLocation]!;
   const present = npcsAt(world, state.minute, loc.id, state.npcDeaths);
   const to = addressedNpc(world, present, playerText);
@@ -151,6 +167,9 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
   const recentEntries = state.chronicle.filter(event => event.locationId === loc.id).slice(-4);
   const recentIds = new Set(recentEntries.map(event => event.id));
   const facts = buildTriggeredKnowledge(world, state, playerText);
+  // Несовершеннолетний герой или ребёнок рядом исключают любые сексуальные сцены, что бы ни выбрал игрок.
+  const heroAge = heroAgeYears(state);
+  const minors = (heroAge !== undefined && heroAge < 18) || chosen.some(id => { const a = npcAgeYears(world.npcs[id]!, state); return a !== undefined && a < 18; });
   const age = state.development ? `${capabilities(state.development, state.minute).stage.label}, ${formatAge(state.development, state.minute)}` : `${state.playerProfile?.age ?? "взрослый"}${state.playerProfile?.age ? " лет" : ""}`;
   return {
     lang,
@@ -166,26 +185,34 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
         ...(who ? { who } : {}),
         talk: speechProfile(world, state, id),
         rel: state.relations[id] ? describeAttitude(state.relations[id]!) : "незнаком",
-        ...(memories.length ? { mem: memories } : {})
+        ...(memories.length ? { mem: memories } : {}),
+        ...(npc.goals[0] ? { wants: trim(npc.goals[0], 90) } : {}),
+        ...(() => { const values = deriveNpcPersonality(npc).values.slice(0, 2); return values.length ? { moral: values.join(", ") } : {}; })()
       };
     }),
     recent: recentEntries.map(event => trim(event.text, 160)),
     ...(to ? { to } : {}),
     ...(facts.length ? { facts } : {}),
     event,
-    ...(event === "look" || event === "arrival" ? { place: trim(loc.description, 600) } : {})
+    ...(event === "look" || event === "arrival" ? { place: trim(loc.description, 600) } : {}),
+    voice: person,
+    adult: options.adult === true && !minors,
+    ...(minors ? { minors: true as const } : {})
   };
 }
 
 export const SCENE_PROTOCOL = "openworld-scene-v1";
 /** Стабильные инструкции сцены: одинаковы между ходами, поэтому кэшируются у провайдеров. */
 export const SCENE_INSTRUCTIONS = [
-  "Ты рассказчик и голоса людей в текстовой RPG. Игрок сделал ход (playerText, event), ты описываешь, как откликается мир.",
-  "ГЛАВНЫЙ ЗАПРЕТ: ты никогда не пишешь за героя игрока (me). Не описываешь его слова, действия, мысли, чувства, ощущения, решения и реакции, не пишешь «вы почувствовали», «вы улыбнулись», «ты решаешь». Герой делает и чувствует только то, что написал игрок. Ты пишешь только мир и других людей и останавливаешься там, где герою пора действовать.",
-  "narration: литературное повествование, развёрнутое и образное: место, свет, звуки, запахи, что делают люди вокруг, их жесты и выражения лиц. При event look или arrival подробно опиши место по place. Несколько абзацев допустимы, если сцене есть что показать.",
-  "replies: живые реплики людей рядом. У каждого свой голос по talk (возраст, характер, сословие, край): ребёнок говорит как ребёнок, старик как старик, стражник не как торговка. Разговорная речь, оговорки, недосказанность, никакой одинаковой вежливости. Длина по характеру: болтун говорит много, молчун мало.",
-  "Говорит тот, кому есть что сказать; если обратились по имени (to), отвечает он. Можно молчать, если человеку не до того. rel: отношение к игроку, mem: что человек помнит. Не выдумывай общего прошлого и фактов о мире сверх facts и recent.",
-  "Не меняй мир: никто не отдаёт вещи, не называет новых цен, не уходит, не нападает и не умирает. Последствия решает движок.",
+  "Ты рассказчик и голоса людей в текстовой RPG для взрослых. Игрок сделал ход (playerText, event), ты описываешь, как откликается мир.",
+  "ГЛАВНЫЙ ЗАПРЕТ: ты никогда не пишешь за героя игрока (me). Не описываешь его слова, действия, мысли, чувства, ощущения, решения и реакции, не пишешь «вы почувствовали», «вы улыбнулись», «ты решаешь», «он кивнул». Герой делает и чувствует только то, что написал игрок. Ты пишешь только мир и других людей и останавливаешься там, где герою пора действовать.",
+  "voice: лицо повествования. \"2\": обращайся к герою на «вы» (you). \"3\": называй героя по имени или он/она. В обоих случаях герой только объект чужих действий и взглядов.",
+  "narration: литературное повествование, развёрнутое и образное: место, свет, звуки, запахи, что делают люди вокруг, их жесты и лица. При event look или arrival и при коротком ходе игрока подробно раскрой путь, место (place) и окружение, но ничего не решай за героя. Несколько абзацев допустимы.",
+  "replies: живые реплики людей рядом. У каждого свой голос по talk (возраст, характер, сословие, край): ребёнок говорит как ребёнок, старик как старик, стражник не как торговка. Разговорная речь, оговорки, недосказанность, ругань и мат там, где это в характере. Длина по характеру.",
+  "Люди живут своей жизнью и не подстраиваются под героя. У каждого свои цели (wants, их не раскрывают прямо) и своя мораль (moral), у кого-то её почти нет. Люди могут врать, отказывать, грубить, ссориться, торговаться, манипулировать, использовать чувства героя и предавать, угрожать и действовать ради выгоды. Не смягчай. Герой для них такой же человек, как все.",
+  "Говорит тот, кому есть что сказать; если обратились по имени (to), отвечает он. rel: отношение к игроку, mem: что человек помнит. Не выдумывай общего прошлого и фактов о мире сверх facts и recent.",
+  "Тяжёлые поступки (удар, кража, ранение, убийство, передача вещей) люди могут замыслить, начать и пригрозить ими, но итог решает движок: опиши намерение и начало и остановись до результата. Новых цен не называй.",
+  "Взрослые темы: насилие, жестокость, интриги, грубость допустимы. Откровенная сексуальная сцена только если adult true и все участники взрослые; при adult false близость обозначается и уходит за кадр. Если minors true, никакого сексуального и романтически-телесного содержания вообще. Сексуальное насилие может существовать в мире как факт, слух или угроза, но никогда не описывается.",
   "Пиши на языке lang (ru или en). Не используй длинное тире."
 ];
 
@@ -237,8 +264,22 @@ export function removeHeroActions(text: string, playerName = ""): { text: string
   return { text: kept.trim(), removed };
 }
 
+const SEXUAL = /секс|совокуп|оргазм|эрекц|возбужд[её]нн?(ый|ая|ое|ые)\s+(член|плот)|половой акт|соитие|обнаж[её]нн?(ая|ой)\s+груд|ласка[а-яё]*\s+(е[её]|его)?\s*(груд|бёдр|бедр|лон)|стон[а-яё]*\s+от\s+(страст|наслажд)|\bsex\b|orgasm|erection|intercourse|naked breast|moan[a-z]* (with|in) pleasure/i;
+
+/** Убирает сексуальные описания, когда они запрещены (несовершеннолетние в сцене или взрослый режим выключен). */
+export function removeSexualContent(text: string): { text: string; removed: number } {
+  let removed = 0;
+  const kept = text.split(/\n+/).map(paragraph => sentences(paragraph).filter(sentence => {
+    const bad = SEXUAL.test(sentence);
+    if (bad) removed++;
+    return !bad;
+  }).join(" ")).filter(paragraph => paragraph.trim()).join("\n\n");
+  return { text: kept.trim(), removed };
+}
+
 /** Приводит ответ модели к сцене: говорят только присутствующие, за героя никто не решает, без длинных тире. */
-export function coerceScene(raw: unknown, speakers: string[], playerName = ""): Scene | null {
+export function coerceScene(raw: unknown, speakers: string[], playerName = "", allowSexual = false): Scene | null {
+  const clean = (text: string) => allowSexual ? text : removeSexualContent(text).text;
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as { replies?: unknown; narration?: unknown };
   const replies: SceneReply[] = [];
@@ -246,10 +287,10 @@ export function coerceScene(raw: unknown, speakers: string[], playerName = ""): 
     if (replies.length >= MAX_SCENE_REPLIES) break;
     const entry = item as { npc?: unknown; text?: unknown };
     if (typeof entry?.npc !== "string" || !speakers.includes(entry.npc) || typeof entry.text !== "string") continue;
-    const text = stripDashes(entry.text.trim()).replace(/^["«]+|["»]+$/g, "").slice(0, MAX_REPLY_CHARS);
+    const text = clean(stripDashes(entry.text.trim())).replace(/^["«]+|["»]+$/g, "").slice(0, MAX_REPLY_CHARS);
     if (text) replies.push({ npcId: entry.npc, text });
   }
-  const narration = typeof r.narration === "string" ? removeHeroActions(stripDashes(r.narration.trim()), playerName).text.slice(0, MAX_NARRATION_CHARS) : "";
+  const narration = typeof r.narration === "string" ? clean(removeHeroActions(stripDashes(r.narration.trim()), playerName).text).slice(0, MAX_NARRATION_CHARS) : "";
   if (!replies.length && !narration) return null;
   return narration ? { replies, narration } : { replies };
 }
