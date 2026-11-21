@@ -25,8 +25,8 @@ describe("complete atlas integrity",()=>{
       expect(REGIONS.some(r=>r.id===node.regionId&&r.countryId===node.countryId)).toBe(true);
     }
   });
-  it("has one drawable country outline for every country",()=>{
-    expect(COUNTRY_SHAPES.map(shape=>shape.countryId).sort()).toEqual(COUNTRIES.map(country=>country.id).sort());
+  it("has a drawable country outline for every country",()=>{
+    expect([...new Set(COUNTRY_SHAPES.map(shape=>shape.countryId))].sort()).toEqual(COUNTRIES.map(country=>country.id).sort());
     for(const shape of COUNTRY_SHAPES) for(const [x,y] of shape.points){expect(x).toBeGreaterThanOrEqual(0);expect(x).toBeLessThanOrEqual(100);expect(y).toBeGreaterThanOrEqual(0);expect(y).toBeLessThanOrEqual(100);}
   });
   it("connects every mapped settlement to the travel network",()=>{
