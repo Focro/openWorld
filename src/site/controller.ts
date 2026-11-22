@@ -271,12 +271,30 @@ function born() {
   reset("gamePhone");
 }
 
+/** Как ребёнок зовёт родных в повествовании: «Мама», «Папа», «Бабушка»; имя остаётся в «Людях». */
+function kinWord(id: string): string | undefined {
+  const role = /^([^:;]{1,40}):/.exec(world().npcs[id]?.personality?.temperament ?? "")?.[1]?.trim() ?? "";
+  return role === "мать" ? "Мама" : role === "отец" ? "Папа" : role === "бабушка" ? "Бабушка" : role === "дедушка" ? "Дедушка" : undefined;
+}
+/** Порядок близких: родители и опекуны, бабушки и деды, братья и сёстры, дяди и тёти, прислуга, потом друзья и соседи. */
+function kinRank(p: { id: string; role?: string; family: boolean }): number {
+  const r = p.role ?? "", fr = world().npcs[p.id]?.familyRole;
+  if (!p.family) return 9;
+  if (fr === "biological-parent" || fr === "guardian") return 0;
+  if (/^(бабушка|дедушка)/.test(r)) return 1;
+  if (/(брат|сестра)$/.test(r) && !/приют/.test(r)) return 2;
+  if (/^(дядя|тётя)/.test(r)) return 3;
+  if (/^(кормилица|няня|управляющий)/.test(r)) return 4;
+  return 5;
+}
+const byKin = <T extends { id: string; role?: string; family: boolean }>(list: T[]) => list.map((p, i) => ({ p, i })).sort((a, b) => kinRank(a.p) - kinRank(b.p) || a.i - b.i).map(x => x.p);
+
 /** Первая сцена прозой: время суток, дом, кто рядом. Без выходов и расстояний, они во вкладке «Мир». */
 function openingScene(g: GameState): string {
   const w = world(), loc = w.locations[g.playerLocation];
   const near = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths).map(id => ({ npc: w.npcs[id]!, act: npcActivity(w, id, g.minute, g.npcDeaths) }))
     .filter(x => x.npc.familyRole || x.npc.id.startsWith("birth-family-")).slice(0, 3);
-  const who = near.map(x => `${x.npc.familyRole === "guardian" ? x.npc.name : x.npc.name.split(" ")[0]} ${x.act}.`);
+  const who = near.map(x => `${kinWord(x.npc.id) ?? (x.npc.familyRole === "guardian" ? x.npc.name : x.npc.name.split(" ")[0])} ${x.act}.`);
   return [cap(partOfDay(g.minute)) + ".", loc?.description ?? "", ...who].filter(Boolean).join(" ");
 }
 
@@ -401,7 +419,7 @@ function renderChar() {
   $("stageT").textContent = `${caps.stage.label} · ${ageWord()}`;
   qa($("stageTrack"), "i").forEach((t, i) => { t.className = i <= idx ? "done" : ""; });
   $("charLook").textContent = heroLook();
-  const people = knownPeople(world(), game).filter(p => p.alive).slice(0, 8);
+  const people = byKin(knownPeople(world(), game).filter(p => p.alive)).slice(0, 8);
   const ppl = $("charS").querySelector(".ppl") as HTMLElement;
   ppl.innerHTML = people.map(p => `<div class="person"><span class="a" style="background:var(--surface2);color:var(--muted)">${esc(p.name.charAt(0))}</span><div><b>${esc(p.name)}</b><span>${esc([p.role, p.age !== undefined ? ageText(p.age) : ""].filter(Boolean).join(", "))}</span>${p.about ? `<p class="pd">${esc(p.about)}</p>` : ""}</div>${p.role ? `<span class="heart ${p.family ? "h-good" : "h-mid"}">${esc(p.role.split(/[,:]/)[0]!)}</span>` : ""}</div>`).join("");
   (ppl.closest(".card") as HTMLElement).hidden = !people.length;
@@ -496,8 +514,8 @@ function renderMemory() {
     h += more ? `<details class="mi"><summary>${esc(head)}</summary><p class="more">${esc(more)}</p></details>` : `<details class="mi"><summary>${esc(head)}</summary></details>`;
   }
   $("memD").innerHTML = h;
-  const people = knownPeople(world(), game).filter(p => !q || `${p.name} ${p.role ?? ""} ${p.nature ?? ""} ${p.looks ?? ""}`.toLocaleLowerCase("ru").includes(q));
-  $("memP").innerHTML = people.map(p => `<div class="pm"><b>${esc(p.role ? `${p.name}, ${p.role.split(/[,:]/)[0]}` : p.name)}</b>${p.role ? `<span class="heart ${p.family ? "h-good" : "h-mid"}">${esc(p.role.split(/[,:]/)[0]!)}</span>` : ""}<p>${esc(p.alive ? [p.about, p.nature ? `${cap(p.nature)}.` : ""].filter(Boolean).join(" ") : "Его уже нет в живых.")}</p></div>`).join("");
+  const people = byKin(knownPeople(world(), game)).filter(p => !q || `${p.name} ${p.role ?? ""} ${p.nature ?? ""} ${p.looks ?? ""}`.toLocaleLowerCase("ru").includes(q));
+  $("memP").innerHTML = people.map(p => `<div class="pm"><b>${esc(p.role ? `${p.name}, ${p.role.split(/[,:]/)[0]}` : p.name)}</b>${p.role ? `<span class="heart ${p.family ? "h-good" : "h-mid"}">${esc(p.role.split(/[,:]/)[0]!)}</span>` : ""}<p>${esc(p.alive ? [p.about, p.nature && !(p.about ?? "").toLocaleLowerCase("ru").includes(p.nature.split(/[,;]/)[0]!.toLocaleLowerCase("ru")) ? `${cap(p.nature)}.` : ""].filter(Boolean).join(" ") : "Его уже нет в живых.")}</p></div>`).join("");
 }
 
 // ===================== меню, жизни, настройки =====================
