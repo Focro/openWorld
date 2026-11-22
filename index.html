@@ -609,6 +609,18 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
 #app .person .pd{margin:3px 0 0;font-size:12.5px;line-height:1.45;color:var(--fg);opacity:.85}
 #app .person{align-items:flex-start}#app .person .heart{margin-top:2px}
 #site .loginErr{margin:0;text-align:center;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:var(--r-md);padding:9px 12px}
+#app .cont,#app .life{position:relative}
+#app .trash{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:0;background:transparent;color:inherit;opacity:.7;display:grid;place-items:center;cursor:pointer;padding:0}
+#app .trash svg{width:17px;height:17px}
+#app .trash:hover{opacity:1;background:rgba(0,0,0,.08)}
+#app .life .trash{color:var(--muted)}
+#app .life{padding-right:44px}
+#app .life .btn.sm2{margin-right:4px}
+#app #delShade{position:fixed;z-index:30}
+#app .delic{background:var(--warn-soft)!important;color:var(--warn)!important}
+#app .btn.danger{background:#B3412E;color:#fff;border-color:transparent}
+#app .trash{z-index:2}
+#app .aiNote a{color:var(--accent);font-weight:600;text-decoration:none}
 
 </style></head><body>
 <div id="site">
@@ -998,6 +1010,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
           </div>
           <div class="foot"><button class="btn primary" type="button" id="aiGo">Подтвердить</button></div>
         </section>
+<div class="shade" id="delShade" hidden data-act="delNo"></div>
+<div class="pinsheet" id="delSheet" hidden role="dialog" aria-label="Удалить мир"><div class="grab"></div><span class="pinic delic"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></span><b id="delT">Удалить жизнь?</b><p>Сохранение, дневник и хроника этой жизни исчезнут навсегда. Вернуть их будет нельзя.</p><button class="btn danger" type="button" data-act="delYes">Удалить навсегда</button><button class="btn" type="button" data-act="delNo">Отмена</button></div>
 <div class="shade" id="pinShade" hidden data-act="pinClose"></div>
 <div class="pinsheet" id="pinSheet" hidden role="dialog" aria-label="PIN-код"><div class="grab"></div><span class="pinic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg></span><b>Введи PIN-код</b><p>Ключ ИИ на этом устройстве закрыт PIN-кодом.</p><input class="field2 pin" id="pinIn" inputmode="numeric" maxlength="6" type="password" autocomplete="off" aria-label="PIN-код"><p class="pinerr" id="pinErr" hidden></p><button class="btn primary" type="button" data-act="pinOk">Открыть</button><a href="#" class="pinpw" data-go="aiS" data-act="pinClose">Ввести пароль</a></div>
 </div>

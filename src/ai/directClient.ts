@@ -20,7 +20,7 @@ type Envelope = { protocol?: string; systemInstructions: string[]; context?: unk
 const isScene = (e: Envelope) => e.protocol === SCENE_PROTOCOL;
 function systemPrompt(e: Envelope): string {
   return [...e.systemInstructions, isScene(e)
-    ? "Ответь ТОЛЬКО одним JSON-объектом: {\"replies\":[{\"npc\":\"id\",\"text\":\"...\"}],\"narration\":\"...\"}. npc берётся только из speakers."
+    ? "Ответь ТОЛЬКО одним JSON-объектом: {\"replies\":[{\"npc\":\"id\",\"text\":\"...\"}],\"narration\":\"...\"}. npc берётся только из speakers. narration: 2-4 коротких литературных предложения, не больше 600 знаков. Контекст служебный: не пересказывай его, не перечисляй людей списком, не пиши скобок, пометок и описаний распорядка. Не пиши за героя."
     : "Ответь ТОЛЬКО одним JSON-объектом без пояснений. Поле \"type\" обязательно и берётся из списка acts / allowedActions. Если намерение невозможно по возрасту, месту или фактам, верни {\"type\":\"look\"}."].join("\n");
 }
 function firstJson(text: string): unknown {
@@ -67,7 +67,7 @@ export async function callModel(provider: AiProviderId, key: string, model: stri
 export class DirectAi implements ActionProposer, SceneWriter {
   constructor(private readonly provider: AiProviderId, private readonly key: string, private readonly model: string, private readonly onUsage?: (u: { input: number; output: number }) => void) {}
   propose(context: IntentContext, playerText: string) { return this.ask(buildIntentEnvelope(context, playerText) as Envelope, 200); }
-  writeScene(envelope: SceneEnvelope) { return this.ask(envelope as unknown as Envelope, 2000); }
+  writeScene(envelope: SceneEnvelope) { return this.ask(envelope as unknown as Envelope, 700); }
   private async ask(e: Envelope, maxTokens: number): Promise<unknown> {
     const r = await callModel(this.provider, this.key, this.model, systemPrompt(e), JSON.stringify({ context: e.context, playerText: e.playerText }), maxTokens);
     this.onUsage?.(r.usage);

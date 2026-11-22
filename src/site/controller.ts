@@ -32,8 +32,8 @@ import { FAITHS } from "../worlds/veloria/faiths";
 import { newLifeAttributes, NEW_LIFE_ATTRIBUTES, type VeloriaCharacterDraft } from "../worlds/veloria/character";
 import type { WorldDifficultyId } from "../worlds/veloria/difficulty";
 import { draftForOrigin } from "../ui/NewLifeWizard";
-import { readAutosave, writeAutosave } from "../ui/autosave";
-import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, fetchProfile, getCloud, getCloudKey, getCloudSave, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, signInWithGoogle, signOut, type Profile } from "../cloud/account";
+import { clearAutosave, readAutosave, writeAutosave } from "../ui/autosave";
+import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, deleteCloudSave, fetchProfile, getCloud, getCloudKey, getCloudSave, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, signInWithGoogle, signOut, type Profile } from "../cloud/account";
 import { UnlockedKeySession, decryptApiKey, encryptApiKey, loadVaultRecord, saveVaultRecord } from "../ai/keyVault";
 import { hasPin, isValidPin, pinTriesLeft, savePin, unlockWithPin } from "../ai/pinVault";
 import { DirectAi, DEFAULT_MODEL, AiError, callModel } from "../ai/directClient";
@@ -149,13 +149,23 @@ function renderStates() {
     list.forEach(x => { h += `<button class="opt" type="button" data-o="${x.id}" aria-pressed="${x.id === o.id}"><span class="oi">${ICO[g] ?? ICO_O}</span><span><b>${esc(x.label)}</b><span>${esc(x.blurb)}</span><em class="meta">${x.wealthHint === "бедно" ? "обычно бедно" : x.wealthHint === "скромно" ? "обычно скромно" : "обычно в достатке"}</em></span></button>`; });
   });
   $("origins").innerHTML = h;
-  qa($("sex"), "button").forEach(b => { b.setAttribute("aria-pressed", String((b.textContent!.trim() === "Девочка") === (draft.sex === "female"))); (b as HTMLButtonElement).disabled = !!o.fixed; });
+  qa($("sex"), "button").forEach(b => { b.setAttribute("aria-pressed", String((b.textContent!.trim() === "Девочка") === (draft.sex === "female")));  });
 }
 function chooseOrigin(o: BirthOrigin) { draft = { ...draftForOrigin(draft, o), familySeed: draft.familySeed }; line = 50; }
 function renderFamily() {
   const f = family(), p = f.preview;
-  $("famLead").textContent = (o => o.fixed ? f.summary : p?.summary ?? "")(origin());
   const fm = (name: string, em: string, text: string) => `<div class="fm"><div><b>${esc(name)} <em>${esc(em)}</em></b><span>${esc(text)}</span></div></div>`;
+  if (origin().fixed) {
+    $("famLead").textContent = `Ты родишься в королевской детской Коронхольма, ${draft.sex === "female" ? "второй дочерью" : "вторым сыном"} при дворе дома Рейнар.`;
+    $("famList").innerHTML = fm("Гарен Вальд, отец", "", `Супруг принцессы Элианы. Признал тебя своим ${draft.sex === "female" ? "ребёнком" : "сыном"}.`)
+      + fm("Мать", "", "Родом из далёкой восточной земли. Её имени при дворе не называют.")
+      + fm("Элиана Рейнар, жена отца", "", "Наследница престола. Тебе она не мать и держится с тобой холодно.")
+      + fm(draft.sex === "female" ? "Альдрен Рейнар, брат по отцу" : "Альдрен Рейнар, брат по отцу", yrs(1), "Кронпринц, первый наследник.")
+      + fm("Мейра, кормилица", yrs(43), "Будет растить тебя в детской.");
+    $("famFriends").hidden = true;
+    return;
+  }
+  $("famLead").textContent = p?.summary ?? "";
   $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.from ? ` Родом из ${m.from}.` : ""}${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
   const friends = p?.friends ?? [];
   $("famFriends").hidden = !friends.length;
@@ -184,25 +194,24 @@ function lookState() {
   const opts = kin.length ? kinOptions(kin) : null, region = regionOptions(origin().stateId);
   const base = kin.length ? lookFromLine(kin, line, draft.familySeed ?? "") : null;
   const list = (k: LookKey): Array<{ value: unknown; from: KinMember[] }> => opts ? opts[k] as Array<{ value: unknown; from: KinMember[] }> : (region[k] as unknown[]).map(value => ({ value, from: [] }));
-  const cur = (k: LookKey): unknown => (draft as unknown as Record<string, unknown>)[k] ?? base?.[k] ?? list(k)[0]?.value;
+  const cur = (k: LookKey): unknown => { const v = (draft as unknown as Record<string, unknown>)[k]; return (v !== undefined && list(k).some(o => o.value === v) ? v : undefined) ?? base?.[k] ?? list(k)[0]?.value; };
   const marks: KinMark[] = draft.marks ?? base?.marks ?? [];
   const markList: Array<{ value: KinMark; from: KinMember[] }> = opts ? opts.marks : region.marks.map(value => ({ value, from: [] }));
   return { kin, list, cur, marks, markList };
 }
 function lookText(): string {
-  if (origin().fixed) return "Кожа светлая. Волосы светло-русые, прямые. Глаза тёмно-карие. Лицо с восточными чертами.";
   const { cur, marks } = lookState(), f = draft.sex === "female", h = cur("heightTendency");
   return `Кожа ${word("skinTone", cur("skinTone"))}. Волосы ${word("hairColor", cur("hairColor"))}, ${word("hairTexture", cur("hairTexture"))}. Глаза ${word("eyeColor", cur("eyeColor"))}. Лицо ${word("facialFeatures", cur("facialFeatures"))}, нос ${word("nose", cur("nose"))}, губы ${word("lips", cur("lips"))}, брови ${word("brows", cur("brows"))}. Вырастешь ${h === "short" ? (f ? "невысокой" : "невысоким") : h === "tall" ? (f ? "высокой" : "высоким") : "среднего роста"}, сложение ${word("bodyBuild", cur("bodyBuild"))}.${marks.length ? ` Приметы: ${marks.map(m => MARK[m]).join(", ")}.` : ""}`;
 }
 function renderLook() {
-  const prince = !!origin().fixed, s = lookState();
+  const prince = false, s = lookState();
   $("desc").innerHTML = `<span class="lbl">Каким ты будешь</span><p>${esc(lookText())}</p>`;
   ($("w4").querySelector(".like") as HTMLElement).hidden = prince || !s.kin.length;
   ($("likeR") as HTMLInputElement).value = String(line);
   const par = $("w4").querySelector(".parents") as HTMLElement;
   par.hidden = prince;
   if (s.kin.length) {
-    const named = (k: KinMember) => k.relation === "мама" || k.relation === "папа" ? `<b>${k.relation} ${esc(k.given)}</b>` : `${!k.alive ? (k.relation === "дед" ? "покойный дед" : "покойная бабушка") : k.relation} <b>${esc(k.given)}</b>`;
+    const named = (k: KinMember) => k.relation === "мама" || k.relation === "папа" ? `<b>${[k.relation, esc(k.given)].filter(Boolean).join(" ")}</b>` : `${!k.alive ? (k.relation === "дед" ? "покойный дед" : "покойная бабушка") : k.relation} <b>${esc(k.given)}</b>`;
     par.innerHTML = `Родные: ${s.kin.map(named).join(", ")}.`;
   } else par.textContent = "Родные неизвестны, поэтому черты берутся из обычных для твоего края.";
   const chips = (k: LookKey) => `<div class="chips">${s.list(k).map(o => `<button type="button" class="chip two" data-k="${k}" data-v="${esc(String(o.value))}" aria-pressed="${s.cur(k) === o.value}"><span>${esc(word(k, o.value))}</span>${o.from.length ? `<small>как у: ${esc(o.from.map(kinName).join(", "))}</small>` : ""}</button>`).join("")}</div>`;
@@ -219,7 +228,6 @@ function renderLook() {
   box.innerHTML = prince ? "" : secs.map((x, i) => `<details class="ap"${open[i] || (!open.length && i === 0) ? " open" : ""}><summary>${x[0]}<em>${esc(x[1])}</em></summary><div class="in">${x[2]}</div></details>`).join("");
 }
 function fixLook() {
-  if (origin().fixed) return;
   const s = lookState(), keysL: LookKey[] = ["skinTone", "hairColor", "hairTexture", "eyeColor", "facialFeatures", "nose", "lips", "brows", "heightTendency", "bodyBuild"];
   draft = { ...draft, ...Object.fromEntries(keysL.map(k => [k, s.cur(k)])), marks: s.marks } as Draft;
 }
@@ -231,15 +239,15 @@ function statWords(): string {
 }
 function renderSummary() {
   const nm = $("nm") as HTMLInputElement, o = origin(), f = family();
-  if (!nm.dataset.touched) nm.value = o.fixed ? draft.name : f.preview?.suggestedName ?? draft.name;
-  nm.disabled = !!o.fixed;
+  if (!nm.dataset.touched) nm.value = o.fixed ? (draft.sex === "female" ? "Рейна" : "Рейнар") : f.preview?.suggestedName ?? draft.name;
+  nm.disabled = false;
   const town = MAP_NODES.find(n => n.id === o.settlementId)?.name ?? "";
   const year = (o.fixed ? SECOND_PRINCE_START_YEAR : 742) - draft.age;
   const parents = (f.preview?.members ?? []).filter(m => m.role === "мать" || m.role === "отец").map(m => m.name.split(" ")[0]).join(" и ");
   const s = lookState();
   const row = (a: string, b: string) => `<div><span>${a}</span><b>${esc(b)}</b></div>`;
-  $("sumCard").innerHTML = row("Родится", `${town}, ${year} КЛ`) + row("Кто", o.label) + (parents ? row("Семья", parents) : "") + row("Начнёт", draft.age === 0 ? "с рождения" : `с ${yrs(draft.age)}`)
-    + (o.fixed ? "" : row("Внешность", `${word("hairColor", s.cur("hairColor"))} ${word("hairTexture", s.cur("hairTexture"))} волосы, глаза ${word("eyeColor", s.cur("eyeColor"))}`)) + row("Задатки", statWords());
+  $("sumCard").innerHTML = row("Родится", `${town}, ${year} КЛ`) + row("Кто", o.fixed && draft.sex === "female" ? "Вторая принцесса дома Рейнар" : o.label) + (parents ? row("Семья", parents) : "") + row("Начнёт", draft.age === 0 ? "с рождения" : `с ${yrs(draft.age)}`)
+    + (row("Внешность", `${word("hairColor", s.cur("hairColor"))} ${word("hairTexture", s.cur("hairTexture"))} волосы, глаза ${word("eyeColor", s.cur("eyeColor"))}`)) + row("Задатки", statWords());
 }
 function wizardNext() {
   const id = stack[stack.length - 1]!;
@@ -249,7 +257,7 @@ function wizardNext() {
     draft = { ...draft, age: origin().fixed ? 0 : age };
     difficulty = (["peaceful", "balanced", "harsh"] as WorldDifficultyId[])[diff] ?? "balanced";
   }
-  if (id === "w2") draft = { ...draft, sex: origin().fixed ? "male" : qa($("sex"), "button").find(b => b.getAttribute("aria-pressed") === "true")?.textContent!.trim() === "Девочка" ? "female" : "male" };
+  if (id === "w2") draft = { ...draft, sex: qa($("sex"), "button").find(b => b.getAttribute("aria-pressed") === "true")?.textContent!.trim() === "Девочка" ? "female" : "male" };
   if (id === "w4") fixLook();
   if (id === "w5") { const v = statLevels(); draft = { ...draft, attributes: newLifeAttributes(Object.fromEntries(NEW_LIFE_ATTRIBUTES.map((a, i) => [a, v[i] ?? 3]))) }; }
   const order = ["w1", "w2", "w3", "w4", "w5", "w6"], i = order.indexOf(id);
@@ -258,7 +266,7 @@ function wizardNext() {
 let difficulty: WorldDifficultyId = "balanced";
 function born() {
   const nm = ($("nm") as HTMLInputElement).value.trim();
-  if (!origin().fixed) draft = { ...draft, name: nm || family().preview?.suggestedName || draft.name };
+  draft = { ...draft, name: nm || family().preview?.suggestedName || draft.name };
   const prev = game?.lifeStatus === "dead" ? game : undefined;
   const result = startVeloriaCampaign({ kind: "veloria-character", draft, difficultyId: difficulty }, prev);
   if (!result.ok) { $("sumCard").insertAdjacentHTML("afterend", `<p class="err">${esc(result.errors.join(" "))}</p>`); return; }
@@ -273,6 +281,9 @@ function born() {
 
 /** Как ребёнок зовёт родных в повествовании: «Мама», «Папа», «Бабушка»; имя остаётся в «Людях». */
 function kinWord(id: string): string | undefined {
+  const npc = world().npcs[id];
+  if (npc?.caregiving?.role === "mother") return "Мама";
+  if (npc?.caregiving?.role === "father") return "Папа";
   const role = /^([^:;]{1,40}):/.exec(world().npcs[id]?.personality?.temperament ?? "")?.[1]?.trim() ?? "";
   return role === "мать" ? "Мама" : role === "отец" ? "Папа" : role === "бабушка" ? "Бабушка" : role === "дедушка" ? "Дедушка" : undefined;
 }
@@ -312,7 +323,7 @@ function lookScene(g: GameState): string {
   const w = world(), loc = w.locations[g.playerLocation];
   const known = new Set(knownPeople(w, g).map(p => p.id));
   const all = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths);
-  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths)}.`);
+  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name.split(",")[0] : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths).split(";")[0]!.replace(/\s*\([^)]*\)/g, "")}.`);
   const strangers = all.length - all.filter(id => known.has(id)).length;
   const exits = (loc?.exits ?? []).map(e => w.locations[e.to]?.name).filter(Boolean).map(n => n!.replace(/^[^:]+:\s*/, "").toLocaleLowerCase("ru"));
   return [
@@ -416,7 +427,7 @@ function run(textRaw: string) {
   busy = true; push([`> ${text}`]); renderGame();
   const snapshot = game;
   void resolveWithAi(w, snapshot, text, new CachingProposer(ai, () => recordUsage({ cacheHits: 1 }))).then(r => {
-    if (game === snapshot) { setGame(r.state); push(r.message.split("\n")); if (r.action && r.ok) sceneFor(r, r.action, text); }
+    if (game === snapshot) { setGame(r.state); push(r.action?.type === "look" && r.ok ? [lookScene(r.state)] : r.message.split("\n")); if (r.action && r.ok) sceneFor(r, r.action, text); }
   }, () => push(["Рассказчик сейчас не ответил. Мир не изменился."])).finally(() => { busy = false; renderGame(); });
 }
 function live(kind: string) {
@@ -547,7 +558,7 @@ function renderMenu() {
   let h = "";
   if (alive() && game) {
     const { town, loc } = here();
-    h += `<div class="cont"><span class="lbl" style="color:inherit;opacity:.8">Продолжить</span><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc(`${town?.name ?? ""}${town && town.id !== loc.id ? `, ${loc.name.toLocaleLowerCase("ru")}` : ""} · ${season(game.minute)} ${yearKLOf(game.minute, game.worldStartYearKL ?? 742)} КЛ`)}</span><button class="btn primary" type="button" data-act="play" style="margin-top:6px">Продолжить жизнь</button></div>`;
+    h += `<div class="cont"><button class="trash" type="button" data-act="delAsk" data-i="0" aria-label="Удалить мир" title="Удалить мир"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button><span class="lbl" style="color:inherit;opacity:.8">Продолжить</span><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc(`${town?.name ?? ""}${town && town.id !== loc.id ? `, ${loc.name.toLocaleLowerCase("ru")}` : ""} · ${season(game.minute)} ${yearKLOf(game.minute, game.worldStartYearKL ?? 742)} КЛ`)}</span><button class="btn primary" type="button" data-act="play" style="margin-top:6px">Продолжить жизнь</button></div>`;
   } else h += '<div class="menuHi"><b>С возвращением</b><span>Живого героя пока нет. Начни новую жизнь.</span></div>';
   h += `<button class="btn${alive() ? "" : " primary"}" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь</button>`;
   if (alive()) h += '<button class="btn ghost" type="button" data-go="livesS"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 4v5h6"/></svg>Мои жизни</button>';
@@ -558,7 +569,7 @@ function renderMenu() {
 let savedAt = "";
 function renderLives() {
   let h = '<span class="lbl">Велория</span>';
-  if (alive() && game) h += `<div class="life"><div><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc([heroOrigin()?.label, BIRTH_STATES.find(s => s.id === heroOrigin()?.stateId)?.name].filter(Boolean).join(" · "))}</span><span class="saved">Сохранено ${esc(savedAt || "только что")}</span></div><button class="btn primary sm2" type="button" data-act="play">Продолжить</button></div>`;
+  if (alive() && game) h += `<div class="life"><button class="trash" type="button" data-act="delAsk" data-i="0" aria-label="Удалить мир" title="Удалить мир"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button><div><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc([heroOrigin()?.label, BIRTH_STATES.find(s => s.id === heroOrigin()?.stateId)?.name].filter(Boolean).join(" · "))}</span><span class="saved">Сохранено ${esc(savedAt || "только что")}</span></div><button class="btn primary sm2" type="button" data-act="play">Продолжить</button></div>`;
   h += '<button class="btn" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь в Велории</button><span class="lbl">Другие миры</span><div class="life soon"><div><b>Скоро</b><span>Здесь появятся жизни из новых миров</span></div></div><p class="qs">Игра сохраняется сама после каждого хода. Смерть окончательная: умершую жизнь нельзя загрузить, остаётся только её хроника.</p>';
   $("livesList").innerHTML = h;
 }
@@ -685,6 +696,17 @@ async function afterSignIn() {
   if (!loadVaultRecord()) { const k = await getCloudKey(cloud).catch(() => null); if (k) saveVaultRecord(k); }
 }
 
+/** Удалить текущую жизнь: сохранение здесь и на сервере. Умершие жизни (хроника в «Мои жизни») не трогаем. */
+function deleteLife() {
+  $("delSheet").hidden = $("delShade").hidden = true;
+  clearTimeout(cloudTimer);
+  game = null; log = []; clearAutosave(undefined, WORLD_ID);
+  if (cloud && session) void deleteCloudSave(cloud, WORLD_ID, AUTO_SLOT).catch(() => undefined);
+  first = false;
+  const cur = stack[stack.length - 1] ?? "menuS";
+  if (cur === "livesS") reset("menuS"); else render[cur]?.();
+}
+
 // ===================== что показываем на каждом экране =====================
 const render: Record<string, () => void> = {
   ageS: () => { ageCalc(); },
@@ -710,6 +732,9 @@ function act(a: string, el: HTMLElement) {
   else if (a === "menu") reset("menuS");
   else if (a === "logout") { if (cloud && session) void signOut(cloud); session = null; logout(); }
   else if (a === "pinSave") void pinSave();
+  else if (a === "delAsk") { if (!game) return; $("delT").textContent = `Удалить жизнь «${game.playerName}»?`; $("delSheet").hidden = $("delShade").hidden = false; }
+  else if (a === "delNo") { $("delSheet").hidden = $("delShade").hidden = true; }
+  else if (a === "delYes") deleteLife();
   else if (a === "pinOpen") pinSheet(true);
   else if (a === "pinClose") { pinSheet(false); if (el.dataset.go) go(el.dataset.go); }
   else if (a === "pinOk") void pinOk();

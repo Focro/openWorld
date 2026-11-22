@@ -25,6 +25,14 @@ export function readAutosave(storage: Storage | undefined = store(), worldId?: s
   try { return (worldId ? storage?.getItem(`${AUTOSAVE_KEY}:${worldId}`) : null) ?? (worldId ? null : storage?.getItem(AUTOSAVE_KEY)) ?? null; } catch { return null; }
 }
 
-export function clearAutosave(storage: Storage | undefined = store()): void {
-  try { storage?.removeItem(AUTOSAVE_KEY); } catch { /* хранилище недоступно */ }
+/** С worldId: стирает сохранение этого мира (и общую копию, если она от него). */
+export function clearAutosave(storage: Storage | undefined = store(), worldId?: string): void {
+  try {
+    if (!worldId) { storage?.removeItem(AUTOSAVE_KEY); return; }
+    storage?.removeItem(`${AUTOSAVE_KEY}:${worldId}`);
+    const last = storage?.getItem(AUTOSAVE_KEY);
+    let lastWorld: unknown;
+    try { lastWorld = last ? (JSON.parse(last) as { worldId?: unknown }).worldId : undefined; } catch { lastWorld = worldId; }
+    if (last && (lastWorld === worldId || lastWorld === undefined)) storage?.removeItem(AUTOSAVE_KEY);
+  } catch { /* хранилище недоступно */ }
 }

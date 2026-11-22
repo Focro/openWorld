@@ -227,7 +227,7 @@ export interface GameState {
     runawayFrom?: string;
   };
   playerProfile?: {
-    age: number; originId: string; statusId: string; professionId: string; dynasticRole?: string; birthYearKL?: number;
+    age: number; originId: string; statusId: string; professionId: string; dynasticRole?: string; birthYearKL?: number; sex?: "male" | "female" | "unspecified";
     familyState: string; startScenarioId: string; biography: string;
     attributes: Record<string, number>; difficultyId: "peaceful" | "balanced" | "harsh";
     heightCm?: number; weightKg?: number; build?: string; hair?: string; hairstyle?: string; eyes?: string; appearance?: string;
