@@ -122,6 +122,8 @@ export interface WorldData {
   /** Календарный год, соответствующий минуте 0 этого мира. */
   startYearKL?: number;
   scheduledEvents?: ScheduledWorldEvent[];
+  /** Скрытая книга держав мира (если мир её ведёт). */
+  realm?: import("./realm").RealmDefinition;
 }
 
 /**
@@ -214,6 +216,8 @@ export interface GameState {
   campaign?: { worldId: string; recipe: unknown };
   /** Какие запланированные события мира уже произошли. */
   processedWorldEvents?: string[];
+  /** Вторая книга: скрытое состояние держав. Игроку и модели не показывается. */
+  realm?: import("./realm").RealmLedger;
   /** Сохранённая анкета героя, созданная в интерфейсе. */
   /** Положение на глобальной карте Велории и незавершённый путь. */
   settlementId?: string;

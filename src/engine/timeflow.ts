@@ -9,6 +9,9 @@ import type { GameEvent, GameState, ScheduledWorldEvent, WorldData } from "./typ
 import { advanceDevelopment, applyLossOfAttachment, memoryFraming, type DevelopmentNotice } from "./development";
 import { npcsAt } from "./world";
 import { advanceCharacterAge } from "./lifecycle";
+import { advanceRealm, createRealm, dayOf } from "./realm";
+
+const seedOf = (text: string) => { let h = 2166136261; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return h >>> 0; };
 
 export interface TimeAdvance {
   state: GameState;
@@ -90,5 +93,10 @@ export function advanceWorldTime(world: WorldData, state: GameState, targetMinut
   }
   current = advanceDevTo(world, current, targetMinute, notices);
   current = advanceCharacterAge({ ...current, minute: targetMinute }, targetMinute - startMinute);
+  // Державы делают по ходу в каждый наступивший день. Наружу из книги ничего не выходит.
+  if (world.realm) {
+    const ledger = current.realm ?? createRealm(world.realm, dayOf(startMinute), seedOf(current.lifeId ?? current.playerName));
+    current = { ...current, realm: advanceRealm(world.realm, ledger, targetMinute) };
+  }
   return { state: current, events, notices };
 }

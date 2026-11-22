@@ -4,6 +4,7 @@
  * Это проектные значения, не география из канона; ждут утверждения (см. docs/veloria/AUDIT_INTEGRATION_RU.md).
  */
 import type { WorldData } from "../../engine/types";
+import { VELORIA_REALM } from "./realm";
 import { createAppearanceState, lockAppearanceIdentity, type AppearanceIdentity, type AppearanceScar } from "../../engine/appearance";
 import { VELORIA_CANON } from "./lore";
 import { attachSettlementMaps } from "./settlementMaps";
@@ -31,6 +32,7 @@ export const VELORIA_WORLD: WorldData = {
   startLocationId: "market-square",
   globalStartId: "roven",
   startYearKL: 742,
+  realm: VELORIA_REALM,
   startMoney: 12,
   startInventory: { plain_clothes: 1, bread: 1 },
   items: {
