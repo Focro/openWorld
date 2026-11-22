@@ -70,8 +70,8 @@ function pickKind(origin: VeloriaOriginId, seed: string): HouseholdKind {
 
 function pickWealth(origin: VeloriaOriginId, seed: string): Wealth {
   const base = origin === "merchant-child" ? 2 : origin === "tenant-farmer" || origin === "caravan-hand" || origin === "temple-orphan" ? 0 : 1;
-  const shift = unit(`${seed}:wealth`) < 0.2 ? -1 : unit(`${seed}:wealth`) > 0.85 ? 1 : 0;
-  return (["бедно", "скромно", "в достатке"] as const)[Math.max(0, Math.min(2, base + shift))]!;
+  void seed; // достаток совпадает с происхождением
+  return (["бедно", "скромно", "в достатке"] as const)[base]!;
 }
 
 function homeFor(origin: VeloriaOriginId): string {
