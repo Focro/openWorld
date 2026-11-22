@@ -763,9 +763,26 @@ function init() {
     t = target.closest<HTMLElement>('[aria-label="Назад"]'); if (t) back();
   });
   if (cloud) {
-    $("gBtn").addEventListener("click", e => { e.stopImmediatePropagation(); void signInWithGoogle(cloud).catch(() => undefined); }, true);
-    void cloud.auth.getSession().then(async ({ data }) => { session = data.session; if (session) { await afterSignIn(); login(); } });
-    cloud.auth.onAuthStateChange((_e, next) => { session = next; });
+    // Вход не удался: окно входа открыто сразу со строкой ошибки (макет: #loginErr).
+    const loginFailed = () => { $("loginModal").hidden = false; $("loginErr").hidden = false; };
+    const PENDING = "openworld.login.pending";
+    const returned = /[?&#](code|error)=/.test(location.search + location.hash);
+    const urlError = /[?&#]error=/.test(location.search + location.hash);
+    let pending = false; try { pending = sessionStorage.getItem(PENDING) === "1"; sessionStorage.removeItem(PENDING); } catch { /* нет хранилища */ }
+    $("gBtn").addEventListener("click", e => {
+      e.stopImmediatePropagation(); $("loginErr").hidden = true;
+      try { sessionStorage.setItem(PENDING, "1"); } catch { /* нет хранилища */ }
+      void signInWithGoogle(cloud).catch(loginFailed);
+    }, true);
+    // Вход мог завершиться позже первой проверки: тогда пускаем в игру по событию SIGNED_IN. Ошибка загрузки облака вход не блокирует.
+    let entered = false;
+    const enter = async () => { if (entered || !session) return; entered = true; try { await afterSignIn(); } catch { /* облако недоступно, играем локально */ } finally { if (!site.hidden) login(); } };
+    void cloud.auth.getSession().then(({ data }) => {
+      session = data.session;
+      if (returned) history.replaceState(null, "", location.pathname);
+      if (session) void enter(); else if (urlError || returned || pending) loginFailed();
+    }, () => { if (returned || pending) loginFailed(); });
+    cloud.auth.onAuthStateChange((e, next) => { session = next; if (e === "SIGNED_IN") void enter(); if (e === "SIGNED_OUT") entered = false; });
   }
 }
 
