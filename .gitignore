@@ -13,3 +13,7 @@ WORKING_COPY_STATUS*.txt
 START_HERE*.md
 HOTFIX_*.md
 RELEASE_NOTES_*.md
+
+# Локальные индексы инструментов для ИИ-агентов
+.gitnexus/
+.token-savior/
