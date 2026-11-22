@@ -154,8 +154,18 @@ function renderStates() {
 function chooseOrigin(o: BirthOrigin) { draft = { ...draftForOrigin(draft, o), familySeed: draft.familySeed }; line = 50; }
 function renderFamily() {
   const f = family(), p = f.preview;
-  $("famLead").textContent = (o => o.fixed ? f.summary : p?.summary ?? "")(origin());
   const fm = (name: string, em: string, text: string) => `<div class="fm"><div><b>${esc(name)} <em>${esc(em)}</em></b><span>${esc(text)}</span></div></div>`;
+  if (origin().fixed) {
+    $("famLead").textContent = "Ты родишься в королевской детской Коронхольма, вторым сыном при дворе дома Рейнар.";
+    $("famList").innerHTML = fm("Гарен Вальд, отец", "", "Супруг принцессы Элианы. Признал тебя своим сыном.")
+      + fm("Мать", "", "Родом из далёкой восточной земли. Её имени при дворе не называют.")
+      + fm("Элиана Рейнар, жена отца", "", "Наследница престола. Тебе она не мать и держится с тобой холодно.")
+      + fm("Альдрен Рейнар, брат по отцу", yrs(1), "Кронпринц, первый наследник.")
+      + fm("Мейра, кормилица", yrs(43), "Будет растить тебя в детской.");
+    $("famFriends").hidden = true;
+    return;
+  }
+  $("famLead").textContent = p?.summary ?? "";
   $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.from ? ` Родом из ${m.from}.` : ""}${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
   const friends = p?.friends ?? [];
   $("famFriends").hidden = !friends.length;
@@ -184,25 +194,24 @@ function lookState() {
   const opts = kin.length ? kinOptions(kin) : null, region = regionOptions(origin().stateId);
   const base = kin.length ? lookFromLine(kin, line, draft.familySeed ?? "") : null;
   const list = (k: LookKey): Array<{ value: unknown; from: KinMember[] }> => opts ? opts[k] as Array<{ value: unknown; from: KinMember[] }> : (region[k] as unknown[]).map(value => ({ value, from: [] }));
-  const cur = (k: LookKey): unknown => (draft as unknown as Record<string, unknown>)[k] ?? base?.[k] ?? list(k)[0]?.value;
+  const cur = (k: LookKey): unknown => { const v = (draft as unknown as Record<string, unknown>)[k]; return (v !== undefined && list(k).some(o => o.value === v) ? v : undefined) ?? base?.[k] ?? list(k)[0]?.value; };
   const marks: KinMark[] = draft.marks ?? base?.marks ?? [];
   const markList: Array<{ value: KinMark; from: KinMember[] }> = opts ? opts.marks : region.marks.map(value => ({ value, from: [] }));
   return { kin, list, cur, marks, markList };
 }
 function lookText(): string {
-  if (origin().fixed) return "Кожа светлая. Волосы светло-русые, прямые. Глаза тёмно-карие. Лицо с восточными чертами.";
   const { cur, marks } = lookState(), f = draft.sex === "female", h = cur("heightTendency");
   return `Кожа ${word("skinTone", cur("skinTone"))}. Волосы ${word("hairColor", cur("hairColor"))}, ${word("hairTexture", cur("hairTexture"))}. Глаза ${word("eyeColor", cur("eyeColor"))}. Лицо ${word("facialFeatures", cur("facialFeatures"))}, нос ${word("nose", cur("nose"))}, губы ${word("lips", cur("lips"))}, брови ${word("brows", cur("brows"))}. Вырастешь ${h === "short" ? (f ? "невысокой" : "невысоким") : h === "tall" ? (f ? "высокой" : "высоким") : "среднего роста"}, сложение ${word("bodyBuild", cur("bodyBuild"))}.${marks.length ? ` Приметы: ${marks.map(m => MARK[m]).join(", ")}.` : ""}`;
 }
 function renderLook() {
-  const prince = !!origin().fixed, s = lookState();
+  const prince = false, s = lookState();
   $("desc").innerHTML = `<span class="lbl">Каким ты будешь</span><p>${esc(lookText())}</p>`;
   ($("w4").querySelector(".like") as HTMLElement).hidden = prince || !s.kin.length;
   ($("likeR") as HTMLInputElement).value = String(line);
   const par = $("w4").querySelector(".parents") as HTMLElement;
   par.hidden = prince;
   if (s.kin.length) {
-    const named = (k: KinMember) => k.relation === "мама" || k.relation === "папа" ? `<b>${k.relation} ${esc(k.given)}</b>` : `${!k.alive ? (k.relation === "дед" ? "покойный дед" : "покойная бабушка") : k.relation} <b>${esc(k.given)}</b>`;
+    const named = (k: KinMember) => k.relation === "мама" || k.relation === "папа" ? `<b>${[k.relation, esc(k.given)].filter(Boolean).join(" ")}</b>` : `${!k.alive ? (k.relation === "дед" ? "покойный дед" : "покойная бабушка") : k.relation} <b>${esc(k.given)}</b>`;
     par.innerHTML = `Родные: ${s.kin.map(named).join(", ")}.`;
   } else par.textContent = "Родные неизвестны, поэтому черты берутся из обычных для твоего края.";
   const chips = (k: LookKey) => `<div class="chips">${s.list(k).map(o => `<button type="button" class="chip two" data-k="${k}" data-v="${esc(String(o.value))}" aria-pressed="${s.cur(k) === o.value}"><span>${esc(word(k, o.value))}</span>${o.from.length ? `<small>как у: ${esc(o.from.map(kinName).join(", "))}</small>` : ""}</button>`).join("")}</div>`;
@@ -219,7 +228,6 @@ function renderLook() {
   box.innerHTML = prince ? "" : secs.map((x, i) => `<details class="ap"${open[i] || (!open.length && i === 0) ? " open" : ""}><summary>${x[0]}<em>${esc(x[1])}</em></summary><div class="in">${x[2]}</div></details>`).join("");
 }
 function fixLook() {
-  if (origin().fixed) return;
   const s = lookState(), keysL: LookKey[] = ["skinTone", "hairColor", "hairTexture", "eyeColor", "facialFeatures", "nose", "lips", "brows", "heightTendency", "bodyBuild"];
   draft = { ...draft, ...Object.fromEntries(keysL.map(k => [k, s.cur(k)])), marks: s.marks } as Draft;
 }
@@ -231,15 +239,15 @@ function statWords(): string {
 }
 function renderSummary() {
   const nm = $("nm") as HTMLInputElement, o = origin(), f = family();
-  if (!nm.dataset.touched) nm.value = o.fixed ? draft.name : f.preview?.suggestedName ?? draft.name;
-  nm.disabled = !!o.fixed;
+  if (!nm.dataset.touched) nm.value = o.fixed ? "Рейнар" : f.preview?.suggestedName ?? draft.name;
+  nm.disabled = false;
   const town = MAP_NODES.find(n => n.id === o.settlementId)?.name ?? "";
   const year = (o.fixed ? SECOND_PRINCE_START_YEAR : 742) - draft.age;
   const parents = (f.preview?.members ?? []).filter(m => m.role === "мать" || m.role === "отец").map(m => m.name.split(" ")[0]).join(" и ");
   const s = lookState();
   const row = (a: string, b: string) => `<div><span>${a}</span><b>${esc(b)}</b></div>`;
   $("sumCard").innerHTML = row("Родится", `${town}, ${year} КЛ`) + row("Кто", o.label) + (parents ? row("Семья", parents) : "") + row("Начнёт", draft.age === 0 ? "с рождения" : `с ${yrs(draft.age)}`)
-    + (o.fixed ? "" : row("Внешность", `${word("hairColor", s.cur("hairColor"))} ${word("hairTexture", s.cur("hairTexture"))} волосы, глаза ${word("eyeColor", s.cur("eyeColor"))}`)) + row("Задатки", statWords());
+    + (row("Внешность", `${word("hairColor", s.cur("hairColor"))} ${word("hairTexture", s.cur("hairTexture"))} волосы, глаза ${word("eyeColor", s.cur("eyeColor"))}`)) + row("Задатки", statWords());
 }
 function wizardNext() {
   const id = stack[stack.length - 1]!;
@@ -258,7 +266,7 @@ function wizardNext() {
 let difficulty: WorldDifficultyId = "balanced";
 function born() {
   const nm = ($("nm") as HTMLInputElement).value.trim();
-  if (!origin().fixed) draft = { ...draft, name: nm || family().preview?.suggestedName || draft.name };
+  draft = { ...draft, name: nm || family().preview?.suggestedName || draft.name };
   const prev = game?.lifeStatus === "dead" ? game : undefined;
   const result = startVeloriaCampaign({ kind: "veloria-character", draft, difficultyId: difficulty }, prev);
   if (!result.ok) { $("sumCard").insertAdjacentHTML("afterend", `<p class="err">${esc(result.errors.join(" "))}</p>`); return; }
@@ -273,6 +281,9 @@ function born() {
 
 /** Как ребёнок зовёт родных в повествовании: «Мама», «Папа», «Бабушка»; имя остаётся в «Людях». */
 function kinWord(id: string): string | undefined {
+  const npc = world().npcs[id];
+  if (npc?.caregiving?.role === "mother") return "Мама";
+  if (npc?.caregiving?.role === "father") return "Папа";
   const role = /^([^:;]{1,40}):/.exec(world().npcs[id]?.personality?.temperament ?? "")?.[1]?.trim() ?? "";
   return role === "мать" ? "Мама" : role === "отец" ? "Папа" : role === "бабушка" ? "Бабушка" : role === "дедушка" ? "Дедушка" : undefined;
 }
@@ -312,7 +323,7 @@ function lookScene(g: GameState): string {
   const w = world(), loc = w.locations[g.playerLocation];
   const known = new Set(knownPeople(w, g).map(p => p.id));
   const all = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths);
-  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths)}.`);
+  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name.split(",")[0] : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths).split(";")[0]!.replace(/\s*\([^)]*\)/g, "")}.`);
   const strangers = all.length - all.filter(id => known.has(id)).length;
   const exits = (loc?.exits ?? []).map(e => w.locations[e.to]?.name).filter(Boolean).map(n => n!.replace(/^[^:]+:\s*/, "").toLocaleLowerCase("ru"));
   return [
@@ -416,7 +427,7 @@ function run(textRaw: string) {
   busy = true; push([`> ${text}`]); renderGame();
   const snapshot = game;
   void resolveWithAi(w, snapshot, text, new CachingProposer(ai, () => recordUsage({ cacheHits: 1 }))).then(r => {
-    if (game === snapshot) { setGame(r.state); push(r.message.split("\n")); if (r.action && r.ok) sceneFor(r, r.action, text); }
+    if (game === snapshot) { setGame(r.state); push(r.action?.type === "look" && r.ok ? [lookScene(r.state)] : r.message.split("\n")); if (r.action && r.ok) sceneFor(r, r.action, text); }
   }, () => push(["Рассказчик сейчас не ответил. Мир не изменился."])).finally(() => { busy = false; renderGame(); });
 }
 function live(kind: string) {

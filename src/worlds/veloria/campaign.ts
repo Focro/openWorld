@@ -45,9 +45,8 @@ export function buildVeloriaCampaignWorld(recipe: VeloriaCampaignRecipe): WorldD
 
 /** Какую внешность получит персонаж: фиксированную (второй принц) или выбранную в пределах наследования. */
 export function resolveInheritedAppearance(draft: VeloriaCharacterDraft): AppearanceProfile | undefined {
-  if (draft.dynasticRole === "second-prince") return { ...SECOND_PRINCE_APPEARANCE };
   const family = generateVeloriaFamily(draft);
-  const fallback = family.defaultAppearance;
+  const fallback = draft.dynasticRole === "second-prince" ? SECOND_PRINCE_APPEARANCE : family.defaultAppearance;
   if (!fallback) return undefined;
   return {
     skinTone: draft.skinTone ?? fallback.skinTone,

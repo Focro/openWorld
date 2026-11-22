@@ -144,6 +144,11 @@ export function generateVeloriaFamily(draft: VeloriaCharacterDraft, existingNpcI
     };
     return {
       available: true, record, members: [], guardians: [nurse], biologicalParents: [father, mother], defaultAppearance: fixedAppearance,
+      // Решение автора 22.11: внешность принца собирается из черт отца и матери, как у всех.
+      kin: [
+        { id: father.id, given: "Гарен", relation: "папа", side: "father", alive: true, look: father.appearance, features: { nose: "straight", lips: "thin", brows: "thick", height: "tall", build: "sturdy", marks: [] } },
+        { id: mother.id, given: "", relation: "мама", side: "mother", alive: true, look: mother.appearance, features: { nose: "small", lips: "full", brows: "thin", height: "short", build: "slender", marks: ["mole"] } }
+      ],
       summary: "Биологические родители: Гарен Вальд и женщина из далёкой восточной земли. Родители не состояли в браке; Гарен признал сына. Элиана (в 723 КЛ: принцесса, королевой станет в 735 КЛ) не является твоей матерью: она жена Гарена и испытывает к тебе личную неприязнь из-за его измены. Королевская кормилица Мейра назначена опекуном на время младенчества."
     };
   }
