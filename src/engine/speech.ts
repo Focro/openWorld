@@ -10,7 +10,7 @@
  *  3. coerceScene и applyScene: проверка ответа модели (говорит только тот, кто рядом)
  *     и запись сказанного в хронику и память свидетелей.
  */
-import type { GameState, MemoryEntry, NpcDef, PersonalityTraits, WorldData } from "./types";
+import type { GameState, NpcDef, PersonalityTraits, WorldData } from "./types";
 import { npcsAt } from "./world";
 import { deriveNpcPersonality } from "./personality";
 import { describeAttitude } from "./relations";
@@ -18,6 +18,7 @@ import { capabilities, formatAge, MINUTES_PER_YEAR } from "./development";
 import { formatClock, yearKLOf } from "./time";
 import { normalize } from "./parse";
 import { buildTriggeredKnowledge } from "./knowledge";
+import { recallFor } from "./recall";
 
 export type GameLanguage = "ru" | "en";
 export const isGameLanguage = (value: string): value is GameLanguage => value === "ru" || value === "en";
@@ -184,7 +185,8 @@ export function buildSceneContext(world: WorldData, state: GameState, playerText
     me: `${state.playerName}, ${age}`,
     npcs: chosen.map(id => {
       const npc = world.npcs[id]!;
-      const memories = (state.npcMemory[id] ?? []).filter((entry: MemoryEntry) => !entry.eventId || (!recentIds.has(entry.eventId) && !routineIds.has(entry.eventId))).slice(-2).map(entry => trim(entry.text, 120));
+      // Не хвост ленты, а отбор: метки про героя, совпадения со словами игрока, одно-два свежих дела.
+      const memories = recallFor(state, id, playerText, { skipEventIds: new Set([...recentIds, ...routineIds]) });
       const who = npc.caregiving ? CARE_ROLE[npc.caregiving.role] : loc.shop?.keeperId === id ? "хозяин лавки" : undefined;
       return {
         id, name: shortName(npc),
@@ -217,7 +219,7 @@ export const SCENE_INSTRUCTIONS = [
   "narration: литературное повествование, развёрнутое и образное: место, свет, звуки, запахи, что делают люди вокруг, их жесты и лица. При event look или arrival и при коротком ходе игрока подробно раскрой путь, место (place) и окружение, но ничего не решай за героя. Несколько абзацев допустимы.",
   "replies: живые реплики людей рядом. У каждого свой голос по talk (возраст, характер, сословие, край): ребёнок говорит как ребёнок, старик как старик, стражник не как торговка. Разговорная речь, оговорки, недосказанность, ругань и мат там, где это в характере. Длина по характеру.",
   "Люди живут своей жизнью и не подстраиваются под героя. У каждого свои цели (wants, их не раскрывают прямо) и своя мораль (moral), у кого-то её почти нет. Люди могут врать, отказывать, грубить, ссориться, торговаться, манипулировать, использовать чувства героя и предавать, угрожать и действовать ради выгоды. Не смягчай. Герой для них такой же человек, как все.",
-  "Говорит тот, кому есть что сказать; если обратились по имени (to), отвечает он. rel: отношение к игроку, mem: что человек помнит. Не выдумывай общего прошлого и фактов о мире сверх facts и recent.",
+  "Говорит тот, кому есть что сказать; если обратились по имени (to), отвечает он. rel: отношение к игроку, mem: что человек помнит (с пометкой давности, если это было не сегодня). Не выдумывай общего прошлого и фактов о мире сверх facts и recent.",
   "Тяжёлые поступки (удар, кража, ранение, убийство, передача вещей) люди могут замыслить, начать и пригрозить ими, но итог решает движок: опиши намерение и начало и остановись до результата. Новых цен не называй.",
   "Взрослые темы: насилие, жестокость, интриги, грубость допустимы. Откровенная сексуальная сцена только если adult true и все участники взрослые; при adult false близость обозначается и уходит за кадр. Если minors true, никакого сексуального и романтически-телесного содержания вообще. Сексуальное насилие может существовать в мире как факт, слух или угроза, но никогда не описывается.",
   "Пиши на языке lang (ru или en). Не используй длинное тире."
@@ -315,7 +317,7 @@ export function applyScene(world: WorldData, state: GameState, scene: Scene): { 
   const lines: string[] = [];
   const record = (text: string, sourceId?: string) => {
     const id = `e${chronicle.length + 1}`;
-    chronicle = [...chronicle, { id, minute: state.minute, locationId: loc, text, witnesses, source: sourceId ? { kind: "npc", id: sourceId } : { kind: "system" } }];
+    chronicle = [...chronicle, { id, minute: state.minute, locationId: loc, text, witnesses, source: sourceId ? { kind: "npc", id: sourceId } : { kind: "system" }, withHero: true }];
     for (const npcId of witnesses) npcMemory[npcId] = [...(npcMemory[npcId] ?? []), { minute: state.minute, text, kind: "witnessed", confidence: 1, eventId: id }];
     playerMemory.push({ minute: state.minute, text, kind: "own", confidence: 1, eventId: id });
     lines.push(...text.split(/\n{2,}/).map(paragraph => paragraph.trim()).filter(Boolean));
