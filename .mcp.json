@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "token-savior": {
+      "command": "uvx",
+      "args": ["--from", "token-savior-recall[mcp]==4.24.0", "token-savior"],
+      "env": {
+        "WORKSPACE_ROOTS": "."
+      }
+    }
+  }
+}
