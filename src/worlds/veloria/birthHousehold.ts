@@ -269,7 +269,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
       }, "приходит кормить младенцев", false, "простое платье и фартук");
     }
     addFriends(homeId, homeId, true);
-    const summary = `Вас оставили младенцем: ${origin.home.name.toLocaleLowerCase("ru")}. Кто ваши родители, неизвестно. Растит вас ${g.name}.${heroAge > 0 ? ` Вам ${heroAge} ${yearsWord(heroAge)}.` : ""}`;
+    const summary = `Тебя оставили младенцем: ${origin.home.name.toLocaleLowerCase("ru")}. Кто твои родители, неизвестно. Растит тебя ${g.name}.${heroAge > 0 ? ` Тебе ${heroAge} ${yearsWord(heroAge)}.` : ""}`;
     return {
       origin, kind, wealth: "бедно", settlementId: s, homeId, locations, links, members, guardians, biologicalParents, kin: [], summary,
       record: {
@@ -297,7 +297,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
 
   const motherWorksAt = placeId(s, origin.mother.at, familyId);
   const infantCare = heroAge < 1;
-  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при ваших родах", personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age), {
+  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age), {
     familyRole: "biological-parent", lifeStatus: motherAlive ? "alive" : "dead",
     caregiving: motherAlive ? { role: "mother", canFeed: heroAge < 2 } : undefined,
     schedule: !motherAlive ? [] : infantCare || motherWorksAt === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: infantCare ? "ухаживает за младенцем и ведёт хозяйство" : origin.mother.activity }] : day(motherWorksAt, origin.mother.activity, 7, 17)
@@ -305,7 +305,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   biologicalParents.push({ id: mother.id, name: mother.name, appearance: mother.look });
   if (fatherKnown) {
     const at = placeId(s, origin.father.at, familyId);
-    add(father, fatherAlive ? "отец" : "отец, умер до вашего рождения", personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), {
+    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), {
       familyRole: "biological-parent", lifeStatus: fatherAlive ? "alive" : "dead", caregiving: fatherAlive ? { role: "father", canFeed: false } : undefined,
       schedule: fatherAlive ? (at === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: origin.father.activity }] : day(at, origin.father.activity)) : []
     }, origin.father.activity);
@@ -344,7 +344,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     add(n, "кормилица", personality(`${seed}:nurse`, "кормилица", "staff", ["свои дети", "заработок"], "female", n.age), {
       familyRole: "other", homeId: near, caregiving: { role: "wet-nurse", canFeed: true },
       schedule: [{ from: 6, to: 9, locationId: homeId, activity: "кормит младенца" }, { from: 12, to: 14, locationId: homeId, activity: "кормит младенца" }, { from: 18, to: 22, locationId: homeId, activity: "кормит младенца" }]
-    }, "приходит кормить вас", false, "простое платье и фартук");
+    }, "приходит кормить тебя", false, "простое платье и фартук");
   }
 
   // Прислуга знатного дома.
@@ -429,10 +429,10 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const line = lookFromLine(kin, 50, `${seed}:child`);
   const childAppearance = kin.length ? { skinTone: line.skinTone, hairColor: line.hairColor, hairTexture: line.hairTexture, eyeColor: line.eyeColor, facialFeatures: line.facialFeatures } : fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
   const houseText: Record<Exclude<BirthHouseholdKind, "foundling">, string> = {
-    "both-parents": "мать и отец растят вас вместе",
+    "both-parents": "мать и отец растят тебя вместе",
     "with-grandparents": "родители и старшие родные живут одним домом",
     "large-family": "большая семья, в доме тесно и шумно",
-    "widowed-mother": "отец умер до вашего рождения, мать растит вас одна",
+    "widowed-mother": "отец умер до твоего рождения, мать растит тебя одна",
     "unmarried-mother": "мать не замужем; кто отец, в семье не говорят",
     "mother-died": "мать умерла при родах; растят отец и бабушка"
   };
@@ -441,7 +441,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     `${capitalize(houseText[kind as Exclude<BirthHouseholdKind, "foundling">])}.`,
     `Дом: ${origin.home.name.toLocaleLowerCase("ru")}, ${MAP_NODES.find(n => n.id === s)?.name ?? s}.`,
     `Живёте ${wealth}.`,
-    relatives.length ? `Старшие: ${relatives.join(", ")}.` : younger.length ? "Вы старший ребёнок." : "Вы первый ребёнок в семье.",
+    relatives.length ? `Старшие: ${relatives.join(", ")}.` : younger.length ? "Ты старший ребёнок." : "Ты первый ребёнок в семье.",
     younger.length ? `Младшие: ${younger.join(", ")}.` : "",
     living > 6 ? "Под одной крышей много людей." : ""
   ].filter(Boolean).join(" ");

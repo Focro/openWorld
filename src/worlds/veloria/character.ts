@@ -199,7 +199,7 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
     locationId: draft.dynasticRole === "second-prince" ? "rey:royal-nursery" : base.locationId,
     money: draft.dynasticRole === "second-prince" ? 0 : base.money,
     inventory: draft.dynasticRole === "second-prince" ? { swaddling_cloth: 1 } : { ...base.inventory }, notes: draft.dynasticRole === "second-prince"
-      ? ["Вы родились в 723 КЛ во дворце Коронхольма как второй сын Гарена Вальда от женщины из далёкой восточной земли. Гарен признал вас, хотя родители не состояли в браке.", "Элиана: жена Гарена, но не ваша мать. Её личная неприязнь к вам вызвана изменой супруга; публично она соблюдает королевский протокол. Кронпринц Альдрен остаётся первым в линии наследования.", "Кампания начинается в день вашего рождения. Характеристики анкеты отражают задатки, а не навыки новорождённого."]
+      ? ["Ты родился в 723 КЛ во дворце Коронхольма, второй сын Гарена Вальда от женщины из далёкой восточной земли. Отец признал тебя, хотя родители не состояли в браке.", "Элиана, жена отца, тебе не мать. Кронпринц Альдрен первый в линии наследования."]
       : [...base.notes]
   };
   if (newLife && draft.dynasticRole !== "second-prince") {
@@ -210,14 +210,14 @@ export function resolveVeloriaStart(draft: VeloriaCharacterDraft): CharacterVali
     start.money = 0;
     start.inventory = draft.age < 2 ? { swaddling_cloth: 1 } : { plain_clothes: 1 };
     start.notes = [draft.age === 0
-      ? `Вы рождаетесь в ${742} КЛ, ${place}: ${newLife.label.toLocaleLowerCase("ru")}.`
-      : `Вам ${draft.age} ${yearsWord(draft.age)}. ${place}, ${742} КЛ: ${newLife.label.toLocaleLowerCase("ru")}.`];
+      ? `Ты рождаешься в ${742} КЛ, ${place}: ${newLife.label.toLocaleLowerCase("ru")}.`
+      : `Тебе ${draft.age} ${yearsWord(draft.age)}. ${place}, ${742} КЛ: ${newLife.label.toLocaleLowerCase("ru")}.`];
     return { ok: true, start };
   }
   if (draft.age === 0 && draft.dynasticRole !== "second-prince") {
     const household = generateVeloriaFamily(draft).household;
     start.locationId = household?.homeId ?? "temple"; start.money = 0; start.inventory = { swaddling_cloth: 1 };
-    start.notes = [`Вы рождаетесь в 742 КЛ в Ровене: ${NEWBORN_ORIGIN_LABELS[draft.originId] ?? "обычная семья"}.`];
+    start.notes = [`Ты рождаешься в 742 КЛ в Ровене: ${NEWBORN_ORIGIN_LABELS[draft.originId] ?? "обычная семья"}.`];
   }
   if (draft.startScenarioId === "journey") {
     start.locationId = "south-gate"; start.money = Math.max(1, start.money - 4);

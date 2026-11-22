@@ -30,13 +30,13 @@ export type HouseholdKind = "both-parents" | "with-grandmother" | "large-family"
 export type Wealth = "бедно" | "скромно" | "в достатке";
 
 export const HOUSEHOLD_LABELS: Record<HouseholdKind, string> = {
-  "both-parents": "мать и отец растят вас вместе",
+  "both-parents": "мать и отец растят тебя вместе",
   "with-grandmother": "родители и бабушка живут одним домом",
-  "large-family": "большая семья: у вас много старших братьев и сестёр",
-  "widowed-mother": "отец умер до вашего рождения, мать растит вас одна",
+  "large-family": "большая семья: у тебя много старших братьев и сестёр",
+  "widowed-mother": "отец умер до твоего рождения, мать растит тебя одна",
   "unmarried-mother": "мать не замужем; кто отец, в семье не говорят",
   "mother-died": "мать умерла при родах; растят отец, бабушка и кормилица",
-  "foundling": "вас оставили у храма Семерых; растят храмовые сёстры"
+  "foundling": "тебя оставили у храма Семерых, растят храмовые сёстры"
 };
 
 export interface NewbornHousehold {
@@ -156,7 +156,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
     members.push(sisterNpc, nurseNpc); guardians.push(sisterNpc);
     return {
       kind, wealth, homeId: "temple", members, guardians, biologicalParents,
-      summary: `${capitalize(HOUSEHOLD_LABELS[kind])}. Родители неизвестны. Кормит вас ${nurse.name}, приходящая кормилица.`,
+      summary: `${capitalize(HOUSEHOLD_LABELS[kind])}. Родители неизвестны. Кормит тебя ${nurse.name}, приходящая кормилица.`,
       record: {
         characterId: `player:${familyId}`, birthYear: CURRENT_YEAR, biologicalParentIds: [], biologicalParentage: "unknown", legalParentIds: [], legalParentage: "unknown",
         guardianIds: [sisterNpc.id, "institution:sevenfold-temple"], birthStatus: "unknown", parentalUnion: { status: "unknown" }, recognitions: [],
@@ -228,7 +228,7 @@ export function generateNewbornHousehold(draft: VeloriaCharacterDraft, familyId:
   const appearance = fatherKnown ? childOf(mother.look, father.look, `${seed}:child`) : childOf(mother.look, mother.look, `${seed}:child`);
   const foreignNote = [mother, ...(fatherKnown ? [father] : [])].filter(p => p.origin !== "estran").map(p => `${p.name.split(" ")[0]} родом не из Эстрана.`).join(" ");
   const parentsText = fatherKnown ? `Родители: ${mother.name} (${mother.age}) и ${father.name} (${father.age}).` : `Мать: ${mother.name} (${mother.age}).`;
-  const summary = `${capitalize(HOUSEHOLD_LABELS[kind])}. ${parentsText} Живёте ${wealth}. ${siblings.length ? `Старшие: ${siblings.join(", ")}.` : "Вы первый ребёнок в семье."} ${foreignNote}`.trim();
+  const summary = `${capitalize(HOUSEHOLD_LABELS[kind])}. ${parentsText} Живёте ${wealth}. ${siblings.length ? `Старшие: ${siblings.join(", ")}.` : "Ты первый ребёнок в семье."} ${foreignNote}`.trim();
 
   const parentIds = biologicalParents.map(p => p.id);
   return {
