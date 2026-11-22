@@ -9,7 +9,7 @@ import { npcAgeYears } from "./speech";
 import { describeAppearance } from "./appearance";
 import { npcExistsAt } from "./world";
 
-export interface Acquaintance { id: string; name: string; /** Кто этот человек для героя: «мать», «соседская девочка», «торгует: Нижний рынок». Пусто, если неизвестно. */ role?: string; age?: number; nature?: string; looks?: string; alive: boolean; family: boolean }
+export interface Acquaintance { id: string; name: string; /** Кто этот человек для героя: «мать», «соседская девочка», «торгует: Нижний рынок». Пусто, если неизвестно. */ role?: string; age?: number; nature?: string; looks?: string; /** Кто он и чем занят, одним-двумя предложениями. */ about?: string; alive: boolean; family: boolean }
 
 const yearsWord = (n: number) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? "год" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "года" : "лет"; };
 export const ageText = (age: number) => age < 1 ? "меньше года" : `${age} ${yearsWord(age)}`;
@@ -35,7 +35,8 @@ export function knownPeople(world: WorldData, state: GameState): Acquaintance[] 
     const occupation = (npc as { resident?: { occupation?: unknown } }).resident?.occupation;
     const role = family && prefix ? prefix[1]!.trim() : typeof occupation === "string" && occupation ? occupation : shop ? `торгует: ${shop.name}` : undefined;
     const appearance = state.npcAppearances?.[id] ?? npc.appearance;
-    out.push({ id, name: npc.name, ...(role ? { role } : {}), age: npcAgeYears(npc, state), nature: nature || undefined, looks: appearance ? describeAppearance(appearance) : undefined, alive, family });
+    const about = npc.about ?? (typeof occupation === "string" && occupation ? `${occupation.charAt(0).toLocaleUpperCase("ru")}${occupation.slice(1)}.` : shop ? `Держит лавку «${shop.name}».` : undefined);
+    out.push({ id, name: npc.name, ...(role ? { role } : {}), ...(about ? { about } : {}), age: npcAgeYears(npc, state), nature: nature || undefined, looks: appearance ? describeAppearance(appearance) : undefined, alive, family });
   }
   return out.sort((a, b) => Number(b.family) - Number(a.family) || Number(b.alive) - Number(a.alive) || a.name.localeCompare(b.name, "ru"));
 }
