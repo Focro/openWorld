@@ -335,7 +335,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const motherWorksAt = placeId(s, origin.mother.at, familyId);
   const infantCare = heroAge < 1;
   const motherPers = personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age);
-  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", motherPers, {
+  const mNpc = add(mother, "мать", motherPers, {
     familyRole: "biological-parent", lifeStatus: motherAlive ? "alive" : "dead",  about: motherAlive ? `${capitalize(infantCare ? "сейчас ухаживает за тобой и ведёт хозяйство" : origin.mother.activity)}.${motherFrom}` : `Умерла, когда ты ${draft.sex === "female" ? "появилась" : "появился"} на свет. Её помнят по рассказам родных.`,
     caregiving: motherAlive ? { role: "mother", canFeed: heroAge < 2 } : undefined,
     schedule: !motherAlive ? [] : infantCare || motherWorksAt === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: infantCare ? "ухаживает за младенцем и ведёт хозяйство" : origin.mother.activity }] : day(motherWorksAt, origin.mother.activity, 7, 17)
@@ -343,7 +343,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   biologicalParents.push({ id: mother.id, name: mother.name, appearance: mother.look });
   if (fatherKnown) {
     const at = placeId(s, origin.father.at, familyId);
-    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", unlike(personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), motherPers, "отец", "male"), {
+    add(father, "отец", unlike(personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), motherPers, "отец", "male"), {
       familyRole: "biological-parent", lifeStatus: fatherAlive ? "alive" : "dead", about: fatherAlive ? `${capitalize(origin.father.activity)}. На нём держится дом.` : "Умер до твоего рождения. О нём знаешь только по рассказам.", caregiving: fatherAlive ? { role: "father", canFeed: false } : undefined,
       schedule: fatherAlive ? (at === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: origin.father.activity }] : day(at, origin.father.activity)) : []
     }, origin.father.activity);
