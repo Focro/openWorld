@@ -156,10 +156,10 @@ function renderFamily() {
   const f = family(), p = f.preview;
   $("famLead").textContent = (o => o.fixed ? f.summary : p?.summary ?? "")(origin());
   const fm = (name: string, em: string, text: string) => `<div class="fm"><div><b>${esc(name)} <em>${esc(em)}</em></b><span>${esc(text)}</span></div></div>`;
-  $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
+  $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.from ? ` Родом из ${m.from}.` : ""}${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
   const friends = p?.friends ?? [];
   $("famFriends").hidden = !friends.length;
-  $("famFriends").innerHTML = `<span class="lbl">Друзья и соседи</span>${friends.map(m => fm(m.name, yrs(m.age), `${m.temperament}. ${m.appearance}`)).join("")}`;
+  $("famFriends").innerHTML = `<span class="lbl">Друзья и соседи</span>${friends.map(m => fm(m.name, yrs(m.age), `${m.temperament}. ${m.appearance}${m.from ? ` Семья родом из ${m.from}.` : ""}`)).join("")}`;
 }
 
 // Внешность: только черты родных (мама, папа, бабушки, деды). Подкидыш: обычные черты края.
@@ -307,6 +307,21 @@ function diaryLine(g: GameState): string {
   return `${cap(partOfDay(g.minute))}, ${(loc?.name ?? "").toLocaleLowerCase("ru")}.${p && !p.startsWith(cap(partOfDay(g.minute))) ? ` ${p.replace(/\.?$/, ".")}` : ""}`;
 }
 
+/** «Осмотреться» без ИИ: не повтор первой сцены, а кто чем занят рядом и куда отсюда можно пойти. */
+function lookScene(g: GameState): string {
+  const w = world(), loc = w.locations[g.playerLocation];
+  const known = new Set(knownPeople(w, g).map(p => p.id));
+  const all = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths);
+  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths)}.`);
+  const strangers = all.length - all.filter(id => known.has(id)).length;
+  const exits = (loc?.exits ?? []).map(e => w.locations[e.to]?.name).filter(Boolean).map(n => n!.replace(/^[^:]+:\s*/, "").toLocaleLowerCase("ru"));
+  return [
+    who.length ? `Ты оглядываешься. ${who.join(" ")}` : "Ты оглядываешься. Рядом никого из знакомых.",
+    strangers ? (strangers === 1 ? "Поодаль незнакомый человек." : "Поодаль незнакомые люди.") : "",
+    exits.length ? `Отсюда можно пойти: ${exits.join(", ")}.` : ""
+  ].filter(Boolean).join(" ");
+}
+
 // ===================== игра =====================
 function statusWord(): string {
   const dev = game?.development;
@@ -390,7 +405,7 @@ function run(textRaw: string) {
     safety = record; push([message]); renderGame(); return;
   }
   const infant = (Object.entries(INFANT_ACT_LABELS) as Array<[InfantActId, string]>).find(([, l]) => l.toLocaleLowerCase("ru") === text.toLocaleLowerCase("ru"));
-  const apply = (action: Action, label: string) => { const r = applyAction(w, game!, action); setGame(r.state); push([`> ${label}`, ...(action.type === "look" && r.ok ? [openingScene(r.state)] : r.message.split("\n"))]); sceneFor(r, action, label); renderGame(); };
+  const apply = (action: Action, label: string) => { const r = applyAction(w, game!, action); setGame(r.state); push([`> ${label}`, ...(action.type === "look" && r.ok ? [lookScene(r.state)] : r.message.split("\n"))]); sceneFor(r, action, label); renderGame(); };
   if (infant) return apply({ type: "infant", act: infant[0] }, text);
   const parsed = parseAction(w, text);
   if (parsed.ok) return apply(parsed.action, text);
@@ -505,7 +520,8 @@ function placeCard(id: string) {
   const wtxt = id === cur ? "Ты здесь" : opts.map(o => `${o.overland ? "По суше" : "Морем"}: ${days(o.plan.totalDays)}`).join(" · ");
   const pw = $("pcW"); pw.textContent = wtxt; pw.hidden = !wtxt;
   $("pcC").hidden = true;
-  $("pcD").textContent = placeStory(id)?.text ?? "";
+  // Канонические подсказки, которых герой знать не может, в карточку не попадают.
+  $("pcD").textContent = (placeStory(id)?.text ?? "").split(/(?<=[.!?])\s+/).filter(t => !/второй принц/i.test(t)).join(" ");
   qa($("mapInner"), "[data-p]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.p === id)));
   $("placeCard").hidden = false;
 }
