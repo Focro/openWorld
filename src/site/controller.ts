@@ -166,7 +166,7 @@ function renderFamily() {
     return;
   }
   $("famLead").textContent = p?.summary ?? "";
-  $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.from ? ` Родом из ${m.from}.` : ""}${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
+  $("famList").innerHTML = (p?.members ?? []).map(m => { const f = /мать|бабушка|сестра|тётя/.test(m.role); const died = f ? "умерла" : "умер"; return fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : `${died} до твоего рождения`, m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.from ? ` Родом из ${m.from}.` : ""}${m.livesWithYou ? "" : " Живёт отдельно."}` : `О ${f ? "ней" : "нём"} помнят по рассказам родных.`); }).join("");
   const friends = p?.friends ?? [];
   $("famFriends").hidden = !friends.length;
   $("famFriends").innerHTML = `<span class="lbl">Друзья и соседи</span>${friends.map(m => fm(m.name, yrs(m.age), `${m.temperament}. ${m.appearance}${m.from ? ` Семья родом из ${m.from}.` : ""}`)).join("")}`;
@@ -318,19 +318,17 @@ function diaryLine(g: GameState): string {
   return `${cap(partOfDay(g.minute))}, ${(loc?.name ?? "").toLocaleLowerCase("ru")}.${p && !p.startsWith(cap(partOfDay(g.minute))) ? ` ${p.replace(/\.?$/, ".")}` : ""}`;
 }
 
-/** «Осмотреться» без ИИ: не повтор первой сцены, а кто чем занят рядом и куда отсюда можно пойти. */
+/** «Осмотреться» без ИИ: короткий отчёт о месте и куда можно пойти, без повтора первой сцены. */
 function lookScene(g: GameState): string {
   const w = world(), loc = w.locations[g.playerLocation];
   const known = new Set(knownPeople(w, g).map(p => p.id));
   const all = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths);
-  const who = all.filter(id => known.has(id)).slice(0, 4).map(id => `${kinWord(id) ?? (w.npcs[id]!.familyRole === "guardian" ? w.npcs[id]!.name.split(",")[0] : w.npcs[id]!.name.split(" ")[0])} ${npcActivity(w, id, g.minute, g.npcDeaths).split(";")[0]!.replace(/\s*\([^)]*\)/g, "")}.`);
-  const strangers = all.length - all.filter(id => known.has(id)).length;
+  const kin = all.filter(id => known.has(id)).length;
+  const strangers = all.length - kin;
+  const people = !all.length ? "Рядом никого." : kin && strangers ? `Рядом ${kin === 1 ? "знакомое лицо" : `${kin} знакомых`} и ${strangers === 1 ? "незнакомый человек" : "незнакомые люди"}.` : kin ? (kin === 1 ? "Рядом знакомое лицо." : `Рядом ${kin} знакомых.`) : (strangers === 1 ? "Рядом незнакомый человек." : "Рядом незнакомые люди.");
   const exits = (loc?.exits ?? []).map(e => w.locations[e.to]?.name).filter(Boolean).map(n => n!.replace(/^[^:]+:\s*/, "").toLocaleLowerCase("ru"));
-  return [
-    who.length ? `Ты оглядываешься. ${who.join(" ")}` : "Ты оглядываешься. Рядом никого из знакомых.",
-    strangers ? (strangers === 1 ? "Поодаль незнакомый человек." : "Поодаль незнакомые люди.") : "",
-    exits.length ? `Отсюда можно пойти: ${exits.join(", ")}.` : ""
-  ].filter(Boolean).join(" ");
+  const where = exits.length ? `Отсюда можно пойти: ${exits.join(", ")}.` : "";
+  return [`Ты оглядываешься вокруг.`, people, where].filter(Boolean).join(" ");
 }
 
 // ===================== игра =====================
@@ -447,9 +445,9 @@ function renderChar() {
   $("stageT").textContent = `${caps.stage.label} · ${ageWord()}`;
   qa($("stageTrack"), "i").forEach((t, i) => { t.className = i <= idx ? "done" : ""; });
   $("charLook").textContent = heroLook();
-  const people = byKin(knownPeople(world(), game).filter(p => p.alive)).slice(0, 8);
+  const people = byKin(knownPeople(world(), game)).slice(0, 8);
   const ppl = $("charS").querySelector(".ppl") as HTMLElement;
-  ppl.innerHTML = people.map(p => `<div class="person"><span class="a" style="background:var(--surface2);color:var(--muted)">${esc(p.name.charAt(0))}</span><div><b>${esc(p.name)}</b><span>${esc([p.role, p.age !== undefined ? ageText(p.age) : ""].filter(Boolean).join(", "))}</span>${p.about ? `<p class="pd">${esc(p.about)}</p>` : ""}</div>${p.role ? `<span class="heart ${p.family ? "h-good" : "h-mid"}">${esc(p.role.split(/[,:]/)[0]!)}</span>` : ""}</div>`).join("");
+  ppl.innerHTML = people.map(p => `<div class="person"><span class="a" style="background:var(--surface2);color:var(--muted)">${esc(p.name.charAt(0))}</span><div><b>${esc(p.name)}</b><span>${esc([p.role, p.alive ? (p.age !== undefined ? ageText(p.age) : "") : (/мать|бабушка|сестра|тётя/.test(p.role ?? "") ? "умерла" : "умер")].filter(Boolean).join(", "))}</span>${p.about ? `<p class="pd">${esc(p.about)}</p>` : ""}</div>${p.role ? `<span class="heart ${p.family ? "h-good" : "h-mid"}">${esc(p.role.split(/[,:]/)[0]!)}</span>` : ""}</div>`).join("");
   (ppl.closest(".card") as HTMLElement).hidden = !people.length;
   const skills = [caps.maxWordsPerUtterance >= 20 ? "говорит свободно" : caps.maxWordsPerUtterance > 0 ? "говорит словами" : "", caps.canWalk ? "ходит" : caps.canCrawl ? "ползает" : "", caps.canTrade ? "умеет считать монеты" : ""].filter(Boolean);
   const sk = qa($("charS"), ".card").find(c => c.querySelector("h3")?.textContent === "Умеет")!;
