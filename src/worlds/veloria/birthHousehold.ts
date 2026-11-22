@@ -17,7 +17,7 @@ import type { AppearanceProfile, ParentHeritage } from "./heritage";
 import { childOf } from "./nobleAppearance";
 import { buildKin, lookFromLine, type KinElderInput, type KinMember } from "./kin";
 import { MAP_NODES } from "./atlas";
-import { POPULATIONS, regionalName, sampleResidentAppearance, seedHash, type StateId } from "./populations";
+import { POPULATIONS, regionalName, sampleNativeAppearance, sampleResidentAppearance, seedHash, type StateId } from "./populations";
 import { birthOrigin, type BirthOrigin, type WealthHint, type WorkPlace } from "./birthOrigins";
 import { settlementGateLocationId } from "./settlementMaps";
 
@@ -28,6 +28,8 @@ const WEALTH: WealthHint[] = ["бедно", "скромно", "в достатк
 export type BirthHouseholdKind = "both-parents" | "with-grandparents" | "large-family" | "widowed-mother" | "unmarried-mother" | "mother-died" | "foundling";
 
 export interface BirthPreviewMember {
+  /** Откуда родом, если не из этого края (родительный падеж: «Сахрада»). */
+  from?: string;
   id: string; name: string; role: string; age: number;
   temperament: string; appearance: string; occupation: string;
   livesWithYou: boolean; alive: boolean;
@@ -70,6 +72,21 @@ const chance = (seed: string, p: number) => unit(seed) < p;
 /** Чем живут соседские семьи: у каждого соседского ребёнка свой родитель и ремесло. */
 const NEIGHBOUR_TRADES = ["лодочника", "прачки", "бочара", "рыбака", "пекаря", "кузнеца", "ткачихи", "возчика", "сапожника", "горшечника", "плотника", "торговки зеленью"];
 const FRIEND_QUIRKS = ["вечно куда-то убегает", "знает все лазы и задворки в округе", "любит животных и таскает домой котят", "много спрашивает и всё хочет потрогать", "задирается с другими детьми", "ходит хвостом за старшими", "лучше всех лазает по заборам", "собирает камешки и всякие находки", "любит страшные истории", "всегда делится едой"];
+/** «родом из …»: страна в родительном падеже. */
+const FROM: Record<string, string> = { estran: "Эстрана", sahrad: "Сахрада", tharvek: "Тарвека", varent: "Варента", elyndor: "Элиндора", kharum: "Кхарума" };
+/** Отец не повторяет черты матери: другой нрав и другая привычка, чтобы родители различались. */
+function unlike(p: ReturnType<typeof personality>, other: ReturnType<typeof personality>, role: string, sex: Sex): ReturnType<typeof personality> {
+  if (!other.initialHabits.length || !p.initialHabits.length) return p;
+  const list = QUIRKS.parent!, oq = other.initialHabits[0]!.label;
+  const quirk = p.initialHabits[0]!.label === oq ? list[(list.indexOf(oq) + 3) % list.length]! : p.initialHabits[0]!.label;
+  const [w1, w2] = p.word.split(", "), [o1, o2] = other.word.split(", ").map(x => x!.slice(0, 5));
+  const WARM = ["ласковый", "сдержанный", "холодноватый"], SIDES = ["общительный", "терпеливый", "любопытный", "напористый", "чуткий", "нелюдимый"];
+  const first = w1!.slice(0, 5) === o1 ? adj(WARM.find(x => x.slice(0, 5) !== o1)!, sex) : w1!;
+  const second = w2 && w2.slice(0, 5) === o2 ? adj(SIDES.find(x => x.slice(0, 5) !== o2)!, sex) : w2;
+  const word = second ? `${first}, ${second}` : first;
+  return { ...p, word, temperament: `${role}: ${word}; ${quirk}`, initialHabits: [{ ...p.initialHabits[0]!, label: quirk }] };
+}
+
 const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
 export const yearsWord = (n: number) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "год" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "года" : "лет"; };
 
@@ -175,9 +192,10 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const taken = new Set<string>();
   const surname = regionalName(state, "male", `${seed}:family`).surname;
 
-  const person = (id: string, sex: "male" | "female", age: number, opts: { fatherGiven?: string; native?: boolean; family?: string } = {}): Spec => {
-    const sampled = opts.native ? { ...sampleResidentAppearance(state, `birth:${seed}:${id}`, "village"), originStateId: state } : sampleResidentAppearance(state, `birth:${seed}:${id}`, kindOfPlace);
-    const { originStateId, ...look } = sampled;
+  /** Семья своего края. Пришлыми могут быть только мать (смешанный брак) и соседи; родня матери родом оттуда же, откуда она. */
+  const person = (id: string, sex: "male" | "female", age: number, opts: { fatherGiven?: string; family?: string; from?: StateId; mixed?: boolean } = {}): Spec => {
+    const originStateId: StateId = opts.from ?? (opts.mixed ? sampleResidentAppearance(state, `birth:${seed}:${id}`, kindOfPlace).originStateId : state);
+    const look = sampleNativeAppearance(originStateId, `birth:${seed}:${id}`);
     let given = "";
     for (let attempt = 0; attempt < 16; attempt++) {
       given = regionalName(originStateId, sex, `birth:${seed}:${id}:${attempt}`).given;
@@ -228,7 +246,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     members.push(npc);
     const alive = npc.lifeStatus === "alive";
     const quirk = pers.initialHabits[0]?.label;
-    preview.push({ id: spec.id, name: spec.name, role, age: spec.age, temperament: alive ? capitalize(`${word}${quirk ? `, ${quirk}` : ""}`) : "", appearance: alive ? describeLook(spec.look, spec.age) : "", occupation: alive ? occupation : "", livesWithYou: alive && livesWithYou, alive });
+    preview.push({ id: spec.id, name: spec.name, role, age: spec.age, temperament: alive ? capitalize(`${word}${quirk ? `, ${quirk}` : ""}`) : "", appearance: alive ? describeLook(spec.look, spec.age) : "", occupation: alive ? occupation : "", livesWithYou: alive && livesWithYou, alive, ...(spec.origin !== state ? { from: FROM[spec.origin] } : {}) });
     return npc;
   };
   const day = (at: string, activity: string, from = 6, to = 18) => from === 0 && to === 24 ? [{ from: 0, to: 24, locationId: at, activity }]
@@ -242,9 +260,11 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     for (let i = 0; i < count; i++) {
       const sex = chance(`${seed}:friend-sex:${i}`, 0.5) ? "male" as const : "female" as const;
       const age = Math.max(2, Math.min(14, heroAge + between(`${seed}:friend-age:${i}`, -2, 2)));
-      const famName = regionalName(state, "male", `${seed}:friend-family:${i}`).surname;
-      const f = person(`${familyId}-friend-${i + 1}`, sex, age, { family: inShelter ? "" : famName, fatherGiven: regionalName(state, "male", `${seed}:friend-father:${i}`).given });
+      let famName = regionalName(state, "male", `${seed}:friend-family:${i}`).surname;
+      const f = person(`${familyId}-friend-${i + 1}`, sex, age, { mixed: !inShelter, family: inShelter ? "" : famName, fatherGiven: regionalName(state, "male", `${seed}:friend-father:${i}`).given });
       if (inShelter) f.name = f.given;
+      // Пришлая семья носит фамилию своего края.
+      else if (f.origin !== state) { famName = regionalName(f.origin, "male", `${seed}:friend-family:${i}`).surname; f.name = `${f.given} ${famName}`; }
       const role = inShelter ? (sex === "male" ? "мальчик из приюта" : "девочка из приюта") : (sex === "male" ? "соседский мальчик" : "соседская девочка");
       const before = preview.length;
       const base = personality(`${seed}:friend:${i}`, role, "child", ["игры", "дружба"], sex, age);
@@ -255,7 +275,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
       const trade = NEIGHBOUR_TRADES[Math.floor(unit(`${seed}:friend-trade:${i}`) * NEIGHBOUR_TRADES.length)]!;
       const about = inShelter
         ? `${sex === "male" ? "Попал" : "Попала"} в приют совсем ${sex === "male" ? "маленьким" : "маленькой"}, растёте под одной крышей. ${trait}`
-        : `${sex === "male" ? "Сын" : "Дочь"} ${trade} ${famName}, живут по соседству. ${trait}`;
+        : `${sex === "male" ? "Сын" : "Дочь"} ${trade} ${famName}, живут по соседству${f.origin !== state ? `, семья родом из ${FROM[f.origin]}` : ""}. ${trait}`;
       add(f, role, fp, {
         familyRole: "other", homeId: livingAt, about,
         schedule: inShelter ? [{ from: 0, to: 24, locationId: livingAt, activity: "живёт и учится в приюте" }]
@@ -302,7 +322,11 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   const motherAlive = kind !== "mother-died";
   const fatherAlive = fatherKnown && kind !== "widowed-mother";
   const father = person(`${familyId}-parent-a`, "male", fatherAge);
-  const mother = person(`${familyId}-parent-b`, "female", motherAge, { family: pattern === "given-of-father" ? regionalName(state, "male", `${seed}:mother-family`).surname : undefined });
+  const mother = person(`${familyId}-parent-b`, "female", motherAge, { mixed: true, family: pattern === "given-of-father" ? [0, 1, 2, 3, 4, 5].map(i => regionalName(state, "male", `${seed}:mother-family${i ? `:${i}` : ""}`).surname).find(n => n !== surname) ?? surname : undefined });
+  // Девичья фамилия матери: её носят родня по матери. Если отец неизвестен, у матери и ребёнка одна фамилия.
+  let maiden = !fatherKnown ? surname : pattern === "given-of-father" ? mother.name.split(" ").slice(-1)[0]! : regionalName(mother.origin, "male", `${seed}:mother-family`).surname;
+  for (let i = 1; fatherKnown && maiden === surname && i < 12; i++) maiden = regionalName(mother.origin, "male", `${seed}:mother-family:${i}`).surname;
+  const motherFrom = mother.origin !== state ? ` Родом из ${FROM[mother.origin]}.` : "";
   // В Сахраде отчество отца героя: имя деда.
   let grandfatherGiven = regionalName(state, "male", `${seed}:grandfather-given`).given;
   for (let i = 1; grandfatherGiven === father.given && i < 12; i++) grandfatherGiven = regionalName(state, "male", `${seed}:grandfather-given:${i}`).given;
@@ -310,15 +334,16 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
 
   const motherWorksAt = placeId(s, origin.mother.at, familyId);
   const infantCare = heroAge < 1;
-  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age), {
-    familyRole: "biological-parent", lifeStatus: motherAlive ? "alive" : "dead", about: motherAlive ? `${capitalize(infantCare ? "сейчас ухаживает за тобой и ведёт хозяйство" : origin.mother.activity)}.` : `Умерла, когда ты ${draft.sex === "female" ? "появилась" : "появился"} на свет. Её помнят по рассказам родных.`,
+  const motherPers = personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age);
+  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", motherPers, {
+    familyRole: "biological-parent", lifeStatus: motherAlive ? "alive" : "dead",  about: motherAlive ? `${capitalize(infantCare ? "сейчас ухаживает за тобой и ведёт хозяйство" : origin.mother.activity)}.${motherFrom}` : `Умерла, когда ты ${draft.sex === "female" ? "появилась" : "появился"} на свет. Её помнят по рассказам родных.`,
     caregiving: motherAlive ? { role: "mother", canFeed: heroAge < 2 } : undefined,
     schedule: !motherAlive ? [] : infantCare || motherWorksAt === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: infantCare ? "ухаживает за младенцем и ведёт хозяйство" : origin.mother.activity }] : day(motherWorksAt, origin.mother.activity, 7, 17)
   }, infantCare ? "ухаживает за младенцем" : origin.mother.activity);
   biologicalParents.push({ id: mother.id, name: mother.name, appearance: mother.look });
   if (fatherKnown) {
     const at = placeId(s, origin.father.at, familyId);
-    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), {
+    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", unlike(personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), motherPers, "отец", "male"), {
       familyRole: "biological-parent", lifeStatus: fatherAlive ? "alive" : "dead", about: fatherAlive ? `${capitalize(origin.father.activity)}. На нём держится дом.` : "Умер до твоего рождения. О нём знаешь только по рассказам.", caregiving: fatherAlive ? { role: "father", canFeed: false } : undefined,
       schedule: fatherAlive ? (at === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: origin.father.activity }] : day(at, origin.father.activity)) : []
     }, origin.father.activity);
@@ -333,7 +358,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     const base = paternal ? fatherAge : motherAge;
     const granAge = base + between(`${seed}:gran`, 19, 28);
     if (granAge <= 82) {
-      const gran = person(`${familyId}-grandmother`, "female", granAge, { family: paternal ? surname : mother.name.split(" ").slice(-1)[0] });
+      const gran = person(`${familyId}-grandmother`, "female", granAge, { family: paternal ? surname : maiden, ...(paternal ? {} : { from: mother.origin }) });
       const gNpc = add(gran, paternal ? "бабушка, мать отца" : "бабушка, мать матери", personality(`${seed}:gran`, "бабушка", "elder", origin.values, "female", gran.age), {
         familyRole: "other", about: `Живёт с вами, нянчит внуков и ведёт хозяйство. Помнит, как жила семья ${paternal ? "отца" : "матери"} до тебя.`, caregiving: { role: "relative", canFeed: false }, schedule: [{ from: 0, to: 24, locationId: homeId, activity: "нянчит внуков и ведёт хозяйство" }]
       }, "нянчит внуков, ведёт хозяйство");
@@ -341,7 +366,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
       elders.push({ id: gran.id, given: gran.given, sex: "female", side: paternal ? "father" : "mother", look: gran.look });
       const grandpaAge = granAge + between(`${seed}:grandpa-gap`, 0, 6);
       if (grandpaAge <= 80 && chance(`${seed}:grandpa`, 0.4)) {
-        const gp = person(`${familyId}-grandfather`, "male", grandpaAge, { family: paternal ? surname : mother.name.split(" ").slice(-1)[0] });
+        const gp = person(`${familyId}-grandfather`, "male", grandpaAge, { family: paternal ? surname : maiden, ...(paternal ? {} : { from: mother.origin }) });
         if (paternal && pattern === "given-of-father") gp.name = `${grandfatherGiven} ${surname}`;
         elders.push({ id: gp.id, given: paternal && pattern === "given-of-father" ? grandfatherGiven : gp.given, sex: "male", side: paternal ? "father" : "mother", look: gp.look });
         add(gp, paternal ? "дедушка, отец отца" : "дедушка, отец матери", personality(`${seed}:grandpa`, "дедушка", "elder", origin.values, "male", gp.age), {
@@ -414,7 +439,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
     const sex = chance(`${seed}:uncle-sex`, 0.5) ? "male" as const : "female" as const;
     const sideFather = fatherKnown && chance(`${seed}:uncle-side`, 0.5);
     const base = sideFather ? fatherAge : motherAge;
-    const u = person(`${familyId}-${sex === "male" ? "uncle" : "aunt"}`, sex, Math.max(16, base + between(`${seed}:uncle-age`, -8, 8)), { family: sideFather ? surname : mother.name.split(" ").slice(-1)[0], fatherGiven: sideFather ? grandfatherGiven : undefined });
+    const u = person(`${familyId}-${sex === "male" ? "uncle" : "aunt"}`, sex, Math.max(16, base + between(`${seed}:uncle-age`, -8, 8)), { ...(sideFather ? {} : { from: mother.origin }), family: sideFather ? surname : maiden, fatherGiven: sideFather ? grandfatherGiven : undefined });
     const role = `${sex === "male" ? "дядя" : "тётя"}, ${sex === "male" ? "брат" : "сестра"} ${sideFather ? "отца" : "матери"}`;
     const work = sex === "male" ? "работает в поселении" : "держит своё хозяйство по соседству";
     const at = placeId(s, chance(`${seed}:uncle-at`, 0.5) ? "market" : "square", familyId);
