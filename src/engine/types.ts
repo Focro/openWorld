@@ -74,6 +74,8 @@ export interface NpcDef {
   birthday?: { month: number; day: number };
   /** Авторский паспорт речи: как звучит человек. Дописывается к автоматическому speechProfile. */
   speechNote?: string;
+  /** Кто этот человек и чем занят: одно-два предложения для игрока, без внешности. */
+  about?: string;
   lifeStatus?: "alive" | "dead" | "missing";
   familyRole?: "biological-parent" | "guardian" | "other";
   /** Собственные цели NPC (он знает их о себе; игрок: нет). */

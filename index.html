@@ -606,6 +606,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
 #app .pinsheet b{font-family:var(--display);font-size:1.15rem}
 #app .pinsheet p{font-size:13px;color:var(--muted);margin:-4px 0 0}
 #app .pinpw{font-size:13.5px;color:var(--accent);font-weight:600;text-decoration:none;padding:4px}
+#app .person .pd{margin:3px 0 0;font-size:12.5px;line-height:1.45;color:var(--fg);opacity:.85}
+#app .person{align-items:flex-start}#app .person .heart{margin-top:2px}
 
 </style></head><body>
 <div id="site">
@@ -876,9 +878,9 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
             <div class="card"><h3>Внешность</h3><p class="appTxt" id="charLook"></p></div>
             <div class="card"><h3>Близкие люди</h3>
               <div class="ppl">
-                <div class="person"><span class="a" style="background:var(--npc2-soft);color:var(--npc2)">Г</span><div><b>Гаррет</b><span>отец, конюх</span></div><span class="heart h-good">отец</span></div>
-                <div class="person"><span class="a" style="background:var(--npc1-soft);color:var(--npc1)">М</span><div><b>Мира</b><span>подруга, 6 лет</span></div><span class="heart h-good">подруга</span></div>
-                <div class="person"><span class="a" style="background:var(--surface2);color:var(--muted)">Э</span><div><b>Эрна</b><span>соседка, прачка</span></div><span class="heart h-mid">соседка</span></div>
+                <div class="person"><span class="a" style="background:var(--npc2-soft);color:var(--npc2)">Г</span><div><b>Гаррет</b><span>отец, конюх</span><p class="pd">Ходит за лошадьми при городских конюшнях. Говорит мало, но всегда замечает, когда ты помогаешь.</p></div><span class="heart h-good">отец</span></div>
+                <div class="person"><span class="a" style="background:var(--npc1-soft);color:var(--npc1)">М</span><div><b>Мира</b><span>подруга, 6 лет</span><p class="pd">Соседская девочка, дочь прачки Эрны. Первой лезет на забор и первой зовёт тебя играть.</p></div><span class="heart h-good">подруга</span></div>
+                <div class="person"><span class="a" style="background:var(--surface2);color:var(--muted)">Э</span><div><b>Эрна</b><span>соседка, прачка</span><p class="pd">Вдова через забор, стирает на полгорода. Ворчит на собак, а на праздники печёт медовые лепёшки.</p></div><span class="heart h-mid">соседка</span></div>
               </div>
             </div>
             <div class="card"><h3>Умеет</h3><div class="chips"><span class="chip">говорит свободно</span><span class="chip">бегает</span><span class="chip">чистит копыта</span><span class="chip" style="color:var(--muted)">читать: ещё нет</span></div></div>
