@@ -136,7 +136,7 @@ export const BIRTH_ORIGINS: BirthOrigin[] = [
   { id: "sahrad-port-slums", stateId: "sahrad", settlementId: "miraj", group: "дно", label: "Ребёнок портовых трущоб", blurb: "Узкие улицы у порта Миража, выживает хитрый.", wealthHint: "бедно",
     legacyOriginId: "debt-runaway", statusId: "marginal", home: home("Навес в портовых трущобах", "Пристройка из досок и тряпья в переулке у порта. Мухи, крики, чужие правила.", "gate"),
     father: { activity: "ищет подённую работу в порту", at: "gate" }, mother: { activity: "продаёт лепёшки у причала", at: "market" }, values: ["выжить", "не верить чужим", "свои рядом"] },
-  { id: "sahrad-water-lords", stateId: "sahrad", settlementId: "daryat", group: "малый дом", label: "Род владельцев канала", blurb: "Ваш род держит долю воды в каналах Дарьята.", wealthHint: "в достатке",
+  { id: "sahrad-water-lords", stateId: "sahrad", settlementId: "daryat", group: "малый дом", label: "Род владельцев канала", blurb: "Твой род держит долю воды в каналах Дарьята.", wealthHint: "в достатке",
     legacyOriginId: "impoverished-noble", statusId: "noble", servants: true, home: home("Дом с внутренним двором", "Дом с фонтаном во внутреннем дворе. Ковры, прохлада, слуги и гости по делам воды."),
     father: { activity: "разбирает споры о воде и принимает просителей", at: "square" }, mother: { activity: "ведёт дом и связи рода", at: "home" }, values: ["честь рода", "вода как власть", "гостеприимство"] },
 

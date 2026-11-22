@@ -770,7 +770,7 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
               <div class="fm"><div><b>Пим <em>8 лет</em></b><span>Сын мельника. Громкий, но добрый.</span></div></div>
             </div>
             <p class="note2"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/></svg>Это то, что видно со стороны. Их секреты, прошлое и то, что с ними случится, ты узнаешь только в игре.</p>
-            <button class="btn" type="button" style="padding:10px" data-act="otherfam" hidden><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/></svg>Другая семья</button>
+            <button class="btn" type="button" style="padding:10px" data-act="otherfam"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/></svg>Другая семья</button>
           </div>
           <div class="foot"><button class="btn primary" type="button" data-act="next">Дальше</button></div>
         </section>
@@ -944,13 +944,13 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
             <span class="lbl">Сервис</span>
             <div class="chips" id="aiProv"><button class="chip" type="button" aria-pressed="true">OpenRouter</button><button class="chip" type="button" aria-pressed="false">DeepSeek</button><button class="chip" type="button" aria-pressed="false">Claude</button><button class="chip" type="button" aria-pressed="false">OpenAI</button></div>
             <label class="lbl" for="aiKey">Ключ</label>
-            <input class="field2" id="aiKey" type="password" value="sk-or-v1-0000demo" autocomplete="off">
+            <input class="field2" id="aiKey" type="password" value="" autocomplete="off">
             <label class="lbl" for="aiModel">Модель</label>
             <input class="field2" id="aiModel" type="text" placeholder="название модели, например …:free" value="">
             <p class="qs" style="margin-top:-4px">Бесплатные модели на OpenRouter заканчиваются на <b>:free</b>. Название копируется на странице модели.</p>
             <label class="lbl" for="aiPw">Пароль для ключа</label>
-            <input class="field2" id="aiPw" type="password" value="1234" autocomplete="new-password">
-            <input class="field2" id="aiPw2" type="password" value="1234" placeholder="повтори пароль" autocomplete="new-password" aria-label="Повтори пароль">
+            <input class="field2" id="aiPw" type="password" value="" autocomplete="new-password">
+            <input class="field2" id="aiPw2" type="password" value="" placeholder="повтори пароль" autocomplete="new-password" aria-label="Повтори пароль">
             <p class="qs" style="margin-top:-4px">Этим паролем шифруется ключ. Мы его не знаем, поэтому запиши его.</p>
             <details class="mi" id="aiHelp"><summary>Нет ключа? Как получить бесплатно</summary><div class="more"><p><b>Что такое ключ?</b> ИИ, который рассказывает историю, живёт у другой компании. Ключ как проездной: показываешь его, и рассказчика пускают в твою игру. Держи его в секрете, как пароль.</p><ol style="margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px"><li>Открой openrouter.ai и нажми Sign up. Можно войти через Google.</li><li>Открой страницу ключей (Settings, Keys), нажми Create Key, имя любое, например OpenWorld.</li><li>Скопируй ключ. Он начинается с sk-or- и показывается один раз.</li><li>Вернись сюда, выбери OpenRouter, вставь ключ.</li><li>Модель возьми бесплатную, в названии есть :free.</li></ol><p style="margin-top:8px">Бесплатно до 50 сообщений в день. Если один раз пополнить счёт на 10 долларов, станет до 1000 в день.</p></div></details>
             <div class="aistate" id="aiState" hidden></div>
@@ -958,154 +958,7 @@ html,body{margin:0;background:var(--bg);color:var(--fg)}
           <div class="foot"><button class="btn primary" type="button" id="aiGo">Подтвердить</button></div>
         </section>
 </div>
-<script>(function(){
-var S={ageDone:false,ageN:26,lives:[],cur:-1,ai:false,aiTxt:'',first:true};
-var MON=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-function yrs(n){var a=n%10,b=n%100;var w=(a===1&&b!==11)?'год':(a>=2&&a<=4&&(b<12||b>14))?'года':'лет';return n+' '+w}
-function $(id){return document.getElementById(id)}
-var app,site,stack=[];
-function show(id){
-  app.querySelectorAll('.scr').forEach(function(s){s.classList.toggle('on',s.id===id)});
-  var el=$(id);el.querySelectorAll('.body,.page').forEach(function(b){b.scrollTop=0});
-  if(on[id])on[id]();
-}
-function go(id){stack.push(id);show(id)}
-function reset(id){stack=[id];show(id)}
-function back(){if(stack.length>1){stack.pop();show(stack[stack.length-1])}}
-function life(){return S.lives[S.cur]}
-function fem(){var l=life();return l?l.sex==='f':sexNow()==='f'}
-function sexNow(){var b=document.querySelector('#sex [aria-pressed="true"]');return b&&b.textContent.trim()==='Девочка'?'f':'m'}
-function ageNow(){return +$('age').value}
-function stateNow(){var b=document.querySelector('#states [aria-pressed="true"]');return b?b.textContent.trim():'Эстран'}
-function originNow(){var b=document.querySelector('#origins .opt[aria-pressed="true"] b');return b?b.textContent.trim():'Ребёнок конюха'}
 
-/* ---------- возраст при первом входе ---------- */
-function ageCalc(){var m=+$('bm').value,y=+$('by').value,d=new Date(),n=d.getFullYear()-y-((d.getMonth()+1)<m?1:0);if(n<0)n=0;
-  $('bmO').textContent=MON[m-1];$('byO').textContent=y;$('ageNow').textContent='Тебе '+yrs(n);$('ageBorn').textContent=MON[m-1]+' '+y;
-  $('ageNoteT').textContent=n<18?'Тебе меньше 18, поэтому откровенных сцен не будет. Всё остальное открыто.':'Откровенные сцены можно включить в настройках, они только для 18+.';S.ageN=n}
-
-/* ---------- внешность: только черты шести родных ---------- */
-var SKIN=['очень светлая','светлая','светлая, тёплая','золотистая','оливковая','смугловатая','смуглая','бронзовая','тёмная','очень тёмная'];
-var HAIR=['чёрные','тёмно-каштановые','каштановые','рыжевато-каштановые','рыжие','русые','светло-русые'];
-var TEX=['прямые','волнистые','кудрявые','мелко вьющиеся'];
-var EYES=['карие','тёмно-карие','ореховые','зелёные','голубые','серые','янтарные'];
-var FACE=['мягкое','с резкими скулами','широкое','вытянутое','смешанное','с восточными чертами'];
-var NOSE=['маленький','прямой','с горбинкой','курносый'];
-var LIPS=['тонкие','обычные','пухлые'];
-var BROW=['светлые','густые','тонкие','дугой'];
-var HEIGHT=['невысокий','средний','высокий'];
-var BUILD=['хрупкое','крепкое','плотное'];
-var REL=[
- {n:'мама',skin:1,hair:1,tex:1,eyes:0,face:0,nose:3,lips:1,brow:0,h:0,build:0,marks:['веснушки']},
- {n:'папа',skin:2,hair:5,tex:0,eyes:5,face:2,nose:1,lips:0,brow:1,h:2,build:1,marks:['левша']},
- {n:'бабушка Хельга',skin:4,hair:0,tex:2,eyes:2,face:0,nose:2,lips:2,brow:1,h:1,build:1,marks:['родинка']},
- {n:'дед Бран',skin:1,hair:4,tex:1,eyes:3,face:2,nose:3,lips:1,brow:0,h:1,build:2,marks:['веснушки']},
- {n:'бабушка Ильза',skin:0,hair:6,tex:1,eyes:4,face:3,nose:0,lips:2,brow:2,h:0,build:0,marks:['ямочки']},
- {n:'дед Орвин',skin:2,hair:5,tex:0,eyes:5,face:1,nose:2,lips:0,brow:3,h:2,build:1,marks:[]}
-];
-var MOMS=[0,2,3],DADS=[1,4,5];
-var ap={skin:1,hair:1,tex:1,eyes:0,face:0,nose:3,lips:1,brow:1,h:2,build:1,marks:{'веснушки':true}};
-function who(k,i){return REL.filter(function(r){return r[k]===i}).map(function(r){return r.n}).join(', ')}
-function opts(k){var o=[];REL.forEach(function(r){if(o.indexOf(r[k])<0)o.push(r[k])});return o.sort(function(a,b){return a-b})}
-function chips(k,arr){return '<div class="chips">'+opts(k).map(function(i){return '<button type="button" class="chip two" data-k="'+k+'" data-v="'+i+'" aria-pressed="'+(ap[k]===i)+'"><span>'+arr[i]+'</span><small>как у: '+who(k,i)+'</small></button>'}).join('')+'</div>'}
-function marks(){var all=[];REL.forEach(function(r){r.marks.forEach(function(m){if(all.indexOf(m)<0)all.push(m)})});
- return '<div class="chips">'+all.map(function(m){var w=REL.filter(function(r){return r.marks.indexOf(m)>=0}).map(function(r){return r.n}).join(', ');return '<button type="button" class="chip two" data-m="'+m+'" aria-pressed="'+(!!ap.marks[m])+'"><span>'+m+'</span><small>как у: '+w+'</small></button>'}).join('')+'</div>'}
-function hWord(){var f=fem();return ap.h===0?(f?'невысокой':'невысоким'):ap.h===1?'среднего роста':(f?'высокой':'высоким')}
-function markList(){return Object.keys(ap.marks).filter(function(k){return ap.marks[k]})}
-function lookText(){var m=markList();return 'Кожа '+SKIN[ap.skin]+'. Волосы '+HAIR[ap.hair]+', '+TEX[ap.tex]+'. Глаза '+EYES[ap.eyes]+'. Лицо '+FACE[ap.face]+', нос '+NOSE[ap.nose]+', губы '+LIPS[ap.lips]+', брови '+BROW[ap.brow]+'. Вырастешь '+hWord()+', сложение '+BUILD[ap.build]+'.'+(m.length?' Приметы: '+m.join(', ')+'.':'')}
-var SECS=[
- ['Кожа',function(){return SKIN[ap.skin]},function(){return chips('skin',SKIN)}],
- ['Волосы',function(){return HAIR[ap.hair]+', '+TEX[ap.tex]},function(){return '<span class="sub">Цвет</span>'+chips('hair',HAIR)+'<span class="sub">Какие</span>'+chips('tex',TEX)}],
- ['Глаза',function(){return EYES[ap.eyes]},function(){return chips('eyes',EYES)}],
- ['Лицо',function(){return FACE[ap.face]},function(){return '<span class="sub">Форма</span>'+chips('face',FACE)+'<span class="sub">Нос</span>'+chips('nose',NOSE)+'<span class="sub">Губы</span>'+chips('lips',LIPS)+'<span class="sub">Брови</span>'+chips('brow',BROW)}],
- ['Рост и сложение',function(){return HEIGHT[ap.h]+', '+BUILD[ap.build]},function(){return '<span class="sub">Вырастет</span>'+chips('h',HEIGHT)+'<span class="sub">Сложение</span>'+chips('build',BUILD)}],
- ['Приметы',function(){var a=markList();return a.length?a.join(', '):'нет'},marks]
-];
-function apRender(){var box=$('sections'),open=[].map.call(box.querySelectorAll('details'),function(d){return d.open});
- box.innerHTML=SECS.map(function(s,i){return '<details class="ap"'+(open[i]||(!open.length&&i===0)?' open':'')+'><summary>'+s[0]+'<em>'+s[1]()+'</em></summary><div class="in">'+s[2]()+'</div></details>'}).join('');
- $('desc').innerHTML='<span class="lbl">Каким ты будешь</span><p>'+lookText()+'</p>'}
-
-/* ---------- задатки словами для сводки ---------- */
-var SW={m:['сильный','выносливый','ловкий','смышлёный','обаятельный'],f:['сильная','выносливая','ловкая','смышлёная','обаятельная']};
-function statWords(){var v=[].map.call(document.querySelectorAll('#stats .pst'),function(p){return p.querySelectorAll('.pip.on').length});
- var idx=[0,1,2,3,4].sort(function(a,b){return v[b]-v[a]}).filter(function(i){return v[i]>=4}).slice(0,2);var w=SW[fem()?'f':'m'];
- return idx.length?idx.map(function(i){return w[i]}).join(' и '):'ровные задатки'}
-
-/* ---------- что показываем на каждом экране ---------- */
-var on={
- ageS:ageCalc,
- menuS:function(){var l=life(),h='';
-  if(l)h+='<div class="cont"><span class="lbl" style="color:inherit;opacity:.8">Продолжить</span><b>'+l.name+', '+yrs(l.age)+'</b><span>Ровен, двор конюшни · весна 730 КЛ</span><button class="btn primary" type="button" data-act="play" data-i="'+S.cur+'" style="margin-top:6px">Продолжить жизнь</button></div>';
-  else h+='<div class="menuHi"><b>С возвращением</b><span>Живого героя пока нет. Начни новую жизнь.</span></div>';
-  h+='<button class="btn'+(l?'':' primary')+'" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь</button>';
-  if(S.lives.length)h+='<button class="btn ghost" type="button" data-go="livesS"><svg class="i" viewBox="0 0 24 24"><path d="M5 4.5h10a3 3 0 0 1 3 3V20l-4-2.5H5z"/></svg>Мои жизни</button>';
-  if(!S.ai)h+='<div class="aiNote"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/></svg><span>ИИ не подключён, мир пока отвечает скупо. <a href="#" data-go="aiS">Подключить</a></span></div>';
-  $('menuBody').innerHTML=h},
- w1:function(){app.querySelectorAll('.wTitle').forEach(function(b){b.textContent=S.first?'Твоя первая жизнь':'Новая жизнь в Велории'});
-  $('welcome').hidden=!S.first;app.querySelectorAll('[data-wback]').forEach(function(b){b.style.visibility=''});
-  $('w1').querySelector('[data-wback]').style.visibility=S.first?'hidden':''},
- w3:function(){var a=ageNow();$('famList').querySelectorAll('[data-b]').forEach(function(e){e.textContent=yrs(+e.dataset.b+a)});$('famFriends').hidden=a<5},
- w4:apRender,
- w6:function(){var nm=$('nm');if(!nm.dataset.touched)nm.value=fem()?'Эйла':'Лиан';var a=ageNow(),st=stateNow();
-  $('sumCard').innerHTML='<div><span>Родится</span><b>'+(st==='Эстран'?'в Ровене':'в державе '+st)+', весна '+(730-a)+' КЛ</b></div><div><span>Кто</span><b>'+originNow()+'</b></div><div><span>Семья</span><b>конюх Гаррет и Марта</b></div><div><span>Начнёт</span><b>'+(a===0?'с рождения':'с '+yrs(a))+'</b></div><div><span>Внешность</span><b>'+HAIR[ap.hair]+' '+TEX[ap.tex]+' волосы, глаза '+EYES[ap.eyes]+'</b></div><div><span>Задатки</span><b>'+statWords()+'</b></div>'},
- gamePhone:function(){var l=life();app.querySelectorAll('.hName').forEach(function(b){b.textContent=l.name});
-  app.querySelectorAll('.hAge').forEach(function(b){b.textContent=l.age===0?'младенец':yrs(l.age)});$('hState').textContent=l.age<3?(l.sex==='f'?'сонная':'сонный'):(l.sex==='f'?'голодна':'голоден');
-  $('storyKid').hidden=l.age<3;$('storyBaby').hidden=l.age>=3;$('aiLine').hidden=S.ai},
- charS:function(){var l=life();app.querySelectorAll('.hName').forEach(function(b){b.textContent=l.name});$('hRole').textContent=l.origin+' · Ровен';
-  var a=l.age,stg=a<3?'Младенчество':a<13?'Детство':'Юность';$('stageT').textContent=stg+' · '+(a===0?'первые дни':yrs(a));
-  var n=a<3?1:a<8?2:3;$('stageTrack').querySelectorAll('i').forEach(function(t,i){t.className=i<n?'done':''});$('charLook').textContent=l.look},
- setS:function(){$('aiRowTxt').innerHTML=S.ai?'<i class="dot"></i>'+S.aiTxt:'не подключён';
-  var ad=$('adult');if(S.ageN<18){ad.disabled=true;ad.setAttribute('aria-pressed','false');$('adultTxt').textContent='доступно только с 18 лет'}else{ad.disabled=false;$('adultTxt').textContent=ad.getAttribute('aria-pressed')==='true'?'только 18+, включено':'только 18+, выключено'}
-  $('toMenuRow').hidden=stack[0]==='menuS'&&stack.length===2},
- livesS:function(){var h='<span class="lbl">Велория</span>';
-  S.lives.forEach(function(l,i){h+='<div class="life"><div><b>'+l.name+', '+yrs(l.age)+'</b><span>'+l.origin+' · '+l.state+'</span><span class="saved">Сохранено '+l.saved+'</span></div><button class="btn primary sm2" type="button" data-act="play" data-i="'+i+'">Продолжить</button></div>'});
-  h+='<button class="btn" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь в Велории</button><span class="lbl">Другие миры</span><div class="life soon"><div><b>Скоро</b><span>Здесь появятся жизни из новых миров</span></div></div><p class="qs">Игра сохраняется сама после каждого хода. Смерть окончательная: умершую жизнь нельзя загрузить, остаётся только её хроника.</p>';
-  $('livesList').innerHTML=h},
- mapPhone:function(){setTimeout(function(){window.__mapFix&&__mapFix()},30)},
- aiS:function(){}
-};
-
-function born(){var nm=$('nm').value.trim()||'Лиан',d=new Date();
- S.lives.push({name:nm,age:ageNow(),sex:sexNow(),state:stateNow(),origin:originNow(),look:lookText(),saved:'сегодня в '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)});
- S.cur=S.lives.length-1;S.first=false;$('nm').dataset.touched='';reset('gamePhone')}
-
-var ORDER=['w1','w2','w3','w4','w5','w6'];
-function act(a,el){
- if(a==='ageOk'){S.ageDone=true;ageCalc();if(S.lives.length)reset('menuS');else{S.first=true;reset('w1')}}
- else if(a==='next'){var i=ORDER.indexOf(stack[stack.length-1]);if(i>=0&&i<5)go(ORDER[i+1])}
- else if(a==='born')born();
- else if(a==='play'){S.cur=+el.dataset.i;reset('gamePhone')}
- else if(a==='newlife'){S.first=false;stack=['menuS'];go('w1')}
- else if(a==='menu')reset('menuS');
- else if(a==='logout')OW.logout();
- else if(a==='otherfam'){el.textContent='Другая семья (в макете одна)';}
-}
-
-window.OW={S:S,go:go,back:back,
- login:function(){site.hidden=true;app.hidden=false;document.body.style.overflow='hidden';if(!S.ageDone)reset('ageS');else if(S.lives.length)reset('menuS');else{S.first=true;reset('w1')}},
- logout:function(){app.hidden=true;site.hidden=false;document.body.style.overflow='';if(location.hash)location.hash='';window.scrollTo(0,0)},
- aiOk:function(model,prov){S.ai=true;S.aiTxt=prov+', '+model},
- init:function(){
-  app=$('app');site=$('site');
-  $('bm').addEventListener('input',ageCalc);$('by').addEventListener('input',ageCalc);
-  $('nm').addEventListener('input',function(){this.dataset.touched='1'});
-  $('sections').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.m)ap.marks[b.dataset.m]=!ap.marks[b.dataset.m];else ap[b.dataset.k]=+b.dataset.v;apRender()});
-  $('likeR').addEventListener('input',function(){var v=+this.value/100,side=v<.5?MOMS:DADS,s=Math.abs(v-.5)*2;if(s<.1)return;
-   ['skin','hair','eyes','tex','face','nose','lips','brow','h','build'].forEach(function(k,i){var src=(i%3!==2||s>.7)?REL[side[0]]:REL[side[1+(i%2)]];ap[k]=src[k]});
-   ap.marks={};REL[side[0]].marks.forEach(function(m){ap.marks[m]=true});apRender()});
-  $('adult').addEventListener('click',function(){setTimeout(on.setS,0)});
-  // кнопка «Начать играть» после подключения ИИ
-  $('aiGo').addEventListener('click',function(e){if(this.dataset.done){e.stopImmediatePropagation();if(life())reset('gamePhone');else back()}},true);
-  app.addEventListener('click',function(e){
-   var t=e.target.closest('[data-act]');if(t){e.preventDefault();act(t.dataset.act,t);return}
-   t=e.target.closest('[data-go]');if(t){e.preventDefault();if(t.hasAttribute('data-help'))setTimeout(function(){$('aiHelp').open=true},0);go(t.dataset.go);return}
-   t=e.target.closest('[data-tab]');if(t){var id=t.dataset.tab;if(stack[stack.length-1]!==id){stack=[id];show(id)}return}
-   t=e.target.closest('[aria-label="Назад"]');if(t){back();return}
-  });
- }
-};
-})();
-</script>
 <script>
 (function(){
   var r=document.documentElement;
@@ -1186,26 +1039,11 @@ window.OW={S:S,go:go,back:back,
 ts.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var t=b.getAttribute('data-t');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme');mark()});
 new MutationObserver(mark).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']})})();
   function single(id){var g=document.getElementById(id);g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b)})})}
-  ['origins','diff','person','lang','sex'].forEach(single);
+  ['diff','person','lang','sex'].forEach(single);
   var ages=[['С рождения','Ты младенец: плачешь, спишь, смотришь на мир. Всё остальное впереди.'],['1 год','Учишься ходить, говоришь первые слова.'],['2 года','Бегаешь, лезешь везде, говоришь короткими фразами.']];
   function ageTxt(v){if(v<3)return ages[v];if(v<6)return [v+(v<5?' года':' лет'),'Малыш: всё видишь, всё спрашиваешь, взрослые решают за тебя.'];return [v+' лет','Ребёнок: уже помогаешь по дому, заводишь друзей, у тебя есть свои секреты.']}
   var ag=document.getElementById('age');function au(){var t=ageTxt(+ag.value);document.getElementById('ageVal').textContent=t[0];document.getElementById('ageHint').textContent=t[1]}ag.addEventListener('input',au);au();
   var ad=document.getElementById('adult');ad.addEventListener('click',function(){ad.setAttribute('aria-pressed',ad.getAttribute('aria-pressed')!=='true')});
-  // states & origins: список вариантов Франка (birthOrigins.ts), строки описаний примерные
-  var SD={"Эстран": {"full": "Королевство Эстран", "d": "Умеренный климат, речные долины, поля и северные холмы. Земледельческое королевство на старых торговых дорогах.", "f": ["славится: зерно, лён, железо", "правит королева", "вера Семерых Огней"], "o": [["земля", "Семья арендаторов", "Пашете чужую землю, встаёте до рассвета.", "бедно"], ["земля", "Свободные земледельцы", "Свой двор и своя полоса земли.", "скромно"], ["земля", "Лесорубы Эшкомба", "Топоры, просеки и запах свежей щепы.", "бедно"], ["ремесло", "Семья кузнеца", "Жар горна и звон молота с первых дней.", "скромно"], ["ремесло", "Мельник Миллфорда", "Скрип жерновов и мука на всём.", "скромно"], ["торговля", "Мелкий торговец", "Лоток на рынке, все соседи знакомы.", "скромно"], ["торговля", "Семья возчиков", "Обозы и дороги, дом там, где стоянка.", "бедно"], ["служба", "Ребёнок конюха", "Конюшня при постоялом дворе.", "бедно"], ["служба", "Ребёнок прислуги", "Растёшь в чужом богатом доме.", "бедно"], ["служба", "Семья солдата Нортвотча", "Гарнизон на севере, отец на службе.", "скромно"], ["храм", "Подкидыш у храма Семерых", "Оставлен на ступенях храма.", "бедно"], ["дно", "Старый квартал", "Тесные дворы, где выживает хитрый.", "очень бедно"], ["малый дом", "Малый дворянский род", "Старое имя и небольшое поместье.", "в достатке"], ["королевский дом", "Второй принц", "Рождение при дворе Эстрана.", "в достатке"]]}, "Сахрад": {"full": "Сахрадский султанат", "d": "Жаркая страна пустынь и оазисов. Здесь власть связана с водой и караванами.", "f": ["славится: соль, стекло, финики, пряности", "правит султан", "Путь Колодцев"], "o": [["земля", "Финиковые рощи Дарьята", "Тень пальм и сбор урожая всей семьёй.", "скромно"], ["земля", "Рыбаки Миража", "Лодки у жаркого берега.", "бедно"], ["ремесло", "Стеклодув Кадиры", "Песок, огонь и тонкое стекло.", "скромно"], ["ремесло", "Красильщики Шафранового Порта", "Руки в краске, чаны с шафраном.", "скромно"], ["торговля", "Лавочник с базара", "Пряности, торг и крики зазывал.", "скромно"], ["торговля", "Погонщики верблюдов Сафры", "Караванные тропы через пустыню.", "бедно"], ["служба", "Прислуга наместника", "Ты растёшь среди чужой роскоши.", "бедно"], ["храм", "Найдёныш у храмового колодца", "Растят хранители Пути Колодцев.", "бедно"], ["дно", "Портовые трущобы", "Жара, теснота и свои законы.", "очень бедно"], ["малый дом", "Род владельцев канала", "Вода в руках вашей семьи.", "в достатке"]]}, "Варент": {"full": "Вольные города Варента", "d": "Умеренное морское побережье, заливы и острова. Конфедерация, где договор и капитал решают многое.", "f": ["славится: корабли, книги, краски, банки", "правит Совет Семи Гаваней", "Учение Открытого Фонаря"], "o": [["земля", "Солевары", "Соль, ветер и белые поля у моря.", "бедно"], ["ремесло", "Корабельный плотник", "Верфь пахнет смолой и солью.", "скромно"], ["ремесло", "Ткачи", "Станки стучат с утра до ночи.", "скромно"], ["торговля", "Счетовод Меровара", "Цифры, договоры и чужие деньги.", "скромно"], ["служба", "Семья моряка", "Отец уходит в море надолго.", "бедно"], ["храм", "Воспитанник Открытого Фонаря", "Растят служители Фонаря.", "бедно"], ["дно", "Дно Синей Гавани", "Узкие улицы у причалов.", "очень бедно"], ["малый дом", "Пайщик Лиги", "Доля в торговых делах Лиги.", "в достатке"]]}, "Тарвек": {"full": "Тарвекские княжества", "d": "Холодные горы, перевалы, крепости и шахтёрские общины.", "f": ["славится: железо, олово, оружие", "правит Княжеский конклав", "Клятва Камня"], "o": [["земля", "Горные пастухи", "Стада на склонах и долгие зимы.", "бедно"], ["земля", "Рудокоп Глубокой Кузни", "Тяжёлая работа под горой.", "бедно"], ["ремесло", "Оружейник Драворна", "Клинки для застав и князей.", "скромно"], ["ремесло", "Плавильный посёлок", "Дым печей и звон металла.", "бедно"], ["торговля", "Постоялый двор у моста", "Путники со всего хребта.", "скромно"], ["служба", "Заставный воин", "Растёшь у ворот перевала.", "скромно"], ["храм", "Воспитанник Каменной клятвы", "Растят хранители Клятвы Камня.", "бедно"], ["малый дом", "Младший горный род", "Своя башня и старая вражда.", "в достатке"]]}, "Элиндор": {"full": "Элиндорская лига лесов", "d": "Холодный север: старые леса и озёрные земли, где решают родовые советы.", "f": ["славится: древесина, травы, смолы, меха", "правит Совет Старших Рощ", "Память Зелёных Рощ"], "o": [["земля", "Лесные общинники", "Общие угодья и общий труд.", "скромно"], ["земля", "Озёрные рыбаки", "Сети, лодки и холодная вода.", "бедно"], ["ремесло", "Травница", "Сушёные травы и больные у порога.", "скромно"], ["ремесло", "Резчики по дереву", "Узоры на всём, что сделано руками.", "скромно"], ["торговля", "Скупщики мехов", "Меха с охоты едут в большие города.", "скромно"], ["храм", "Найдёныш священной рощи", "Растят хранители Зелёных Рощ.", "бедно"], ["дно", "Пришлые лесорубы", "Чужаки, которых не любят местные.", "очень бедно"], ["малый дом", "Семья старейшины рода", "Голос в совете и тяжесть рода.", "в достатке"]]}, "Кхарум": {"full": "Кхарумская империя", "d": "Жаркая и влажная империя речных дельт, каналов и дворцовых чиновников.", "f": ["славится: рис, хлопок, сахар, керамика", "правит император", "Солнечный Канон"], "o": [["земля", "Рисоводы", "Вода по колено, урожай дважды в год.", "бедно"], ["ремесло", "Гончары", "Глина дельты и тонкая керамика.", "скромно"], ["ремесло", "Хлопкоткачи", "Белые нити и бесконечный станок.", "бедно"], ["торговля", "Торговцы у таможни", "Пошлины, печати и товары всех стран.", "скромно"], ["служба", "Младший писец", "Отец сдал экзамен, и семья этим гордится.", "скромно"], ["служба", "Дворцовая прислуга", "Ты растёшь у стен дворца.", "бедно"], ["храм", "Воспитанник Солнечного Шпиля", "Растят служители Солнечного Канона.", "бедно"], ["дно", "Канальные трущобы", "Сырость, теснота и свои законы.", "очень бедно"], ["малый дом", "Семья чиновника", "Реестры, печати и опасные интриги.", "в достатке"]]}};
-  var GO=["земля", "ремесло", "торговля", "служба", "храм", "дно", "малый дом", "королевский дом"];
-  var stEl=document.getElementById('states'),siEl=document.getElementById('sinfo'),orEl=document.getElementById('origins');
-  var icoO='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>';
-  var icoBy={'земля':'<svg class="i" viewBox="0 0 24 24"><path d="M4 20c4-1 12-1 16 0"/><path d="M12 20V9M12 13c-2.5 0-4-2-4-4 2.5 0 4 2 4 4zM12 11c2.5 0 4-2 4-4-2.5 0-4 2-4 4z"/></svg>','ремесло':'<svg class="i" viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6z"/><path d="M11 7L4 14a2 2 0 0 0 3 3l7-7"/></svg>','торговля':'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5c0-1.2 1.1-2 2.5-2s2.5.6 2.5 1.7c0 2.6-5 1.5-5 4 0 1 1.1 1.8 2.5 1.8s2.5-.8 2.5-2"/></svg>','служба':'<svg class="i" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2"/></svg>','храм':'<svg class="i" viewBox="0 0 24 24"><path d="M4 9l8-5 8 5"/><path d="M6 9v9M10 9v9M14 9v9M18 9v9M4 20h16"/></svg>','дно':'<svg class="i" viewBox="0 0 24 24"><path d="M5 20V9l4-3v14M15 20V6l4 3v11M9 20h6"/></svg>','малый дом':'<svg class="i" viewBox="0 0 24 24"><path d="M5 20V10l7-5 7 5v10"/><path d="M10 20v-5h4v5"/></svg>','королевский дом':'<svg class="i" viewBox="0 0 24 24"><path d="M4 17l2-9 4 4 2-6 2 6 4-4 2 9z"/><path d="M4 20h16"/></svg>'};
-  function cap(x){return x.charAt(0).toUpperCase()+x.slice(1)}
-  function renderState(k){
-    stEl.innerHTML=Object.keys(SD).map(function(n){return '<button class="chip" type="button" aria-pressed="'+(n===k)+'" data-st="'+n+'">'+n+'</button>'}).join('');
-    var d=SD[k];siEl.innerHTML='<b>'+d.full+'</b><p>'+d.d+'</p><div class="facts2">'+d.f.map(function(f){return '<span>'+f+'</span>'}).join('')+'</div>';
-    var h='';GO.forEach(function(g){var list=d.o.filter(function(o){return o[0]===g});if(!list.length)return;h+='<span class="lbl">'+cap(g)+'</span>';list.forEach(function(o,i){h+='<button class="opt" type="button" aria-pressed="'+(k==='Эстран'?o[1]==='Ребёнок конюха':(h.indexOf('aria-pressed="true"')<0&&g===GO[0]&&i===0))+'"><span class="oi">'+(icoBy[g]||icoO)+'</span><span><b>'+o[1]+'</b><span>'+o[2]+'</span><em class="meta">'+o[3]+'</em></span></button>'})});
-    orEl.innerHTML=h;
-  }
-  stEl.addEventListener('click',function(e){var b=e.target.closest('[data-st]');if(b)renderState(b.getAttribute('data-st'))});
-  renderState('Эстран');
   // stats
   var names=['Сила','Выносливость','Ловкость','Ум','Обаяние'];
   var vals=[3,3,3,3,3],TOTAL=15;
@@ -1237,43 +1075,25 @@ new MutationObserver(mark).observe(document.documentElement,{attributes:true,att
   // memory tabs
   var mt=document.getElementById('memTabs');mt.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;mt.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});var d=b.getAttribute('data-m')==='d';document.getElementById('memD').hidden=!d;document.getElementById('memP').hidden=d});
   single('aiProv');
-  // ai connect
-  var go=document.getElementById('aiGo'),st=document.getElementById('aiState');
-  go.addEventListener('click',function(){if(go.dataset.done)return;
-    var k=document.getElementById('aiKey').value.trim(),m=document.getElementById('aiModel').value.trim(),p1=document.getElementById('aiPw').value,p2=document.getElementById('aiPw2').value;
-    function err(t,h){st.className='aistate err';st.innerHTML='<div><b>'+t+'</b>'+h+'</div>';st.hidden=false;st.scrollIntoView({block:'nearest'})}
-    if(!k)return err('Нет ключа','Вставь ключ, который скопировал на сайте сервиса.');
-    if(!m)return err('Не выбрана модель','Впиши название модели. Бесплатные на OpenRouter заканчиваются на :free.');
-    if(p1.length<4)return err('Слишком короткий пароль','Нужно хотя бы 4 символа.');
-    if(p1!==p2)return err('Пароли не совпадают','Введи один и тот же пароль два раза.');
-    st.className='aistate load';st.innerHTML='<span class="spin"></span><div><b>Проверяем подключение…</b>Отправляем ИИ пробное сообщение.</div>';st.hidden=false;go.disabled=true;go.style.opacity=.6;
-    setTimeout(function(){go.disabled=false;go.style.opacity=1;
-      if(!/^sk-/.test(k))return err('Ключ не подошёл','Сервис его не принял. Проверь, что скопировал ключ целиком.');
-      st.className='aistate ok';st.innerHTML='<span class="tick"><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12l5 5 9-10"/></svg></span><div><b>Подключено</b>Модель '+m.replace(/[<>&]/g,'')+' ответила за 1,2 с. Можно играть.</div>';go.textContent='Начать играть';go.dataset.done='1';window.OW&&OW.aiOk(m,document.querySelector('#aiProv [aria-pressed="true"]').textContent);
-    },1400);
-  });
   // live sheet
   var sh=document.getElementById('liveSheet'),sd=document.getElementById('liveShade');
   document.getElementById('liveBtn').addEventListener('click',function(){sh.hidden=false;sd.hidden=false});
   sd.addEventListener('click',function(){sh.hidden=true;sd.hidden=true});
-  sh.addEventListener('click',function(e){if(e.target.closest('.grid3 button')){sh.hidden=true;sd.hidden=true}});
+  sh.addEventListener('click',function(e){if(e.target.closest('.grid3 button')){sh.hidden=true;sd.hidden=true}});window.__closeLive=function(){sh.hidden=true;sd.hidden=true};
   document.getElementById('aiLink').addEventListener('click',function(e){e.preventDefault()});
 })();
 </script>
 <script>
 (function(){
-var PD={"Коронхольм": {"k": "Эстран · Эстранское сердце", "r": "", "d": "Столица Эстрана: королевская резиденция, суд и монетный двор.", "w": "По суше: 5 дней", "c": true}, "Ровен": {"k": "Эстран · Эстранское сердце", "r": "", "d": "Торговый город на реке Лир: рынок, причал, храм Семерых Огней, «Серая лиса».", "w": "ты здесь", "c": true}, "Нортвотч": {"k": "Эстран · Северные холмы", "r": "", "d": "Северная застава: гарнизон, сигнальные рога, рудники рядом.", "w": "По суше: 10 дней", "c": true}, "Миллфорд": {"k": "Эстран · Южная долина", "r": "", "d": "Мельничное село Южной долины: жернова, обозы с зерном, усадьба на холме.", "w": "По суше: 4 дня", "c": true}, "Кадира": {"k": "Сахрад · Пояс оазисов", "r": "", "d": "Столица Сахрада: крытый базар, стеклодувы, храмовые колодцы.", "w": "Морем: 11 дней · По суше: 15 дней", "c": true}, "Сафра": {"k": "Сахрад · Пояс оазисов", "r": "", "d": "Караван-сарай у колодца на соляной дороге: погонщики, проводники, проводы.", "w": "Морем: 15 дней · По суше: 19 дней", "c": true}, "Мираж": {"k": "Сахрад · Медное побережье", "r": "", "d": "Порт Медного побережья: рыбацкие артели, город дома Мирджан. Говорят, тут есть Скрытый базар.", "w": "Морем: 4 дня · По суше: 17 дней", "c": true}, "Варенпорт": {"k": "Варент · Гавани Лиги", "r": "", "d": "Главный город Лиги и место Совета, свободная гавань с 241 КЛ.", "w": "Морем: 3 дня · По суше: 15 дней", "c": true}, "Меровар": {"k": "Варент · Гавани Лиги", "r": "", "d": "Город финансовых домов: конторы, гроссбухи, ткачи на заказ палат.", "w": "Морем: 7 дней · По суше: 19 дней", "c": true}, "Синяя Гавань": {"k": "Варент · Гавани Лиги", "r": "", "d": "Северный порт Лиги: моряки, ночные лодки и чужие тайны.", "w": "Морем: 12 дней · По суше: 24 дня", "c": true}, "Драворн": {"k": "Тарвек · Высокий хребет", "r": "", "d": "Столица Тарвека, крепость у главного перевала. Оружейники и святилище Камня.", "w": "Морем: 21 день · По суше: 33 дня", "c": true}, "Железный Перевал": {"k": "Тарвек · Высокий хребет", "r": "", "d": "Застава на перевале по клятве рода. Зимой дорогу закрывает снег.", "w": "Морем: 14 дней · По суше: 26 дней", "c": true}, "Летариэль": {"k": "Элиндор · Старые леса", "r": "", "d": "Столица Элиндора, Совет Старших Рощ. Озёрный город резчиков по дереву.", "w": "По суше: 12 дней", "c": true}, "Ивовый Предел": {"k": "Элиндор · Старые леса", "r": "", "d": "Деревня у священной рощи: травницы и хранители рощи.", "w": "По суше: 17 дней", "c": true}, "Хар-Кадар": {"k": "Кхарум · Великая дельта", "r": "", "d": "Столица Кхарума: императорский двор и дворцовые каналы.", "w": "Морем: 21 день · По суше: 33 дня", "c": true}, "Азракар": {"k": "Кхарум · Великая дельта", "r": "", "d": "Город архивов и писцовых школ. Говорят о Тихом архиве.", "w": "Морем: 15 дней · По суше: 27 дней", "c": true}, "Намар": {"k": "Кхарум · Великая дельта", "r": "", "d": "Ремесленный город дельты: гончары, хлопкоткачи, рисовые рынки.", "w": "Морем: 18 дней · По суше: 30 дней", "c": true}, "Солнечный Шпиль": {"k": "Кхарум · Великая дельта", "r": "", "d": "Храмовая школа имперского Солнца с детским двором.", "w": "Морем: 25 дней · По суше: 37 дней", "c": true}, "Вестмер": {"k": "Эстран · Эстранское сердце", "r": "", "d": "Деревня свободных земледельцев у переправы. Свои наделы и споры о мостовой пошлине.", "w": "По суше: 4 дня", "c": true}, "Эшкомб": {"k": "Эстран · Северные холмы", "r": "", "d": "Лесорубы Северных холмов: лесопилка, смола и тёмный лес за околицей.", "w": "По суше: 9 дней", "c": true}, "Дарьят": {"k": "Сахрад · Пояс оазисов", "r": "", "d": "Финиковые рощи и каналы. Вода идёт по очереди, долями воды владеют знатные роды.", "w": "Морем: 7 дней · По суше: 19 дней", "c": true}, "Шафрановый Порт": {"k": "Сахрад · Медное побережье", "r": "", "d": "Город красилен: чаны с шафраном, жёлтые от краски улицы. Дорога на Мираж.", "w": "По суше: 10 дней", "c": true}, "Тайд-вотч": {"k": "Варент · Гавани Лиги", "r": "", "d": "Маяк и верфи на дальнем северо-востоке, смола и стук топоров.", "w": "Морем: 14 дней", "c": true}, "Солёный Мер": {"k": "Варент · Гавани Лиги", "r": "", "d": "Соляные варницы и рыбный рынок. Соль отсюда везут по всему Лиару.", "w": "Морем: 7 дней · По суше: 11 дней", "c": true}, "Каменный Мост": {"k": "Тарвек · Высокий хребет", "r": "", "d": "Мост через ущелье и постоялый двор у него. Пастухи и путники.", "w": "Морем: 25 дней · По суше: 37 дней", "c": true}, "Глубокая Кузня": {"k": "Тарвек · Высокий хребет", "r": "", "d": "Рудничный город: шахты, плавильни, бараки и плата медью.", "w": "Морем: 25 дней · По суше: 37 дней", "c": true}, "Моховый Брод": {"k": "Элиндор · Старые леса", "r": "", "d": "Брод и угодья лесного рода: охота, борти, ягодники.", "w": "По суше: 16 дней", "c": true}, "Озерный Дозор": {"k": "Элиндор · Старые леса", "r": "", "d": "Озёрная пристань: рыбаки на сваях и скупщики мехов.", "w": "По суше: 18 дней", "c": true}, "Тростниковая Гавань": {"k": "Кхарум · Великая дельта", "r": "", "d": "Рисовые поля и баржи Великой дельты, сезон дождей.", "w": "Морем: 25 дней · По суше: 37 дней", "c": true}, "Врата Слоновой Кости": {"k": "Кхарум · Великая дельта", "r": "", "d": "Таможенный двор на имперской дороге: караваны с юга и пошлины.", "w": "Морем: 32 дня · По суше: 44 дня", "c": true}, "Северные холмы": {"k": "край", "r": "", "d": "Лес, камень, железная руда и сторожевые башни.", "w": "", "c": true}, "Южная долина": {"k": "край", "r": "", "d": "Зерно, скот, лён, мельницы и поместья.", "w": "", "c": true}, "Западный тракт": {"k": "дорога", "r": "", "d": "Торговый тракт Эстрана от Коронхольма к портам западного побережья.", "w": "", "c": true}, "Эстран": {"k": "держава", "r": "", "d": "Старое королевство в центре запада. Мягкий климат, хлебные поля, река Лир. Здесь ты родился.", "w": "", "c": true}, "Варент": {"k": "держава", "r": "", "d": "Торговая держава на северо-востоке: конторы, векселя, корабли.", "w": "", "c": true}, "Тарвек": {"k": "держава", "r": "", "d": "Горные княжества на востоке, рудники и кузни.", "w": "", "c": true}, "Сахрад": {"k": "держава", "r": "", "d": "Жаркие пустынные и речные земли на юге, оазисы и караваны.", "w": "", "c": true}, "Элиндор": {"k": "держава", "r": "", "d": "Леса и озёра на западе.", "w": "", "c": true}, "Кхарум": {"k": "держава", "r": "", "d": "Далёкий юго-восток. О нём больше слухов, чем правды.", "w": "", "c": true}, "море Лиар": {"k": "море", "r": "", "d": "Внутреннее море, вокруг которого лежит вся Велория. Из Ровена ходят суда в Варенпорт и Мираж.", "w": "", "c": true}, "Открытое море": {"k": "море", "r": "", "d": "На западе, за ним, говорят, есть другие земли.", "w": "", "c": true}, "река Лир": {"c": true, "k": "река · Эстран", "r": "", "d": "Течёт с северных холмов к Ровену и впадает там в море Лиар. По ней ходят баржи с зерном.", "w": "течёт через Ровен"}};var card=document.getElementById('placeCard'),inner=document.getElementById('mapInner'),sc=document.getElementById('mapScroll');
-inner.addEventListener('click',function(e){var b=e.target.closest('[data-p]');if(!b)return;inner.querySelectorAll('[data-p]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
- var n=b.getAttribute('data-p'),d=PD[n];document.getElementById('pcN').textContent=n;document.getElementById('pcK').textContent=d.k;var pw=document.getElementById('pcW');pw.textContent=d.w;pw.hidden=!d.w;document.getElementById('pcC').hidden=d.c!==false;document.getElementById('pcD').textContent=d.d;document.getElementById('pcD').hidden=!d.d;
- card.hidden=false});
+var card=document.getElementById('placeCard'),inner=document.getElementById('mapInner'),sc=document.getElementById('mapScroll');
+
 document.getElementById('pcX').onclick=function(){card.hidden=true};
-var z=230;function zoom(v){var mz=Math.ceil(sc.clientHeight*600/760/Math.max(1,sc.clientWidth)*100);z=Math.max(mz||130,Math.min(380,v));inner.style.width=z+'%'}zoom(230);function center(sm){sc.scrollTo({left:inner.offsetWidth*0.3800-sc.clientWidth/2,top:inner.offsetHeight*0.4700-sc.clientHeight/2,behavior:sm?'smooth':'auto'})}setTimeout(function(){center(false)},120);window.addEventListener('load',function(){center(false)});
+var z=230;function zoom(v){var mz=Math.ceil(sc.clientHeight*600/760/Math.max(1,sc.clientWidth)*100);z=Math.max(mz||130,Math.min(380,v));inner.style.width=z+'%'}zoom(230);function center(sm){sc.scrollTo({left:inner.offsetWidth*(window.__me?__me.x/100:.38)-sc.clientWidth/2,top:inner.offsetHeight*(window.__me?__me.y/100:.47)-sc.clientHeight/2,behavior:sm?'smooth':'auto'})}setTimeout(function(){center(false)},120);window.addEventListener('load',function(){center(false)});
 function zk(v){var cx=(sc.scrollLeft+sc.clientWidth/2)/inner.offsetWidth,cy=(sc.scrollTop+sc.clientHeight/2)/inner.offsetHeight;zoom(v);sc.scrollLeft=inner.offsetWidth*cx-sc.clientWidth/2;sc.scrollTop=inner.offsetHeight*cy-sc.clientHeight/2}document.getElementById('zIn').onclick=function(){zk(z+60)};document.getElementById('zOut').onclick=function(){zk(z-60)};
 document.getElementById('zMe').onclick=function(){zoom(Math.max(z,230));setTimeout(function(){center(true)},60)};
 document.querySelectorAll('.mapmini').forEach(function(m){m.addEventListener('click',function(){OW.go('mapPhone')})});window.__mapFix=function(){zoom(z);center(false)};
 })();
 </script>
 <script>(function(){var g=document.getElementById('accSeg');g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var a=b.getAttribute('data-a');if(a)document.documentElement.setAttribute('data-accent',a);else document.documentElement.removeAttribute('data-accent');g.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))})})})();</script>
-<script>OW.init()</script>
-<script type="module" src="/src/protoAuth.ts"></script>
+<script type="module" src="/src/site/controller.ts"></script>
 </body></html>

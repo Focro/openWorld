@@ -116,10 +116,10 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
   } else {
     state = createInitialState(world, draft.name.trim());
     state.playerMemory[0] = newLife && !isBirth
-      ? { ...state.playerMemory[0]!, text: `[Детские воспоминания] ${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.6 }
+      ? { ...state.playerMemory[0]!, text: `${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.6 }
       : isBirth && !isPrince
-      ? { ...state.playerMemory[0]!, text: `[До первых связных воспоминаний] ${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.2 }
-      : { ...state.playerMemory[0]!, text: `Вы начинаете новую жизнь в Ровене: ${draft.name}, ${draft.age} лет. ${start.notes.join(" ")}`, kind: "own", confidence: 1 };
+      ? { ...state.playerMemory[0]!, text: `${start.notes.join(" ")} ${family.summary}`, kind: "own", confidence: 0.2 }
+      : { ...state.playerMemory[0]!, text: `Ты начинаешь новую жизнь в Ровене: ${draft.name}, ${draft.age} лет. ${start.notes.join(" ")}`, kind: "own", confidence: 1 };
   }
   state = { ...state, playerProfile: profile, campaign: { worldId: "veloria", recipe: structuredClone(recipe) }, worldStartYearKL: world.startYearKL ?? 742 };
 
@@ -133,7 +133,7 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
     state.playerMemory = [{
       minute: state.minute, kind: "own", confidence: 0.2,
       // Подробности рождения уже есть в start.notes (character.ts), здесь их не повторяем.
-      text: `[До первых связных воспоминаний] ${start.notes.join(" ")}`
+      text: `${start.notes.join(" ")}`
     }];
   }
   // Развитие: возраст отсчитывается от минуты рождения. Для взрослого старта вехи считаются пройденными.
