@@ -34,6 +34,7 @@ import { draftForOrigin } from "../ui/NewLifeWizard";
 import { readAutosave, writeAutosave } from "../ui/autosave";
 import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, fetchProfile, getCloud, getCloudKey, getCloudSave, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, signInWithGoogle, signOut, type Profile } from "../cloud/account";
 import { UnlockedKeySession, decryptApiKey, encryptApiKey, loadVaultRecord, saveVaultRecord } from "../ai/keyVault";
+import { hasPin, isValidPin, pinTriesLeft, savePin, unlockWithPin } from "../ai/pinVault";
 import { DirectAi, DEFAULT_MODEL, AiError, callModel } from "../ai/directClient";
 import { isAiProviderId, type AiProviderId } from "../ai/proxyClient";
 import { CachingProposer } from "../ai/intentCache";
@@ -80,6 +81,7 @@ function freshDraft(): Draft {
 const world = (): WorldData => (game && resolveWorldForState(WORLD_ID, game.campaign)) ?? getWorldEntry(WORLD_ID)!.create();
 const alive = () => !!game?.playerProfile && game.lifeStatus !== "dead";
 const aiOn = () => keys.isUnlocked;
+const locked = () => !keys.isUnlocked && hasPin();
 const adultAllowed = () => (ageFromBirthDate(birthDate) ?? 0) >= 18;
 
 // ===================== навигация (как в макете) =====================
@@ -105,10 +107,9 @@ function startWizard() { draft = freshDraft(); line = 50; ($("nm") as HTMLInputE
 
 // ===================== возраст игрока =====================
 function ageCalc() {
-  const m = +($("bm") as HTMLInputElement).value, y = +($("by") as HTMLInputElement).value;
+  const m = +($("bm") as HTMLSelectElement).value || 1, y = +($("by") as HTMLSelectElement).value || 2000;
   const iso = `${y}-${String(m).padStart(2, "0")}-01`;
   const n = Math.max(0, ageFromBirthDate(iso) ?? 0);
-  $("bmO").textContent = MON[m - 1]!; $("byO").textContent = String(y);
   $("ageNow").textContent = `Тебе ${yrs(n)}`; $("ageBorn").textContent = `${MON[m - 1]} ${y}`;
   $("ageNoteT").textContent = n < 18 ? "Тебе меньше 18, поэтому откровенных сцен не будет. Всё остальное открыто." : "Откровенные сцены можно включить в настройках, они только для 18+.";
   return iso;
@@ -152,13 +153,12 @@ function renderStates() {
 function chooseOrigin(o: BirthOrigin) { draft = { ...draftForOrigin(draft, o), familySeed: draft.familySeed }; line = 50; }
 function renderFamily() {
   const f = family(), p = f.preview;
-  ($("w3").querySelector(".qs") as HTMLElement).textContent = (o => o.fixed ? f.summary : p?.summary ?? "")(origin());
+  $("famLead").textContent = (o => o.fixed ? f.summary : p?.summary ?? "")(origin());
   const fm = (name: string, em: string, text: string) => `<div class="fm"><div><b>${esc(name)} <em>${esc(em)}</em></b><span>${esc(text)}</span></div></div>`;
   $("famList").innerHTML = (p?.members ?? []).map(m => fm(`${m.name}, ${m.role}`, m.alive ? yrs(m.age) : "", m.alive ? `${m.temperament}. ${m.appearance} ${cap(m.occupation)}.${m.livesWithYou ? "" : " Живёт отдельно."}` : "")).join("");
   const friends = p?.friends ?? [];
   $("famFriends").hidden = !friends.length;
   $("famFriends").innerHTML = `<span class="lbl">Друзья и соседи</span>${friends.map(m => fm(m.name, yrs(m.age), `${m.temperament}. ${m.appearance}`)).join("")}`;
-  ($("w3").querySelector('[data-act="otherfam"]') as HTMLElement).hidden = !!origin().fixed;
 }
 
 // Внешность: только черты родных (мама, папа, бабушки, деды). Подкидыш: обычные черты края.
@@ -300,9 +300,10 @@ function renderGame() {
   const { town, loc } = here();
   const page = $("page");
   qa(page, ":scope > .wait,#storyBaby,#storyKid").forEach(e => e.remove());
-  let story = page.querySelector<HTMLElement>("#story");
-  if (!story) { story = document.createElement("div"); story.id = "story"; story.className = "pgroup"; page.appendChild(story); }
-  (page.querySelector(".chapter") as HTMLElement).innerHTML = `<span>${esc(town && town.id !== loc.id ? `${town.name} · ${loc.name}` : loc.name)}</span><em>${esc(whenText())}</em>`;
+  const story = $("storyAlt"); story.hidden = false;
+  $("chapPlace").textContent = town && town.id !== loc.id ? `${town.name} · ${loc.name}` : loc.name;
+  (page.querySelector(".chapter em") as HTMLElement).textContent = whenText();
+  $("lockBtn").hidden = !locked();
   story.innerHTML = storyHtml();
   page.scrollTop = page.scrollHeight;
   $("hints").innerHTML = hints().map(h => `<button type="button">${esc(h)}</button>`).join("");
@@ -419,8 +420,8 @@ function renderWorld() {
   if (!game) return;
   const { town, loc } = here(), w = world();
   const country = COUNTRIES.find(c => c.id === town?.countryId);
-  const box = $("worldS").querySelector(".here div") as HTMLElement;
-  box.innerHTML = `<span class="lbl">Ты здесь</span><b>${esc(town && town.id !== loc.id ? `${town.name}, ${loc.name.toLocaleLowerCase("ru")}` : loc.name)}</b><span>${esc([country?.name, whenText()].filter(Boolean).join(" · "))}</span>`;
+  $("herePlace").textContent = town && town.id !== loc.id ? `${town.name}, ${loc.name.toLocaleLowerCase("ru")}` : loc.name;
+  $("hereSub").textContent = [country?.name, whenText()].filter(Boolean).join(" · ");
   const me = { x: town?.x ?? 38, y: town?.y ?? 47 };
   const vb: [number, number, number, number] = [me.x * 6 - 130, me.y * 7.6 - 115, 260, 230];
   const mini = $("worldS").querySelector(".mapmini") as HTMLElement;
@@ -440,7 +441,7 @@ function renderWorld() {
 function renderMap() {
   if (!game) return;
   const { town } = here(), me = { x: town?.x ?? 38, y: town?.y ?? 47 };
-  (window as unknown as { __me: unknown }).__me = me;
+  Object.assign(window, { __meX: me.x / 100, __meY: me.y / 100 });
   const inner = $("mapInner");
   qa(inner, ".mp:not(.area),.mehere").forEach(e => e.remove());
   inner.insertAdjacentHTML("beforeend", markers(false, me));
@@ -486,7 +487,8 @@ function renderMenu() {
   } else h += '<div class="menuHi"><b>С возвращением</b><span>Живого героя пока нет. Начни новую жизнь.</span></div>';
   h += `<button class="btn${alive() ? "" : " primary"}" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь</button>`;
   if (alive()) h += '<button class="btn ghost" type="button" data-go="livesS"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 4v5h6"/></svg>Мои жизни</button>';
-  if (!aiOn()) h += '<div class="aiNote"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/></svg><span>ИИ не подключён, мир пока отвечает скупо. <a href="#" data-go="aiS">Подключить</a></span></div>';
+  if (locked()) h += '<button class="aiNote lockNote" type="button" data-act="pinOpen"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg><span>Ключ ИИ закрыт. <b>Открыть PIN-кодом</b></span></button>';
+  else if (!aiOn()) h += '<div class="aiNote"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/></svg><span>ИИ не подключён, мир пока отвечает скупо. <a href="#" data-go="aiS">Подключить</a></span></div>';
   $("menuBody").innerHTML = h;
 }
 let savedAt = "";
@@ -510,8 +512,29 @@ function renderSettings() {
 const PROV: Array<[string, AiProviderId]> = [["OpenRouter", "openrouter"], ["DeepSeek", "deepseek"], ["Claude", "anthropic"], ["OpenAI", "openai"]];
 const providerLabel = (p: AiProviderId) => PROV.find(x => x[1] === p)?.[0] ?? p;
 let aiDone = false;
+let lastSecret: { provider: string; key: string; model: string } | null = null;
+async function pinSave() {
+  const v = ($("pinNew") as HTMLInputElement).value.trim();
+  if (!isValidPin(v) || !lastSecret) { $("pinNewErr").hidden = false; return; }
+  $("pinNewErr").hidden = true;
+  try { await savePin(v, lastSecret); } catch { $("pinNewErr").textContent = "Браузер не дал запомнить устройство."; $("pinNewErr").hidden = false; return; }
+  $("pinSet").innerHTML = '<div class="aistate ok"><span class="tick"><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12l5 5 9-10"/></svg></span><div><b>Устройство запомнило ключ</b>В следующий раз хватит PIN-кода.</div></div>';
+}
+function pinSheet(open: boolean) { $("pinSheet").hidden = !open; $("pinShade").hidden = !open; if (open) { ($("pinIn") as HTMLInputElement).value = ""; $("pinErr").hidden = true; setTimeout(() => $("pinIn").focus(), 50); } }
+async function pinOk() {
+  const secret = await unlockWithPin(($("pinIn") as HTMLInputElement).value.trim());
+  if (secret && isAiProviderId(secret.provider)) {
+    keys.unlock(secret.provider, secret.key); aiModel = secret.model; setPref("openworld.ai.model", aiModel);
+    pinSheet(false); const cur = stack[stack.length - 1]; if (cur) render[cur]?.(); return;
+  }
+  const left = pinTriesLeft();
+  $("pinErr").hidden = false;
+  $("pinErr").textContent = hasPin() && left > 0 ? `Неверный PIN, осталось попыток: ${left}` : "PIN введён неверно 5 раз. Устройство забыло ключ, введи пароль.";
+  if (!hasPin()) { const cur = stack[stack.length - 1]; if (cur) render[cur]?.(); }
+}
 function renderAi() {
   aiDone = false;
+  $("pinSet").hidden = true;
   const btn = $("aiGo"); btn.textContent = "Подтвердить"; $("aiState").hidden = true;
   const rec = loadVaultRecord(), prov = (rec?.provider ?? pref("openworld.ai.provider", "openrouter")) as AiProviderId;
   qa($("aiProv"), "button").forEach(b => b.setAttribute("aria-pressed", String(PROV.find(x => x[0] === b.textContent!.trim())?.[1] === prov)));
@@ -561,6 +584,7 @@ async function connectAi() {
   const secs = ((performance.now() - t0) / 1000).toFixed(1).replace(".", ",");
   st.className = "aistate ok"; st.innerHTML = `<span class="tick"><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12l5 5 9-10"/></svg></span><div><b>Подключено</b>Модель ${esc(model)} ответила за ${secs} с. Можно играть.</div>`;
   btn.textContent = "Начать играть"; aiDone = true;
+  lastSecret = { provider: prov, key, model }; $("pinSet").hidden = false;
 }
 
 // ===================== сохранения =====================
@@ -621,14 +645,18 @@ function act(a: string, el: HTMLElement) {
   else if (a === "newlife") { first = false; startWizard(); }
   else if (a === "menu") reset("menuS");
   else if (a === "logout") { if (cloud && session) void signOut(cloud); session = null; logout(); }
+  else if (a === "pinSave") void pinSave();
+  else if (a === "pinOpen") pinSheet(true);
+  else if (a === "pinClose") { pinSheet(false); if (el.dataset.go) go(el.dataset.go); }
+  else if (a === "pinOk") void pinOk();
   else if (a === "otherfam") { draft = { ...draft, familySeed: seed(), skinTone: undefined, hairColor: undefined, hairTexture: undefined, eyeColor: undefined, facialFeatures: undefined, nose: undefined, lips: undefined, brows: undefined, heightTendency: undefined, bodyBuild: undefined, marks: undefined }; ($("nm") as HTMLInputElement).dataset.touched = ""; line = 50; renderFamily(); }
-  void el;
 }
 
 function init() {
   app = $("app"); site = $("site");
   if (loadSave(readAutosave(undefined, WORLD_ID) ?? readAutosave())) { /* продолжим с места */ }
-  $("bm").addEventListener("input", ageCalc); $("by").addEventListener("input", ageCalc);
+  $("bm").addEventListener("change", ageCalc); $("by").addEventListener("change", ageCalc);
+  $("pinIn").addEventListener("keydown", e => { if ((e as KeyboardEvent).key === "Enter") void pinOk(); });
   $("nm").addEventListener("input", function (this: HTMLInputElement) { this.dataset.touched = "1"; });
   $("states").addEventListener("click", e => { const b = (e.target as HTMLElement).closest<HTMLElement>("[data-st]"); if (!b) return; const o = BIRTH_ORIGINS.find(x => x.stateId === b.dataset.st); if (o && origin().stateId !== o.stateId) chooseOrigin(o); renderStates(); });
   $("origins").addEventListener("click", e => { const b = (e.target as HTMLElement).closest<HTMLElement>("[data-o]"); if (!b) return; const o = birthOrigin(b.dataset.o); if (o) chooseOrigin(o); renderStates(); });
