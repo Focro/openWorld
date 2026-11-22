@@ -689,11 +689,11 @@ async function afterSignIn() {
 function deleteLife() {
   $("delSheet").hidden = $("delShade").hidden = true;
   clearTimeout(cloudTimer);
-  game = null; log = []; clearAutosave();
+  game = null; log = []; clearAutosave(undefined, WORLD_ID);
   if (cloud && session) void deleteCloudSave(cloud, WORLD_ID, AUTO_SLOT).catch(() => undefined);
   first = false;
   const cur = stack[stack.length - 1] ?? "menuS";
-  render[cur]?.();
+  if (cur === "livesS") reset("menuS"); else render[cur]?.();
 }
 
 // ===================== что показываем на каждом экране =====================
