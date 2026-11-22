@@ -764,8 +764,11 @@ function init() {
   });
   if (cloud) {
     $("gBtn").addEventListener("click", e => { e.stopImmediatePropagation(); void signInWithGoogle(cloud).catch(() => undefined); }, true);
-    void cloud.auth.getSession().then(async ({ data }) => { session = data.session; if (session) { await afterSignIn(); login(); } });
-    cloud.auth.onAuthStateChange((_e, next) => { session = next; });
+    // Вход мог завершиться позже первой проверки: тогда пускаем в игру по событию SIGNED_IN. Ошибка загрузки облака вход не блокирует.
+    let entered = false;
+    const enter = async () => { if (entered || !session) return; entered = true; try { await afterSignIn(); } catch { /* облако недоступно, играем локально */ } finally { if (!site.hidden) login(); } };
+    void cloud.auth.getSession().then(({ data }) => { session = data.session; void enter(); });
+    cloud.auth.onAuthStateChange((e, next) => { session = next; if (e === "SIGNED_IN") void enter(); if (e === "SIGNED_OUT") entered = false; });
   }
 }
 
