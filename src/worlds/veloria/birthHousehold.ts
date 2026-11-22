@@ -67,6 +67,9 @@ function mix(h: number): number { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h
 const unit = (seed: string) => mix(seedHash(seed)) / 4294967296;
 const between = (seed: string, min: number, max: number) => min + Math.floor(unit(seed) * (max - min + 1));
 const chance = (seed: string, p: number) => unit(seed) < p;
+/** Чем живут соседские семьи: у каждого соседского ребёнка свой родитель и ремесло. */
+const NEIGHBOUR_TRADES = ["лодочника", "прачки", "бочара", "рыбака", "пекаря", "кузнеца", "ткачихи", "возчика", "сапожника", "горшечника", "плотника", "торговки зеленью"];
+const FRIEND_QUIRKS = ["вечно куда-то убегает", "знает все лазы и задворки в округе", "любит животных и таскает домой котят", "много спрашивает и всё хочет потрогать", "задирается с другими детьми", "ходит хвостом за старшими", "лучше всех лазает по заборам", "собирает камешки и всякие находки", "любит страшные истории", "всегда делится едой"];
 const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
 export const yearsWord = (n: number) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "год" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "года" : "лет"; };
 
@@ -244,8 +247,17 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
       if (inShelter) f.name = f.given;
       const role = inShelter ? (sex === "male" ? "мальчик из приюта" : "девочка из приюта") : (sex === "male" ? "соседский мальчик" : "соседская девочка");
       const before = preview.length;
-      add(f, role, personality(`${seed}:friend:${i}`, role, "child", ["игры", "дружба"], sex, age), {
-        familyRole: "other", homeId: livingAt, about: inShelter ? "Живёт в приюте вместе с тобой, вы растёте под одной крышей." : "Живёт с семьёй по соседству, днём играет во дворе с другими детьми.",
+      const base = personality(`${seed}:friend:${i}`, role, "child", ["игры", "дружба"], sex, age);
+      // У каждого соседского ребёнка своя привычка, чтобы их можно было различить.
+      const quirk = FRIEND_QUIRKS[(between(`${seed}:friend-quirk`, 0, FRIEND_QUIRKS.length - 1) + i * 5) % FRIEND_QUIRKS.length]!;
+      const fp = { ...base, temperament: `${role}: ${base.word}; ${quirk}`, initialHabits: base.initialHabits.length ? [{ ...base.initialHabits[0]!, label: quirk }] : [] };
+      const trait = capitalize(`${fp.word}${fp.initialHabits[0] ? `, ${quirk}` : ""}.`);
+      const trade = NEIGHBOUR_TRADES[Math.floor(unit(`${seed}:friend-trade:${i}`) * NEIGHBOUR_TRADES.length)]!;
+      const about = inShelter
+        ? `${sex === "male" ? "Попал" : "Попала"} в приют совсем ${sex === "male" ? "маленьким" : "маленькой"}, растёте под одной крышей. ${trait}`
+        : `${sex === "male" ? "Сын" : "Дочь"} ${trade} ${famName}, живут по соседству. ${trait}`;
+      add(f, role, fp, {
+        familyRole: "other", homeId: livingAt, about,
         schedule: inShelter ? [{ from: 0, to: 24, locationId: livingAt, activity: "живёт и учится в приюте" }]
           : [{ from: 0, to: 9, locationId: livingAt, activity: "дома" }, { from: 9, to: 17, locationId: playAt, activity: "играет с соседскими детьми" }, { from: 17, to: 24, locationId: livingAt, activity: "дома" }]
       }, inShelter ? "живёт в приюте" : "играет во дворе по соседству", inShelter, inShelter ? "одинаковая приютская одежда" : undefined);
