@@ -153,6 +153,8 @@ export interface GameEvent {
   source: EventSource;
   /** Фоновая бытовая запись (встреча NPC между собой): не попадает в контекст сцены. */
   routine?: true;
+  /** Сцена при герое (повествование и реплики ИИ): люди видели героя сами. */
+  withHero?: true;
 }
 /** Хроника хранит объективные события мира. */
 export type ChronicleEntry = GameEvent;
