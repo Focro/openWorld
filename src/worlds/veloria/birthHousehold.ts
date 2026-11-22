@@ -74,6 +74,19 @@ const NEIGHBOUR_TRADES = ["лодочника", "прачки", "бочара", 
 const FRIEND_QUIRKS = ["вечно куда-то убегает", "знает все лазы и задворки в округе", "любит животных и таскает домой котят", "много спрашивает и всё хочет потрогать", "задирается с другими детьми", "ходит хвостом за старшими", "лучше всех лазает по заборам", "собирает камешки и всякие находки", "любит страшные истории", "всегда делится едой"];
 /** «родом из …»: страна в родительном падеже. */
 const FROM: Record<string, string> = { estran: "Эстрана", sahrad: "Сахрада", tharvek: "Тарвека", varent: "Варента", elyndor: "Элиндора", kharum: "Кхарума" };
+/** Отец не повторяет черты матери: другой нрав и другая привычка, чтобы родители различались. */
+function unlike(p: ReturnType<typeof personality>, other: ReturnType<typeof personality>, role: string, sex: Sex): ReturnType<typeof personality> {
+  if (!other.initialHabits.length || !p.initialHabits.length) return p;
+  const list = QUIRKS.parent!, oq = other.initialHabits[0]!.label;
+  const quirk = p.initialHabits[0]!.label === oq ? list[(list.indexOf(oq) + 3) % list.length]! : p.initialHabits[0]!.label;
+  const [w1, w2] = p.word.split(", "), [o1, o2] = other.word.split(", ").map(x => x!.slice(0, 5));
+  const WARM = ["ласковый", "сдержанный", "холодноватый"], SIDES = ["общительный", "терпеливый", "любопытный", "напористый", "чуткий", "нелюдимый"];
+  const first = w1!.slice(0, 5) === o1 ? adj(WARM.find(x => x.slice(0, 5) !== o1)!, sex) : w1!;
+  const second = w2 && w2.slice(0, 5) === o2 ? adj(SIDES.find(x => x.slice(0, 5) !== o2)!, sex) : w2;
+  const word = second ? `${first}, ${second}` : first;
+  return { ...p, word, temperament: `${role}: ${word}; ${quirk}`, initialHabits: [{ ...p.initialHabits[0]!, label: quirk }] };
+}
+
 const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
 export const yearsWord = (n: number) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "год" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "года" : "лет"; };
 
@@ -321,7 +334,8 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
 
   const motherWorksAt = placeId(s, origin.mother.at, familyId);
   const infantCare = heroAge < 1;
-  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age), {
+  const motherPers = personality(`${seed}:mother`, "мать", "parent", origin.values, "female", mother.age);
+  const mNpc = add(mother, motherAlive ? "мать" : "мать, умерла при твоих родах", motherPers, {
     familyRole: "biological-parent", lifeStatus: motherAlive ? "alive" : "dead",  about: motherAlive ? `${capitalize(infantCare ? "сейчас ухаживает за тобой и ведёт хозяйство" : origin.mother.activity)}.${motherFrom}` : `Умерла, когда ты ${draft.sex === "female" ? "появилась" : "появился"} на свет. Её помнят по рассказам родных.`,
     caregiving: motherAlive ? { role: "mother", canFeed: heroAge < 2 } : undefined,
     schedule: !motherAlive ? [] : infantCare || motherWorksAt === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: infantCare ? "ухаживает за младенцем и ведёт хозяйство" : origin.mother.activity }] : day(motherWorksAt, origin.mother.activity, 7, 17)
@@ -329,7 +343,7 @@ export function generateBirthHousehold(draft: BirthDraftLike, familyId: string, 
   biologicalParents.push({ id: mother.id, name: mother.name, appearance: mother.look });
   if (fatherKnown) {
     const at = placeId(s, origin.father.at, familyId);
-    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), {
+    add(father, fatherAlive ? "отец" : "отец, умер до твоего рождения", unlike(personality(`${seed}:father`, "отец", "parent", origin.values, "male", father.age), motherPers, "отец", "male"), {
       familyRole: "biological-parent", lifeStatus: fatherAlive ? "alive" : "dead", about: fatherAlive ? `${capitalize(origin.father.activity)}. На нём держится дом.` : "Умер до твоего рождения. О нём знаешь только по рассказам.", caregiving: fatherAlive ? { role: "father", canFeed: false } : undefined,
       schedule: fatherAlive ? (at === homeId ? [{ from: 0, to: 24, locationId: homeId, activity: origin.father.activity }] : day(at, origin.father.activity)) : []
     }, origin.father.activity);
