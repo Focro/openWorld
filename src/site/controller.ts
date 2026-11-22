@@ -32,8 +32,8 @@ import { FAITHS } from "../worlds/veloria/faiths";
 import { newLifeAttributes, NEW_LIFE_ATTRIBUTES, type VeloriaCharacterDraft } from "../worlds/veloria/character";
 import type { WorldDifficultyId } from "../worlds/veloria/difficulty";
 import { draftForOrigin } from "../ui/NewLifeWizard";
-import { readAutosave, writeAutosave } from "../ui/autosave";
-import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, fetchProfile, getCloud, getCloudKey, getCloudSave, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, signInWithGoogle, signOut, type Profile } from "../cloud/account";
+import { clearAutosave, readAutosave, writeAutosave } from "../ui/autosave";
+import { AUTO_SLOT, GRAVEYARD_SLOT, GRAVEYARD_WORLD, deleteCloudSave, fetchProfile, getCloud, getCloudKey, getCloudSave, putCloudKey, putCloudSave, reportChildSafetyStrike, saveAdultMode, saveBirthDate, signInWithGoogle, signOut, type Profile } from "../cloud/account";
 import { UnlockedKeySession, decryptApiKey, encryptApiKey, loadVaultRecord, saveVaultRecord } from "../ai/keyVault";
 import { hasPin, isValidPin, pinTriesLeft, savePin, unlockWithPin } from "../ai/pinVault";
 import { DirectAi, DEFAULT_MODEL, AiError, callModel } from "../ai/directClient";
@@ -547,7 +547,7 @@ function renderMenu() {
   let h = "";
   if (alive() && game) {
     const { town, loc } = here();
-    h += `<div class="cont"><span class="lbl" style="color:inherit;opacity:.8">Продолжить</span><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc(`${town?.name ?? ""}${town && town.id !== loc.id ? `, ${loc.name.toLocaleLowerCase("ru")}` : ""} · ${season(game.minute)} ${yearKLOf(game.minute, game.worldStartYearKL ?? 742)} КЛ`)}</span><button class="btn primary" type="button" data-act="play" style="margin-top:6px">Продолжить жизнь</button></div>`;
+    h += `<div class="cont"><button class="trash" type="button" data-act="delAsk" data-i="0" aria-label="Удалить мир" title="Удалить мир"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button><span class="lbl" style="color:inherit;opacity:.8">Продолжить</span><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc(`${town?.name ?? ""}${town && town.id !== loc.id ? `, ${loc.name.toLocaleLowerCase("ru")}` : ""} · ${season(game.minute)} ${yearKLOf(game.minute, game.worldStartYearKL ?? 742)} КЛ`)}</span><button class="btn primary" type="button" data-act="play" style="margin-top:6px">Продолжить жизнь</button></div>`;
   } else h += '<div class="menuHi"><b>С возвращением</b><span>Живого героя пока нет. Начни новую жизнь.</span></div>';
   h += `<button class="btn${alive() ? "" : " primary"}" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь</button>`;
   if (alive()) h += '<button class="btn ghost" type="button" data-go="livesS"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 4v5h6"/></svg>Мои жизни</button>';
@@ -558,7 +558,7 @@ function renderMenu() {
 let savedAt = "";
 function renderLives() {
   let h = '<span class="lbl">Велория</span>';
-  if (alive() && game) h += `<div class="life"><div><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc([heroOrigin()?.label, BIRTH_STATES.find(s => s.id === heroOrigin()?.stateId)?.name].filter(Boolean).join(" · "))}</span><span class="saved">Сохранено ${esc(savedAt || "только что")}</span></div><button class="btn primary sm2" type="button" data-act="play">Продолжить</button></div>`;
+  if (alive() && game) h += `<div class="life"><button class="trash" type="button" data-act="delAsk" data-i="0" aria-label="Удалить мир" title="Удалить мир"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button><div><b>${esc(game.playerName)}, ${esc(ageWord())}</b><span>${esc([heroOrigin()?.label, BIRTH_STATES.find(s => s.id === heroOrigin()?.stateId)?.name].filter(Boolean).join(" · "))}</span><span class="saved">Сохранено ${esc(savedAt || "только что")}</span></div><button class="btn primary sm2" type="button" data-act="play">Продолжить</button></div>`;
   h += '<button class="btn" type="button" data-act="newlife"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новая жизнь в Велории</button><span class="lbl">Другие миры</span><div class="life soon"><div><b>Скоро</b><span>Здесь появятся жизни из новых миров</span></div></div><p class="qs">Игра сохраняется сама после каждого хода. Смерть окончательная: умершую жизнь нельзя загрузить, остаётся только её хроника.</p>';
   $("livesList").innerHTML = h;
 }
@@ -685,6 +685,17 @@ async function afterSignIn() {
   if (!loadVaultRecord()) { const k = await getCloudKey(cloud).catch(() => null); if (k) saveVaultRecord(k); }
 }
 
+/** Удалить текущую жизнь: сохранение здесь и на сервере. Умершие жизни (хроника в «Мои жизни») не трогаем. */
+function deleteLife() {
+  $("delSheet").hidden = $("delShade").hidden = true;
+  clearTimeout(cloudTimer);
+  game = null; log = []; clearAutosave();
+  if (cloud && session) void deleteCloudSave(cloud, WORLD_ID, AUTO_SLOT).catch(() => undefined);
+  first = false;
+  const cur = stack[stack.length - 1] ?? "menuS";
+  render[cur]?.();
+}
+
 // ===================== что показываем на каждом экране =====================
 const render: Record<string, () => void> = {
   ageS: () => { ageCalc(); },
@@ -710,6 +721,9 @@ function act(a: string, el: HTMLElement) {
   else if (a === "menu") reset("menuS");
   else if (a === "logout") { if (cloud && session) void signOut(cloud); session = null; logout(); }
   else if (a === "pinSave") void pinSave();
+  else if (a === "delAsk") { if (!game) return; $("delT").textContent = `Удалить жизнь «${game.playerName}»?`; $("delSheet").hidden = $("delShade").hidden = false; }
+  else if (a === "delNo") { $("delSheet").hidden = $("delShade").hidden = true; }
+  else if (a === "delYes") deleteLife();
   else if (a === "pinOpen") pinSheet(true);
   else if (a === "pinClose") { pinSheet(false); if (el.dataset.go) go(el.dataset.go); }
   else if (a === "pinOk") void pinOk();
