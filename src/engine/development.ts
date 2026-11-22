@@ -782,7 +782,7 @@ export function ensureDevelopment(state: GameState): GameState {
     ...state,
     development: createDevelopment({
       birthMinute, nowMinute: state.minute, aptitudes: profile.attributes, seed: `${state.playerName}:${profile.originId}`,
-      sex: profile.dynasticRole === "second-prince" ? "male" : "unspecified"
+      sex: profile.sex ?? "unspecified"
     })
   };
 }

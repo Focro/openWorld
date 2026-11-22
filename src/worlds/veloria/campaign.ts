@@ -99,7 +99,7 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
       : { status: "unresolved", reason: "Нет двух подтверждённых биологических родителей для расчёта наследуемых признаков." }
   };
   const profile: NonNullable<GameState["playerProfile"]> = {
-    age: draft.age, birthYearKL: isPrince ? SECOND_PRINCE_START_YEAR : undefined, dynasticRole: draft.dynasticRole,
+    age: draft.age, sex: draft.sex ?? "unspecified", birthYearKL: isPrince ? SECOND_PRINCE_START_YEAR : undefined, dynasticRole: draft.dynasticRole,
     originId: draft.originId, statusId: draft.statusId, professionId: draft.professionId, familyState: draft.familyState,
     parentalUnionStatus: draft.parentalUnionStatus ?? "unknown", startScenarioId: draft.startScenarioId, biography: draft.biography,
     attributes: { ...draft.attributes }, difficultyId: recipe.difficultyId, heightCm: draft.heightCm, weightKg: draft.weightKg, build: draft.build,
@@ -142,7 +142,7 @@ export function startVeloriaCampaign(recipe: VeloriaCampaignRecipe, previous?: G
   state.development = createDevelopment({
     birthMinute, nowMinute: state.minute, aptitudes: draft.attributes,
     seed: `${draft.familySeed ?? draft.name}:${draft.name}`,
-    sex: isPrince ? "male" : draft.sex ?? "unspecified",
+    sex: draft.sex ?? "unspecified",
     // Обычный новорождённый: задатки: как у принца, темперамент и телосложение выбирает игрок.
     temperament: draft.temperament, build: draft.bodyBuild, heightTendency: draft.heightTendency
   });

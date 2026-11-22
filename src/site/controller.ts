@@ -149,18 +149,18 @@ function renderStates() {
     list.forEach(x => { h += `<button class="opt" type="button" data-o="${x.id}" aria-pressed="${x.id === o.id}"><span class="oi">${ICO[g] ?? ICO_O}</span><span><b>${esc(x.label)}</b><span>${esc(x.blurb)}</span><em class="meta">${x.wealthHint === "бедно" ? "обычно бедно" : x.wealthHint === "скромно" ? "обычно скромно" : "обычно в достатке"}</em></span></button>`; });
   });
   $("origins").innerHTML = h;
-  qa($("sex"), "button").forEach(b => { b.setAttribute("aria-pressed", String((b.textContent!.trim() === "Девочка") === (draft.sex === "female"))); (b as HTMLButtonElement).disabled = !!o.fixed; });
+  qa($("sex"), "button").forEach(b => { b.setAttribute("aria-pressed", String((b.textContent!.trim() === "Девочка") === (draft.sex === "female")));  });
 }
 function chooseOrigin(o: BirthOrigin) { draft = { ...draftForOrigin(draft, o), familySeed: draft.familySeed }; line = 50; }
 function renderFamily() {
   const f = family(), p = f.preview;
   const fm = (name: string, em: string, text: string) => `<div class="fm"><div><b>${esc(name)} <em>${esc(em)}</em></b><span>${esc(text)}</span></div></div>`;
   if (origin().fixed) {
-    $("famLead").textContent = "Ты родишься в королевской детской Коронхольма, вторым сыном при дворе дома Рейнар.";
-    $("famList").innerHTML = fm("Гарен Вальд, отец", "", "Супруг принцессы Элианы. Признал тебя своим сыном.")
+    $("famLead").textContent = `Ты родишься в королевской детской Коронхольма, ${draft.sex === "female" ? "второй дочерью" : "вторым сыном"} при дворе дома Рейнар.`;
+    $("famList").innerHTML = fm("Гарен Вальд, отец", "", `Супруг принцессы Элианы. Признал тебя своим ${draft.sex === "female" ? "ребёнком" : "сыном"}.`)
       + fm("Мать", "", "Родом из далёкой восточной земли. Её имени при дворе не называют.")
       + fm("Элиана Рейнар, жена отца", "", "Наследница престола. Тебе она не мать и держится с тобой холодно.")
-      + fm("Альдрен Рейнар, брат по отцу", yrs(1), "Кронпринц, первый наследник.")
+      + fm(draft.sex === "female" ? "Альдрен Рейнар, брат по отцу" : "Альдрен Рейнар, брат по отцу", yrs(1), "Кронпринц, первый наследник.")
       + fm("Мейра, кормилица", yrs(43), "Будет растить тебя в детской.");
     $("famFriends").hidden = true;
     return;
@@ -239,14 +239,14 @@ function statWords(): string {
 }
 function renderSummary() {
   const nm = $("nm") as HTMLInputElement, o = origin(), f = family();
-  if (!nm.dataset.touched) nm.value = o.fixed ? "Рейнар" : f.preview?.suggestedName ?? draft.name;
+  if (!nm.dataset.touched) nm.value = o.fixed ? (draft.sex === "female" ? "Рейна" : "Рейнар") : f.preview?.suggestedName ?? draft.name;
   nm.disabled = false;
   const town = MAP_NODES.find(n => n.id === o.settlementId)?.name ?? "";
   const year = (o.fixed ? SECOND_PRINCE_START_YEAR : 742) - draft.age;
   const parents = (f.preview?.members ?? []).filter(m => m.role === "мать" || m.role === "отец").map(m => m.name.split(" ")[0]).join(" и ");
   const s = lookState();
   const row = (a: string, b: string) => `<div><span>${a}</span><b>${esc(b)}</b></div>`;
-  $("sumCard").innerHTML = row("Родится", `${town}, ${year} КЛ`) + row("Кто", o.label) + (parents ? row("Семья", parents) : "") + row("Начнёт", draft.age === 0 ? "с рождения" : `с ${yrs(draft.age)}`)
+  $("sumCard").innerHTML = row("Родится", `${town}, ${year} КЛ`) + row("Кто", o.fixed && draft.sex === "female" ? "Вторая принцесса дома Рейнар" : o.label) + (parents ? row("Семья", parents) : "") + row("Начнёт", draft.age === 0 ? "с рождения" : `с ${yrs(draft.age)}`)
     + (row("Внешность", `${word("hairColor", s.cur("hairColor"))} ${word("hairTexture", s.cur("hairTexture"))} волосы, глаза ${word("eyeColor", s.cur("eyeColor"))}`)) + row("Задатки", statWords());
 }
 function wizardNext() {
@@ -257,7 +257,7 @@ function wizardNext() {
     draft = { ...draft, age: origin().fixed ? 0 : age };
     difficulty = (["peaceful", "balanced", "harsh"] as WorldDifficultyId[])[diff] ?? "balanced";
   }
-  if (id === "w2") draft = { ...draft, sex: origin().fixed ? "male" : qa($("sex"), "button").find(b => b.getAttribute("aria-pressed") === "true")?.textContent!.trim() === "Девочка" ? "female" : "male" };
+  if (id === "w2") draft = { ...draft, sex: qa($("sex"), "button").find(b => b.getAttribute("aria-pressed") === "true")?.textContent!.trim() === "Девочка" ? "female" : "male" };
   if (id === "w4") fixLook();
   if (id === "w5") { const v = statLevels(); draft = { ...draft, attributes: newLifeAttributes(Object.fromEntries(NEW_LIFE_ATTRIBUTES.map((a, i) => [a, v[i] ?? 3]))) }; }
   const order = ["w1", "w2", "w3", "w4", "w5", "w6"], i = order.indexOf(id);

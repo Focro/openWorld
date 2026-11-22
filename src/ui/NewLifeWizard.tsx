@@ -36,7 +36,7 @@ export function ageHint(age: number): [string, string] {
 }
 
 const PRINCE_FIELDS: Partial<Draft> = {
-  dynasticRole: "second-prince", name: "Второй принц Рейнар", age: 0, sex: "male", originId: "acknowledged-bastard", statusId: "noble", professionId: "none", familyState: "together",
+  dynasticRole: "second-prince", name: "Рейнар", age: 0, sex: "male", originId: "acknowledged-bastard", statusId: "noble", professionId: "none", familyState: "together",
   startScenarioId: "ordinary", parentalUnionStatus: "unmarried", heightCm: 50, weightKg: 3.5, build: "Среднее", hairColor: "light-blond", hairTexture: "straight", eyeColor: "dark-brown",
   facialFeatures: "east-asian", skinTone: 3, hairstyle: "мягкие короткие волосы младенца", faithId: "sevenfold",
   biography: "Рождён в 723 КЛ от Гарена Вальда и женщины из далёкой восточной земли. Отец признал сына. Принцесса Элиана (королевой станет в 735 КЛ): жена отца, не мать ребёнка; её личная неприязнь связана с изменой супруга.",
@@ -164,7 +164,7 @@ export function NewLifeWizard({ draft, setDraft, difficulty, setDifficulty, onSt
       <div className="chips">{BIRTH_STATES.map(s => <button className="chip" type="button" key={s.id} aria-pressed={stateId === s.id} onClick={() => { setStateId(s.id); const f = BIRTH_ORIGINS.find(o => o.stateId === s.id)!; if (origin.stateId !== s.id) choose(f); }}>{s.name}</button>)}</div>
       <div className="sinfo"><b>{country?.name ?? stateInfo.name}</b><p>{stateInfo.climate}. {stateInfo.knownFor}</p><div className="facts2"><span>Правит: {country?.ruler}</span><span>Вера: {FAITHS.find(f => f.id === country?.primaryFaith)?.name ?? "своя"}</span></div></div>
       <span className="lbl">Ты</span>
-      <div className="seg" style={{ alignSelf: "flex-start" }}>{(["male", "female"] as const).map(sex => <button type="button" key={sex} disabled={prince} aria-pressed={(draft.sex ?? "male") === sex} onClick={() => patch({ sex })}>{sex === "male" ? "Мальчик" : "Девочка"}</button>)}</div>
+      <div className="seg" style={{ alignSelf: "flex-start" }}>{(["male", "female"] as const).map(sex => <button type="button" key={sex} aria-pressed={(draft.sex ?? "male") === sex} onClick={() => patch({ sex })}>{sex === "male" ? "Мальчик" : "Девочка"}</button>)}</div>
       <button className="btn" type="button" style={{ padding: 10 }} onClick={fate}>{I.dice}Пусть решит судьба</button>
       <div className="grp">{BIRTH_GROUPS.map(group => {
         const list = BIRTH_ORIGINS.filter(o => o.stateId === stateId && o.group === group);
