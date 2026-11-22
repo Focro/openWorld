@@ -26,7 +26,7 @@ import { generateVeloriaFamily } from "../worlds/veloria/familyGeneration";
 import { kinOptions, lookFromLine, regionOptions, type KinMember, type KinMark } from "../worlds/veloria/kin";
 import { COUNTRIES, MAP_NODES, REGIONS } from "../worlds/veloria/atlas";
 import { knownSettlementIds } from "../worlds/veloria/mapLayer";
-import { placeStory } from "../worlds/veloria/placeLore";
+import { AREA_LORE, placeStory } from "../worlds/veloria/placeLore";
 import { travelOptions } from "../worlds/veloria/travel";
 import { FAITHS } from "../worlds/veloria/faiths";
 import { newLifeAttributes, NEW_LIFE_ATTRIBUTES, type VeloriaCharacterDraft } from "../worlds/veloria/character";
@@ -292,10 +292,12 @@ const byKin = <T extends { id: string; role?: string; family: boolean }>(list: T
 /** Первая сцена прозой: время суток, дом, кто рядом. Без выходов и расстояний, они во вкладке «Мир». */
 function openingScene(g: GameState): string {
   const w = world(), loc = w.locations[g.playerLocation];
-  const near = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths).map(id => ({ npc: w.npcs[id]!, act: npcActivity(w, id, g.minute, g.npcDeaths) }))
-    .filter(x => x.npc.familyRole || x.npc.id.startsWith("birth-family-")).slice(0, 3);
+  const known = new Set(knownPeople(w, g).map(p => p.id));
+  const all = npcsAt(w, g.minute, g.playerLocation, g.npcDeaths).map(id => ({ npc: w.npcs[id]!, act: npcActivity(w, id, g.minute, g.npcDeaths) }));
+  const near = all.filter(x => known.has(x.npc.id)).slice(0, 3);
   const who = near.map(x => `${kinWord(x.npc.id) ?? (x.npc.familyRole === "guardian" ? x.npc.name : x.npc.name.split(" ")[0])} ${x.act}.`);
-  return [cap(partOfDay(g.minute)) + ".", loc?.description ?? "", ...who].filter(Boolean).join(" ");
+  const strangers = all.length - all.filter(x => known.has(x.npc.id)).length;
+  return [cap(partOfDay(g.minute)) + ".", loc?.description ?? "", ...who, strangers ? (strangers === 1 ? "Рядом незнакомый человек." : "Вокруг незнакомые люди.") : ""].filter(Boolean).join(" ");
 }
 
 /** Первая запись дневника: одна живая строка, подробности ниже. */
@@ -388,7 +390,7 @@ function run(textRaw: string) {
     safety = record; push([message]); renderGame(); return;
   }
   const infant = (Object.entries(INFANT_ACT_LABELS) as Array<[InfantActId, string]>).find(([, l]) => l.toLocaleLowerCase("ru") === text.toLocaleLowerCase("ru"));
-  const apply = (action: Action, label: string) => { const r = applyAction(w, game!, action); setGame(r.state); push([`> ${label}`, ...r.message.split("\n")]); sceneFor(r, action, label); renderGame(); };
+  const apply = (action: Action, label: string) => { const r = applyAction(w, game!, action); setGame(r.state); push([`> ${label}`, ...(action.type === "look" && r.ok ? [openingScene(r.state)] : r.message.split("\n"))]); sceneFor(r, action, label); renderGame(); };
   if (infant) return apply({ type: "infant", act: infant[0] }, text);
   const parsed = parseAction(w, text);
   if (parsed.ok) return apply(parsed.action, text);
@@ -488,7 +490,13 @@ function renderMap() {
   setTimeout(() => (window as unknown as { __mapFix?: () => void }).__mapFix?.(), 30);
 }
 function placeCard(id: string) {
-  const n = MAP_NODES.find(x => x.id === id); if (!n || !game) return;
+  const n = MAP_NODES.find(x => x.id === id); if (!game) return;
+  if (!n) {
+    const a = AREA_LORE[id]; if (!a) return;
+    $("pcN").textContent = cap(id); $("pcK").textContent = a.kind; $("pcW").hidden = true; $("pcC").hidden = true; $("pcD").textContent = a.text;
+    qa($("mapInner"), "[data-p]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.p === id)));
+    $("placeCard").hidden = false; return;
+  }
   const country = COUNTRIES.find(c => c.id === n.countryId)?.name, region = REGIONS.find(r => r.id === n.regionId)?.name;
   $("pcN").textContent = n.name; $("pcK").textContent = [country, region].filter(Boolean).join(" · ");
   const cur = game.settlementId ?? "roven";
